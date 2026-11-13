@@ -1,0 +1,35 @@
+# Builds the whisper and sd sidecar images, CPU and Vulkan, when their files
+# change. They compile whisper.cpp and stable-diffusion.cpp from source, which
+# takes a while, so this does not run on every pull request.
+name: Sidecars
+
+on:
+  push:
+    branches: [main]
+    paths: [docker/**, docker-compose*.yml, .github/workflows/sidecars.yml]
+  pull_request:
+    paths: [docker/**, docker-compose*.yml, .github/workflows/sidecars.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sidecars-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [whisper, sd]
+        gpu: ["", vulkan]
+    name: ${{ matrix.image }} ${{ matrix.gpu || 'cpu' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: build
+        run: |
+          arg=$([ "${{ matrix.image }}" = whisper ] && echo WHISPER_GPU || echo SD_GPU)
+          docker build -f docker/${{ matrix.image }}.Dockerfile --build-arg "$arg=${{ matrix.gpu }}" .

@@ -47,7 +47,7 @@ The default is [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2
 | Memory while drawing | plan for about 8 GB, on top of whisper and the topic LLM |
 | Time per picture | seconds on a GPU; on a laptop CPU expect minutes |
 
-Rough numbers: they have not been measured on E-maki's own hardware yet. Listening goes on while a picture is drawn, but the topic model waits for it, and E-maki holds at most 16 segments of text in RAM meanwhile (4 minutes at 15 s). On a slow CPU, use a smaller picture (`LOCAL_IMAGE_SIZE=768x576`) or a GPU.
+Rough numbers: they have not been measured on E-maki's own hardware yet. Listening and topic detection go on while a picture is drawn. New topics wait in line for their picture, a few at a time. On a slow CPU, use a smaller picture (`LOCAL_IMAGE_SIZE=768x576`) or a GPU.
 
 That is too much for an 8 GB Jetson that also runs Whisper and the topic LLM. There, use a cloud API, or a smaller single-file model such as [SD-Turbo](https://huggingface.co/stabilityai/sd-turbo), which is much lighter but looks worse. In `.env`, with the download link of its `.safetensors` file:
 

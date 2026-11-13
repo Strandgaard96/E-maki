@@ -6,7 +6,7 @@
 # Norwegian fine-tune in ggml format. Only use a URL you trust: the file is
 # parsed by whisper.cpp. WHISPER_MODEL_SHA256, when set, must match it.
 set -e
-MODEL="${WHISPER_MODEL:-large-v3-turbo-q5_0}"
+MODEL="${WHISPER_MODEL:-small}"
 FILE="/models/${MODEL}.bin"
 # Silero voice detection (under 1 MB): whisper skips the parts of a segment
 # without speech instead of inventing text there, which is slow too.

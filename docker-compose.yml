@@ -35,7 +35,7 @@ services:
     build: *whisper-build
     command: ["download"]
     environment:
-      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3-turbo-q5_0}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
       WHISPER_MODEL_URL: ${WHISPER_MODEL_URL:-}
       WHISPER_MODEL_SHA256: ${WHISPER_MODEL_SHA256:-}
     volumes: [whisper-models:/models]
@@ -47,7 +47,7 @@ services:
     depends_on:
       whisper-model: { condition: service_completed_successfully }
     environment:
-      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3-turbo-q5_0}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
       WHISPER_THREADS: ${WHISPER_THREADS:-}
     volumes: [whisper-models:/models:ro]
     networks: [local]

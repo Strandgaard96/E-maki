@@ -126,6 +126,8 @@ For a 7.3", 5.7" or 4" Inky, pick the size under **E-maki > E-ink frame**. Rotat
 
 **ESP32 battery frame and other screens:** see [fugleramme/clients](https://github.com/fugleramme/clients) and [Hardware](hardware.md#battery-frame-esp32).
 
+To pause listening from Home Assistant or a script, see the **[HTTP API](api.md)**.
+
 ### Lock it down
 
 Anything on your local network can open the page, change the settings and press the buttons. To stop that, set `PANEL_TOKEN` in `.env` to a long random word (`openssl rand -hex 16`). The page, the picture and the buttons then live under `/<your-token>/` only, and the frame gets `FRAME_URL=http://<your-brain>:8090/<your-token>`. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet.
