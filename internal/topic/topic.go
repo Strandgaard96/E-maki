@@ -225,9 +225,9 @@ var ErrNoTopic = errors.New("no clear topic")
 // categories are the sensitive values the LLM is asked to choose from.
 var categories = map[string]bool{"health": true, "money": true, "relationship": true, "confidential_work": true}
 
-// maxTopicWords is a little above the 8 words the prompt asks for, since
+// MaxTopicWords is a little above the 8 words the prompt asks for, since
 // small models overshoot; the label is drawn on the wall.
-const maxTopicWords = 10
+const MaxTopicWords = 10
 
 // Check enforces the privacy boundary on a result before its prompt may be
 // sent to an image API: a short topic and prompt, no numbers, no topic in a
@@ -252,7 +252,7 @@ func Check(r Result, window string, block []string) error {
 		}
 	}
 	topicWords := strings.Fields(strings.ToLower(r.Topic))
-	if len(topicWords) > maxTopicWords {
+	if len(topicWords) > MaxTopicWords {
 		return errors.New("topic too long")
 	}
 	words := strings.Fields(strings.ToLower(r.VisualPrompt))

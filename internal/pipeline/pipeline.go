@@ -609,6 +609,45 @@ func (p *Pipeline) Remove(label string) bool {
 	return true
 }
 
+// Rename changes the caption of a tile on the wall or a waiting picture.
+// It reports whether the topic was there and the new label was free.
+func (p *Pipeline) Rename(label, to string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	k, nk := memory.Key(label), memory.Key(to)
+	if p.images[k] == nil || !p.Mem.Rename(label, to) {
+		return false
+	}
+	if nk != k {
+		p.images[nk], p.styles[nk] = p.images[k], p.styles[k]
+		p.forget(k)
+	}
+	log.Printf("renamed %q to %q", label, to)
+	if err := p.redraw(p.Now()); err != nil {
+		log.Printf("redraw: %v", err)
+	}
+	return true
+}
+
+// Removed lists the topics taken off the frame that are still kept away.
+func (p *Pipeline) Removed() []memory.Removal {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.Mem.Removed(p.Now())
+}
+
+// Allow lets a removed topic come back the next time it is talked about.
+func (p *Pipeline) Allow(label string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.Mem.Allow(label) {
+		return false
+	}
+	log.Printf("%q may come back", label)
+	p.keep()
+	return true
+}
+
 // Pin keeps a tile on the wall however long ago it was talked about, or
 // lets it fade again. It reports whether the topic was on the wall.
 func (p *Pipeline) Pin(label string, pinned bool) bool {

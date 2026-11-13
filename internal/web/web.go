@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/Strandgaard96/e-maki/internal/config"
 	"github.com/Strandgaard96/e-maki/internal/health"
 	"github.com/Strandgaard96/e-maki/internal/imagegen"
+	"github.com/Strandgaard96/e-maki/internal/memory"
 	"github.com/Strandgaard96/e-maki/internal/panel"
 	"github.com/Strandgaard96/e-maki/internal/pipeline"
 	"github.com/Strandgaard96/e-maki/internal/stt"
@@ -162,6 +164,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST "+pre+"/api/queue/{action}", s.guard(s.private(s.line)))
 	mux.HandleFunc("POST "+pre+"/api/redraw", s.guard(s.private(s.redraw)))
 	mux.HandleFunc("POST "+pre+"/api/test-picture", s.guard(s.private(s.testPicture)))
+	mux.HandleFunc("POST "+pre+"/api/removed/allow", s.guard(s.private(s.allow)))
 	mux.HandleFunc("GET "+pre+"/api/picture.png", s.private(s.picture))
 	mux.HandleFunc("GET "+pre+"/api/logs", s.private(func(w http.ResponseWriter, r *http.Request) {
 		after, _ := strconv.Atoi(r.URL.Query().Get("after"))
@@ -170,6 +173,17 @@ func (s *Server) Register(mux *http.ServeMux) {
 			lines = s.Logs.Since(after)
 		}
 		s.reply(w, lines)
+	}))
+	// The same lines as a file, for a bug report.
+	mux.HandleFunc("GET "+pre+"/api/logs.txt", s.private(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="ekiru.log"`)
+		if s.Logs == nil {
+			return
+		}
+		for _, l := range s.Logs.Since(0) {
+			fmt.Fprintf(w, "%s %s\n", l.At.Format(time.DateTime), l.Text)
+		}
 	}))
 	mux.HandleFunc("POST "+pre+"/api/pause", s.guard(s.private(s.pause)))
 	mux.HandleFunc("POST "+pre+"/api/clear", s.guard(s.private(s.clear)))
@@ -373,6 +387,7 @@ type state struct {
 	Languages     [][2]string               `json:"languages"` // what Whisper knows: code, name
 	Wall          []pipeline.Tile           `json:"wall"`
 	Queue         []pipeline.Tile           `json:"queue"`     // pictures waiting to go up, the next one first
+	Removed       []memory.Removal          `json:"removed"`   // removed topics still kept away
 	MaxTiles      int                       `json:"max_tiles"` // tiles the current layout shows
 	Waiting       int                       `json:"waiting"`   // new topics waiting to go up
 	NextAt        *time.Time                `json:"next_at,omitempty"`
@@ -404,7 +419,7 @@ func (s *Server) snapshot() state {
 	}
 	st := state{
 		Settings: set, Styles: imagegen.Styles, DefaultStyle: imagegen.DefaultStyle,
-		Categories: config.Categories, Languages: stt.Languages, Wall: s.Pipeline.Wall(), Queue: s.Pipeline.Waiting(), MaxTiles: min(tiles, collage.MaxTiles),
+		Categories: config.Categories, Languages: stt.Languages, Wall: s.Pipeline.Wall(), Queue: s.Pipeline.Waiting(), Removed: s.Pipeline.Removed(), MaxTiles: min(tiles, collage.MaxTiles),
 		ImagesToday: s.Pipeline.ImagesToday(), Page: s.Panel.ETag(), Status: s.Status,
 		Activity: s.Pipeline.Activity(), DefaultPrompt: topic.DefaultPrompt, Providers: s.Images,
 	}
@@ -516,6 +531,7 @@ func (s *Server) clear(w http.ResponseWriter, r *http.Request) {
 func (s *Server) tile(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Label string `json:"label"`
+		To    string `json:"to"` // the new label, for rename
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Label == "" {
 		http.Error(w, "send {\"label\": \"...\"}", http.StatusBadRequest)
@@ -529,12 +545,39 @@ func (s *Server) tile(w http.ResponseWriter, r *http.Request) {
 		found = s.Pipeline.Pin(body.Label, false)
 	case "remove":
 		found = s.Pipeline.Remove(body.Label)
+	case "rename":
+		to := strings.Join(strings.Fields(body.To), " ")
+		if n := len(strings.Fields(to)); n == 0 || n > topic.MaxTopicWords {
+			http.Error(w, fmt.Sprintf("a caption has 1 to %d words", topic.MaxTopicWords), http.StatusBadRequest)
+			return
+		}
+		if !s.Pipeline.Rename(body.Label, to) {
+			http.Error(w, "that topic is gone, or another one already has that caption", http.StatusConflict)
+			return
+		}
+		found = true
 	default:
-		http.Error(w, "action is pin, unpin or remove", http.StatusNotFound)
+		http.Error(w, "action is pin, unpin, remove or rename", http.StatusNotFound)
 		return
 	}
 	if !found {
 		http.Error(w, "that topic is no longer on the frame", http.StatusNotFound)
+		return
+	}
+	s.reply(w, s.snapshot())
+}
+
+// allow lets a removed topic come back.
+func (s *Server) allow(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Label string `json:"label"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Label == "" {
+		http.Error(w, "send {\"label\": \"...\"}", http.StatusBadRequest)
+		return
+	}
+	if !s.Pipeline.Allow(body.Label) {
+		http.Error(w, "that topic is not kept away", http.StatusNotFound)
 		return
 	}
 	s.reply(w, s.snapshot())

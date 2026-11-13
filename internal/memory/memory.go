@@ -99,13 +99,14 @@ type Memory struct {
 	s       Settings
 	topics  map[string]*Topic
 	blocked map[string]time.Time
-	images  map[string]int // images made per day, keyed "2006-01-02"
-	shown   time.Time      // when the last new tile went up
-	edition time.Time      // when diary mode last picked its topics
+	images  map[string]int    // images made per day, keyed "2006-01-02"
+	renamed map[string]string // key of a label the household changed -> the new label
+	shown   time.Time         // when the last new tile went up
+	edition time.Time         // when diary mode last picked its topics
 }
 
 func New(s Settings) *Memory {
-	return &Memory{s: s, topics: map[string]*Topic{}, blocked: map[string]time.Time{}, images: map[string]int{}}
+	return &Memory{s: s, topics: map[string]*Topic{}, blocked: map[string]time.Time{}, images: map[string]int{}, renamed: map[string]string{}}
 }
 
 // Key normalises a label so "Ski trip to Lofoten" and "ski trip to lofoten "
@@ -155,6 +156,11 @@ func (m *Memory) Canonical(label string) string {
 }
 
 func (m *Memory) canonicalKey(label, k string) string {
+	if to, ok := m.renamed[k]; ok {
+		if _, still := m.topics[Key(to)]; still {
+			return to
+		}
+	}
 	if t, ok := m.topics[k]; ok {
 		return t.Label
 	}
@@ -455,6 +461,54 @@ func (m *Memory) Redrawn(label string, now time.Time) bool {
 	return true
 }
 
+// Rename changes a topic's label, e.g. when the model's caption is off.
+// The old label keeps leading to the topic, so the model naming it the old
+// way again does not make a second picture. It reports whether the topic
+// exists and the new label is free.
+func (m *Memory) Rename(label, to string) bool {
+	k, nk := Key(label), Key(to)
+	t, ok := m.topics[k]
+	if !ok || nk == "" {
+		return false
+	}
+	if _, taken := m.topics[nk]; taken && nk != k {
+		return false
+	}
+	delete(m.topics, k)
+	t.Label = to
+	m.topics[nk] = t
+	if nk != k {
+		m.renamed[k] = to
+	}
+	return true
+}
+
+// Removal is a removed topic and when it may come back.
+type Removal struct {
+	Label string    `json:"label"`
+	Until time.Time `json:"until"`
+}
+
+// Removed lists the removed topics still kept away, the latest first.
+func (m *Memory) Removed(now time.Time) []Removal {
+	out := []Removal{}
+	for k, until := range m.blocked {
+		if now.Before(until) {
+			out = append(out, Removal{k, until})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Until.After(out[j].Until) })
+	return out
+}
+
+// Allow lets a removed topic come back. It reports whether it was removed.
+func (m *Memory) Allow(label string) bool {
+	k := Key(label)
+	_, ok := m.blocked[k]
+	delete(m.blocked, k)
+	return ok
+}
+
 // Pin keeps a topic on the wall regardless of its weight.
 func (m *Memory) Pin(label string, pinned bool) {
 	if t, ok := m.topics[Key(label)]; ok {
@@ -554,6 +608,11 @@ func (m *Memory) Prune(now time.Time) []string {
 	for k, until := range m.blocked {
 		if !now.Before(until) {
 			delete(m.blocked, k)
+		}
+	}
+	for k, to := range m.renamed {
+		if _, ok := m.topics[Key(to)]; !ok {
+			delete(m.renamed, k)
 		}
 	}
 	for day := range m.images {
