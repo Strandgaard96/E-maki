@@ -14,7 +14,7 @@ docker compose up -d --build
 
 The first start builds whisper-server and downloads the speech and language models (a few GB), so give it a while. Watch it with `docker compose logs -f`.
 
-Then open <http://localhost:8090/>, or `http://<your-brain>:8090/` from a phone or laptop on your network. That is the settings page. It shows what the frame shows and updates as you talk. In party mode the first topic shows up after about a minute of talk.
+Then open <http://localhost:8090/>, or `http://<your-brain>:8090/` from a phone or laptop on your network. That is the settings page. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
 
 Plain `docker compose up` runs everything on the CPU, uses the brain's own mic and makes placeholder pictures. The steps below change that.
 
@@ -35,20 +35,6 @@ GPU=vulkan-wsl   # Windows (WSL)
 
 Then `docker compose up -d --build` again. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
 
-### Coming from the old compose files
-
-There used to be one compose file per extra (`docker-compose.igpu-wsl.yml` and so on). They are gone, and `.env` decides instead. If your `.env` has a `COMPOSE_FILE` line, delete it and set the matching options:
-
-| Old file | In `.env` now |
-| --- | --- |
-| `docker-compose.igpu.yml` | `GPU=vulkan` |
-| `docker-compose.igpu-wsl.yml` | `GPU=vulkan-wsl` |
-| `docker-compose.local-images.yml` (and its igpu files) | `LOCAL_IMAGES=1` |
-| `docker-compose.da-no.yml` | `WHISPER_DA_NO=1` |
-| `docker-compose.netmic.yml` | `NET_MIC_BIND=0.0.0.0` |
-
-Volumes keep their names, so no model is downloaded again.
-
 ## 2. Settings in `.env`
 
 `.env` is git-ignored, so keys never end up in the repo. Every setting is explained in [.env.example](../.env.example). The ones most people touch:
@@ -65,6 +51,7 @@ Volumes keep their names, so no model is downloaded again.
 | `LLM_MODEL` | The local topic model, `qwen3.5:4b` by default |
 | `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` | An external topic model. See [External topic model](#external-topic-model) |
 | `PANEL_TOKEN` | Puts the page behind a secret address. See [Lock it down](#lock-it-down) |
+| `EMAKI_HOSTS` | Extra names the page answers to, for a reverse proxy or a VPN name. See [Lock it down](#lock-it-down) |
 | `PULSE_SOCKET`, `EMAKI_UID`, `EMAKI_GID` | Where the mic is |
 
 After editing `.env`, run `docker compose up -d` again. Containers whose settings changed are recreated.
@@ -100,7 +87,7 @@ Changes apply at once and are kept in the `emaki-data` volume.
 - **Timeline:** every picture E-maki made, day by day, with a full-screen viewer. Switch saving off or delete them all there.
 - **E-maki:**
   - *Microphone:* which mic, the speech level meter, languages.
-  - *Topic detection:* diary or party mode, how much talk the topic model reads, its instructions, local or external model.
+  - *Topic detection:* Diary or Continuous mode, how much talk the topic model reads, its instructions, local or external model.
   - *Privacy:* topics that are never painted, and the sensitive-topic filters.
   - *AI image provider:* which one, the daily limit, a test picture.
   - *E-ink frame:* panel size, rotation, how often the frame checks for a new page, what its buttons do.
@@ -141,6 +128,8 @@ To pause listening from Home Assistant or a script, see the **[HTTP API](api.md)
 ### Lock it down
 
 Anything on your local network can open the page, change the settings and press the buttons. To stop that, set `PANEL_TOKEN` in `.env` to a long random word (`openssl rand -hex 16`). The page, the picture and the buttons then live under `/<your-token>/` only, and the frame gets `FRAME_URL=http://<your-brain>:8090/<your-token>`. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet.
+
+The page only answers when it is opened by IP address, as `localhost`, or under a local name (`brain`, `brain.local`). That stops a website on the internet from reaching it through your browser. If you open it under another name, such as a reverse proxy's domain or a VPN name, list that name in `EMAKI_HOSTS` in `.env`.
 
 ## Logs
 

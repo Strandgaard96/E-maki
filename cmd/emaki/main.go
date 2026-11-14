@@ -287,14 +287,22 @@ func main() {
 	srv.Register(mux)
 	page.Register(mux)
 	// Timeouts, so a client that stalls cannot hold connections open.
-	hs := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second,
+	// EMAKI_HOSTS=frame.example.com,brain.tailnet.ts.net lets the page answer
+	// to names that are not plainly local (see web.Protect).
+	var hosts []string
+	for _, h := range strings.Split(os.Getenv("EMAKI_HOSTS"), ",") {
+		if h = strings.ToLower(strings.TrimSpace(h)); h != "" {
+			hosts = append(hosts, h)
+		}
+	}
+	hs := &http.Server{Addr: cfg.Listen, Handler: web.Protect(mux, hosts), ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout: 30 * time.Second, WriteTimeout: 2 * time.Minute, IdleTimeout: 2 * time.Minute}
 	go func() { log.Fatal(hs.ListenAndServe()) }()
 	// The page is up before the models are: it shows them as loading
 	// until they answer. An external topic model is not probed.
 	go tracker.Watch(context.Background(), time.Duration(cfg.StatusCheckSeconds)*time.Second, func() map[string]string {
 		t := map[string]string{health.Speech: strings.TrimRight(cfg.WhisperURL, "/") + "/health"}
-		if c := live.Load(); !(c.TopicProvider == "external" && ext.Ready()) {
+		if c := live.Load(); c.TopicProvider != "external" || !ext.Ready() {
 			t[health.Topics] = strings.TrimRight(c.LLMURL, "/") + "/v1/models"
 		}
 		return t

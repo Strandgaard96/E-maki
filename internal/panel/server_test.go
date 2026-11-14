@@ -73,3 +73,39 @@ func TestServerToken(t *testing.T) {
 		t.Errorf("press with the token: %s, pressed %q", resp.Status, pressed)
 	}
 }
+
+// A web page on another site cannot press the frame's buttons.
+func TestPressFromAnotherSiteIsRefused(t *testing.T) {
+	pressed := 0
+	s := &Server{OnPress: func(string) { pressed++ }}
+	mux := http.NewServeMux()
+	s.Register(mux)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	for name, c := range map[string]struct {
+		hdr  map[string]string
+		want int
+	}{
+		"a frame":        {nil, http.StatusNoContent},
+		"cross-site":     {map[string]string{"Sec-Fetch-Site": "cross-site"}, http.StatusForbidden},
+		"another origin": {map[string]string{"Origin": "http://evil.example"}, http.StatusForbidden},
+		"its own page":   {map[string]string{"Origin": ts.URL, "Sec-Fetch-Site": "same-origin"}, http.StatusNoContent},
+	} {
+		req, _ := http.NewRequest("POST", ts.URL+"/press", strings.NewReader("button=A"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for k, v := range c.hdr {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != c.want {
+			t.Errorf("%s: %s, want %d", name, resp.Status, c.want)
+		}
+	}
+	if pressed != 2 {
+		t.Fatalf("pressed %d times, want 2", pressed)
+	}
+}

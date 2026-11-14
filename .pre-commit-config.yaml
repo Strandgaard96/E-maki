@@ -1,8 +1,11 @@
-# Checks that run on every `git commit`. Set up once with:
+# Checks that run on every `git commit` (and `go test` on `git push`).
+# Set up once:
 #   pipx install pre-commit   # or: pip install pre-commit
-#   pre-commit install
-# CI runs the same secret scan, so skipping the hook (--no-verify) only
-# moves the failure to the pull request.
+#   pre-commit install --hook-type pre-commit --hook-type pre-push
+# CI runs the same hooks, so skipping them (--no-verify) only moves the
+# failure to the pull request. `pre-commit autoupdate` bumps the versions.
+exclude: ^(internal/web/static/|third_party/)
+
 repos:
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
@@ -14,17 +17,64 @@ repos:
     hooks:
       - id: check-added-large-files # stray recordings, models, gallery images
         args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+  # Go: gofmt + goimports, then go vet, staticcheck and friends.
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.15.0
+    hooks:
+      - id: golangci-lint-fmt
+      - id: golangci-lint-full
+
+  # Settings page: Biome formats and lints the JS, CSS and JSON.
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v2.6.7
+    hooks:
+      - id: biome-check
+        additional_dependencies: ["@biomejs/biome@2.6.7"]
+        files: ^internal/web/ui/
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.14.0
+    hooks:
+      - id: hadolint
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.24.1
+    hooks:
+      - id: markdownlint-cli2
 
   - repo: local
     hooks:
-      - id: gofmt
-        name: gofmt
-        entry: gofmt -l -w
+      # Needs `npm ci` in internal/web/ui first.
+      - id: ui-typecheck
+        name: tsc (settings page)
+        entry: npm --prefix internal/web/ui exec -- tsc -p internal/web/ui/jsconfig.json
         language: system
-        types: [go]
-      - id: go-vet
-        name: go vet
-        entry: go vet ./...
+        files: ^internal/web/ui/
+        pass_filenames: false
+      - id: go-test
+        name: go test
+        entry: go test ./...
         language: system
         types: [go]
         pass_filenames: false
+        stages: [pre-push]
