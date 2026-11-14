@@ -1,10 +1,16 @@
 package health
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -54,4 +60,50 @@ func TestProbe(t *testing.T) {
 	if s, err := Probe(context.Background(), c, ts.URL+"/health"); s != Down || err == nil {
 		t.Errorf("closed server: %v %v, want down", s, err)
 	}
+}
+
+func TestWatchQuietAtStart(t *testing.T) {
+	var buf bytes.Buffer
+	var mu sync.Mutex
+	log.SetOutput(syncWriter{&mu, &buf})
+	defer log.SetOutput(os.Stderr)
+	logs := func() string { mu.Lock(); defer mu.Unlock(); return buf.String() }
+	wait := func(want string) {
+		t.Helper()
+		for range 200 {
+			if strings.Contains(logs(), want) {
+				return
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		t.Fatalf("log %q has no %q", logs(), want)
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	var url atomic.Value
+	url.Store("http://127.0.0.1:1/health") // nothing listens yet
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var tr Tracker
+	go tr.Watch(ctx, 5*time.Millisecond, func() map[string]string { return map[string]string{Speech: url.Load().(string)} })
+
+	time.Sleep(50 * time.Millisecond)
+	if strings.Contains(logs(), "not answering") {
+		t.Fatalf("logged a sidecar that is still starting: %q", logs())
+	}
+	url.Store(ts.URL + "/health")
+	wait("speech: answering")
+	ts.Close()
+	wait("speech: not answering") // once it has answered, going away is news
+}
+
+type syncWriter struct {
+	mu *sync.Mutex
+	w  *bytes.Buffer
+}
+
+func (s syncWriter) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.w.Write(p)
 }
