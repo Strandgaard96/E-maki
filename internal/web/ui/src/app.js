@@ -1316,14 +1316,17 @@ function Hanging({ draft, set }) {
         </div>
         <small class="text-muted-foreground">Pick another if the picture shows sideways or upside down on your frame.</small>
       </div>
-      <${Field} label="Refresh interval" help="For battery frames (EE02). Less often saves battery.">
+      ${hasE6(draft) && html`<${Field} label="Refresh interval" help="How long a battery frame (like the EE02) sleeps between checks for a new picture. Less often saves battery. Frames on mains power check on their own.">
         <select class="select w-full" value=${draft.panel_poll_minutes} onChange=${(e) => set({ panel_poll_minutes: +e.target.value })}>
           ${withCurrent(POLLS.map((m) => [m, m === 1 ? "minute" : m + " minutes"]), draft.panel_poll_minutes, (v) => v + " minutes")
             .map(([v, t]) => html`<option value=${v}>${t}</option>`)}
-        </select><//>
+        </select><//>`}
       <div class="grid gap-3">
-        <span class="grid gap-0.5"><span class="font-medium">Buttons</span>
-          <small class="text-muted-foreground">The four buttons on the side of an Inky Impression frame, top to bottom.</small></span>
+        <${Field} label="Buttons" help="How many buttons your frame has. The frame sends A, B, C… when one is pressed; an Inky Impression has four, top to bottom.">
+          <select class="select w-full" value=${Object.keys(draft.panel_buttons || {}).length}
+            onChange=${(e) => set({ panel_buttons: buttons(draft.panel_buttons, +e.target.value) })}>
+            ${["", ...BUTTON_LETTERS].map((_, n) => html`<option value=${n}>${n === 0 ? "None" : n}</option>`)}
+          </select><//>
         ${Object.keys(draft.panel_buttons || {}).sort().map((b) => html`
           <${Field} label=${"Button " + b}>
             <select class="select w-full" value=${draft.panel_buttons[b]}
@@ -1332,6 +1335,17 @@ function Hanging({ draft, set }) {
             </select><//>`)}
       </div>
     <//>`;
+}
+
+// hasE6 is whether the panel gets /frame.e6, the only place the refresh interval goes.
+const hasE6 = (d) => ["800x480", "1600x1200"].includes(d.panel_width + "x" + d.panel_height);
+
+// The letters a frame's buttons can send (config.Buttons), and the first n of
+// them with the actions they had, new ones as on an Inky.
+const BUTTON_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const INKY_BUTTONS = { A: "pause", B: "remove", C: "pin", D: "next" };
+function buttons(old, n) {
+  return Object.fromEntries(BUTTON_LETTERS.slice(0, n).map((b) => [b, old?.[b] ?? INKY_BUTTONS[b] ?? ""]));
 }
 
 // What a frame button can do (panel_buttons).
