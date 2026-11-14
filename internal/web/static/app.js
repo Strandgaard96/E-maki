@@ -420,8 +420,8 @@ var Fi=Object.create;var St=Object.defineProperty;var Zi=Object.getOwnPropertyDe
       </div>
     <//>`}function _n({state:s,onState:e,onSignedOut:t}){let i=s.status.password,[o,n]=$(""),[a,r]=$(""),[h,d]=$(["",""]),l=async u=>{if(i&&!o)return d(["warn","Enter your current password first."]);if(u&&u.length<8)return d(["warn","Use at least 8 characters."]);try{let c=await W("api/password","POST",{current:o,password:u});e(c),n(""),r(""),d(["ok",u?"Password saved. Other browsers are signed out.":"Password removed. The page is open again."])}catch(c){d(["warn",c.message])}},m=async()=>{await W("api/logout","POST",{}),t()};return p`
     <${L} title="Page password"
-      intro="A password on top of the page's address. The frame's picture and buttons need no password, because e-ink frames can't sign in. The secret address guards those.">
-      <${q} tone=${i||s.status.locked?"ok":"warn"}>${i?"This page is locked with a password.":s.status.locked?"No password: anyone who has this page's address can change the frame and pause listening.":"No password and no secret address: anyone on your network can change the frame and pause listening."}<//>
+      intro="Without a password, anyone on your network can open this page. The frame's picture and buttons stay open, because e-ink frames can't sign in. PANEL_TOKEN guards those.">
+      <${q} tone=${i?"ok":"warn"}>${i?"This page is locked with a password.":"No password yet: anyone on your network can change the frame and pause listening."}<//>
       <form class="grid gap-4" onSubmit=${u=>{u.preventDefault(),l(a)}}>
         ${i&&p`<${E} label="Current password">
           <input class="input" type="password" autocomplete="current-password" value=${o} onInput=${u=>n(u.target.value)} /><//>`}
@@ -436,7 +436,7 @@ var Fi=Object.create;var St=Object.defineProperty;var Zi=Object.getOwnPropertyDe
       </form>
     <//>
     <${L} title="Panel token">
-      ${s.status.locked?p`<${q} tone="ok">On. This page and the frame live under a secret address.<//>`:p`<${q} tone="warn">Off (PANEL_OPEN is set in .env, or E-maki runs without a settings file). Anything on your network can open this page and the frame.<//>`}
+      ${s.status.locked?p`<${q} tone="ok">On. This page and the frame live under a secret address.<//>`:p`<p class="text-muted-foreground">Off. Set PANEL_TOKEN in .env to move this page and the frame under a secret address.</p>`}
     <//>`}var vn=[2,3,4,5,6,7,8,9];function yn({draft:s,set:e}){return p`
     <${L} title="Layout">
       <div class="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Layout">

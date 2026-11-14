@@ -104,17 +104,6 @@ func main() {
 	if !regexp.MustCompile(`^[A-Za-z0-9_-]*$`).MatchString(token) {
 		log.Fatal("PANEL_TOKEN may only hold letters, digits, - and _")
 	}
-	// Without one the page gets a random address of its own, kept next to
-	// the settings, so it is not open to the whole network out of the box.
-	// PANEL_OPEN=1 leaves it open; so does a run without a settings file,
-	// which has nowhere to keep the address.
-	tokenFile := ""
-	if token == "" && *settingsPath != "" && strings.TrimSpace(os.Getenv("PANEL_OPEN")) == "" {
-		tokenFile = filepath.Join(filepath.Dir(*settingsPath), "token")
-		if token, err = web.LoadToken(tokenFile); err != nil {
-			log.Fatalf("the page's address: %v", err)
-		}
-	}
 	srv := &panel.Server{Token: token, Rotation: cfg.PanelRotation, Poll: cfg.PanelPoll}
 	// The image providers set up in .env (keys and addresses come from the
 	// environment, never a file in the repo). The profile or the settings
@@ -338,12 +327,6 @@ func main() {
 	}
 	log.Printf("profile %s, mode %s, serving the panel on %s", cfg.Profile, mode, cfg.Listen)
 	log.Printf("settings page: %s", strings.TrimSuffix(p.FrameURL, "frame.png"))
-	if tokenFile != "" {
-		// To the terminal only, not System > Logs: its lines get pasted into
-		// bug reports.
-		fmt.Fprintf(os.Stderr, "settings page address: %s (kept in %s; from another device, put this machine's address in place of localhost)\n",
-			strings.Replace(strings.TrimSuffix(p.FrameURL, "frame.png"), "<PANEL_TOKEN>", token, 1), tokenFile)
-	}
 
 	ctx := context.Background()
 	switch {
