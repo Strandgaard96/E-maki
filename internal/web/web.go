@@ -85,7 +85,7 @@ type Server struct {
 	// Draft draws the page as it would look with unsaved settings, or says
 	// why they are wrong; may be nil.
 	Draft func(config.Settings) (image.Image, error)
-	// Logs is E-maki's own recent log, for the Logs tab; may be nil.
+	// Logs is E-maki's own recent log, for System > Logs; may be nil.
 	Logs *LogRing
 	// Mic says what E-maki listens on right now; may be nil.
 	Mic func() Mic
@@ -105,10 +105,10 @@ type Server struct {
 	testing  sync.Mutex // one test picture at a time
 	testDay  string     // the day testMade counts, guarded by testing
 	testMade int
-	// Timeline holds the saved pictures for the Timeline tab; nil without
+	// Timeline holds the saved pictures for Pictures > History; nil without
 	// a settings file.
 	Timeline *timeline.Store
-	// TimelineRow is the height of a row of pictures on the Timeline tab.
+	// TimelineRow is the height of a row of pictures on Pictures > History.
 	TimelineRow int
 
 	applying   sync.Mutex // one change at a time, applied and saved in order
@@ -769,7 +769,7 @@ func small(img image.Image, w int) *image.RGBA {
 	return out
 }
 
-// timelineState is what the Timeline tab shows: whether new pictures are
+// timelineState is what Pictures > History shows: whether new pictures are
 // saved, and the saved ones, newest first.
 type timelineState struct {
 	Saved    bool             `json:"saved"` // there is a folder to save to

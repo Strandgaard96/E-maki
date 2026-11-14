@@ -21,7 +21,7 @@ Set this in `.env` and run `docker compose up -d --build`:
 LOCAL_IMAGES=1
 ```
 
-The first start builds sd-server from source and downloads the model. Once it is up, the settings page lists "On this machine" under E-maki, AI image provider. With "Automatic" it is picked over any API key in `.env`.
+The first start builds sd-server from source and downloads the model. Once it is up, the settings page lists "On this machine" under System > Image provider. With "Automatic" it is picked over any API key in `.env`.
 
 With `GPU=vulkan` or `GPU=vulkan-wsl` (see [Setup](setup.md#integrated-gpu)) it draws on the integrated GPU as well.
 

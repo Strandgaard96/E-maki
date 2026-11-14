@@ -69,7 +69,18 @@ function App() {
   const [signin, setSignin] = useState(false);
   const [hot, setHot] = useState(""); // the tile pointed at, in the list or in the picture
   const [redrawing, setRedrawing] = useState(""); // the picture being redrawn
-  const [jump, setJump] = useState(0); // remounts the E-maki tab on its hash section
+  // The Frame tab's preview sticks right under the header, whose height changes when it wraps.
+  const header = useRef(null);
+  useEffect(() => {
+    if (!header.current || !window.ResizeObserver) return;
+    const ro = new ResizeObserver(([e]) =>
+      document.documentElement.style.setProperty("--header-h", e.borderBoxSize[0].blockSize + "px"),
+    );
+    ro.observe(header.current);
+    return () => ro.disconnect();
+  }, [!!state]);
+  const [jump, setJump] = useState(0); // remounts a section tab on the section in the address
+  const [view, setView] = useState("now"); // Pictures: on the frame now, or the history
 
   const load = useCallback(async () => {
     try {
@@ -98,8 +109,9 @@ function App() {
   const changed = Object.keys(pending).filter((k) => !same(pending[k], state.settings[k]));
   const dirty = changed.length > 0;
   const where = {
-    frame: changed.some((k) => !EMAKI_KEYS.includes(k)),
-    emaki: changed.some((k) => EMAKI_KEYS.includes(k)),
+    frame: changed.some((k) => !EMAKI_KEYS.includes(k) && !SYSTEM_KEYS.includes(k)),
+    listening: changed.some((k) => EMAKI_KEYS.includes(k)),
+    system: changed.some((k) => SYSTEM_KEYS.includes(k)),
   };
   const set = (patch) => setDraft({ ...draft, ...patch });
   const show = (t) => {
@@ -109,8 +121,8 @@ function App() {
   // The status in the header leads to the servers that are not ready.
   const openSystem = (e) => {
     e.preventDefault();
-    history.replaceState(null, "", "#emaki/system");
-    setTab("emaki");
+    history.replaceState(null, "", "#system/status");
+    setTab("system");
     setJump((n) => n + 1);
   };
 
@@ -154,7 +166,7 @@ function App() {
   const togglePause = () => call("api/pause", { paused: !paused }, paused ? "Listening again." : "Listening paused.");
 
   return html`
-    <header class="sticky top-0 z-10 border-b bg-background">
+    <header ref=${header} class="sticky top-0 z-10 border-b bg-background">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
         <${Brand} />
         <div class="tabs fixed inset-x-0 bottom-0 z-20 border-t bg-background px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:static sm:z-auto sm:w-auto sm:border-0 sm:bg-transparent sm:p-0">
@@ -178,7 +190,7 @@ function App() {
         </div>
         <div class="ms-auto flex items-center gap-3">
           <span role="status">
-            <${waiting ? "a" : "span"} href=${waiting ? "#emaki/system" : undefined}
+            <${waiting ? "a" : "span"} href=${waiting ? "#system/status" : undefined}
               onClick=${waiting ? openSystem : undefined}
               class=${"flex items-center gap-2 text-sm font-medium " + (waiting ? "underline-offset-4 hover:underline" : "")}>
             <span aria-hidden="true" class=${"size-2.5 rounded-full " + (paused || waiting ? "bg-ink-yellow" : "bg-ink-green ring-4 ring-ink-green/20")}></span>
@@ -191,21 +203,24 @@ function App() {
     ${
       tab === "frame"
         ? html`<main id="panel-frame" role="tabpanel" aria-labelledby="tab-frame"
-          class="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
-          <section class="grid gap-6 lg:sticky lg:top-20" aria-label="The frame">
-            <p class="text-sm text-muted-foreground">${summary(state)}</p>
-            <${Frame} page=${state.page} wall=${state.wall} draft=${pending}
+          class="mx-auto grid max-w-6xl gap-6 px-4 pb-6 md:grid-cols-2 md:items-start md:pt-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <section aria-label="The frame"
+            class="sticky top-(--header-h,4rem) z-[5] -mx-4 border-b bg-background px-4 py-3 md:top-[calc(var(--header-h,4rem)+1.5rem)] md:mx-0 md:border-0 md:p-0">
+            <${Frame} page=${state.page} wall=${state.wall} draft=${pending} summary=${summary(state, pending)}
               changed=${PICTURE_KEYS.some((k) => !same(pending[k], state.settings[k]))} />
           </section>
           <div class="grid gap-6">
             <${Layout} draft=${draft} set=${set} />
-            <${Timing} draft=${draft} set=${set} />
             <${Look} draft=${draft} set=${set} styles=${state.styles} />
+            <${Timing} state=${state} draft=${draft} set=${set} />
+            <${Hanging} draft=${draft} set=${set} />
           </div>
         </main>`
         : tab === "pictures"
-          ? html`<main id="panel-pictures" role="tabpanel" aria-labelledby="tab-pictures"
-          class="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-2 lg:items-start">
+          ? view === "history"
+            ? html`<${PicturesSwitch} view=${view} setView=${setView} /><${Timeline} onState=${setState} onSignedOut=${() => setSignin(true)} />`
+            : html`<${PicturesSwitch} view=${view} setView=${setView} /><main id="panel-pictures" role="tabpanel" aria-labelledby="tab-pictures"
+          class="mx-auto grid max-w-6xl gap-6 px-4 pt-4 pb-6 lg:grid-cols-2 lg:items-start">
           <${Wall} state=${state} hot=${hot} onHot=${setHot} onTile=${(a, label, to) => call("api/tiles/" + a, { label, to })}
             onClear=${() => call("api/clear", {}, "Frame cleared.")} redrawing=${redrawing} onRedraw=${redraw} />
           <div class="grid gap-6">
@@ -214,15 +229,14 @@ function App() {
             <${Removed} removed=${state.removed} onAllow=${(label) => call("api/removed/allow", { label }, "It can come back now.")} />
           </div>
         </main>`
-          : tab === "timeline"
-            ? html`<${Timeline} onState=${setState} onSignedOut=${() => setSignin(true)} />`
-            : tab === "emaki"
-              ? html`<${EmakiTab} key=${jump} state=${state} draft=${draft} set=${set} paused=${paused}
+          : tab === "listening"
+            ? html`<${SectionTab} key=${"l" + jump} id="listening" sections=${LISTENING} state=${state} draft=${draft} set=${set} paused=${paused}
           onState=${setState} onSignedOut=${() => setSignin(true)} />`
-              : html`<${Logs} />`
+            : html`<${SectionTab} key=${"s" + jump} id="system" sections=${SYSTEM} state=${state} draft=${draft} set=${set} paused=${paused}
+          onState=${setState} onSignedOut=${() => setSignin(true)} />`
     }
     <${SaveBar} dirty=${dirty} saving=${saving} notice=${notice}
-      what=${`${changed.length === 1 ? "1 unsaved change" : changed.length + " unsaved changes"} on ${[where.frame && "Frame", where.emaki && "E-maki"].filter(Boolean).join(" and ")}.`}
+      what=${`${changed.length === 1 ? "1 unsaved change" : changed.length + " unsaved changes"} on ${[where.frame && "Frame", where.listening && "Listening", where.system && "System"].filter(Boolean).join(" and ")}.`}
       onSave=${save} onDiscard=${() => setDraft(state.settings)} onDone=${() => setNotice("")} />
   `;
 }
@@ -230,9 +244,8 @@ function App() {
 const TABS = [
   ["frame", "Frame"],
   ["pictures", "Pictures"],
-  ["timeline", "Timeline"],
-  ["emaki", "E-maki"],
-  ["logs", "Logs"],
+  ["listening", "Listening"],
+  ["system", "System"],
 ];
 
 // Settings that change the picture itself, which the frame can show before saving.
@@ -246,9 +259,9 @@ const PICTURE_KEYS = [
   "panel_height",
   "panel_rotation",
 ];
-// Settings edited on the E-maki tab; the rest are on Frame.
+// Settings edited on the Listening and System tabs; the rest are on Frame.
+const SYSTEM_KEYS = ["image_provider", "daily_image_cap", "keep_pictures"];
 const EMAKI_KEYS = [
-  "mode",
   "mic_device",
   "min_speech_dbfs",
   "languages",
@@ -257,24 +270,30 @@ const EMAKI_KEYS = [
   "topic_prompt",
   "llm_temperature",
   "min_confidence",
-  "daily_image_cap",
+  "topic_provider",
   "block_sensitive",
   "block_names",
   "never_paint",
-  "keep_pictures",
-  "panel_buttons",
-  "panel_width",
-  "panel_height",
-  "panel_rotation",
-  "panel_poll_minutes",
 ];
 
-function summary(s) {
-  const layout = { collage: "Collage", single: "One picture", rolling: "Rolling" }[s.settings.layout];
-  const n = s.wall.length;
-  const tiles =
-    n === 0 ? "nothing on the frame yet" : n === 1 ? "1 picture on the frame" : `${n} pictures on the frame`;
-  return `${layout}, ${tiles}.`;
+function summary(s, d) {
+  const layout = {
+    collage: `Collage of up to ${d.tiles}`,
+    single: "One picture",
+    rolling: `Rolling, ${d.tiles} pictures`,
+  }[d.layout];
+  const when =
+    d.mode === "diary"
+      ? `painted once a day at ${d.diary_at}`
+      : d.new_every_minutes > 0
+        ? `a new picture at most every ${d.new_every_minutes} min`
+        : "new pictures straight away";
+  const quiet = d.quiet_from ? `, none ${d.quiet_from} to ${d.quiet_to}` : "";
+  const fade =
+    d.layout === "collage"
+      ? `. Tiles halve in ${d.half_life_hours >= 24 ? d.half_life_hours / 24 + " days" : d.half_life_hours + " hours"}`
+      : "";
+  return `${layout}, ${when}${quiet}${fade}. ${s.wall.length} on the frame now.`;
 }
 
 // The six inks of the panel, the brand mark.
@@ -294,18 +313,9 @@ function Brand() {
 // Frame shows the layout the settings give: the pictures on the frame, with
 // sample pictures in the places they do not fill yet, and unsaved layout
 // changes applied. Before the first topic it is all sample pictures.
-function Frame({ page, draft, changed, wall }) {
+function Frame({ page, draft, changed, wall, summary }) {
   const empty = wall.length === 0;
   const mark = changed || empty;
-  const [away, setAway] = useState(false);
-  const fig = useRef(null);
-  // On a narrow screen the picture scrolls away while you edit: keep a small one in the corner.
-  useEffect(() => {
-    if (!fig.current || !window.IntersectionObserver) return;
-    const io = new IntersectionObserver(([e]) => setAway(!e.isIntersecting));
-    io.observe(fig.current);
-    return () => io.disconnect();
-  }, []);
   const src = "api/preview.png?" + new URLSearchParams([...PICTURE_KEYS.map((k) => [k, draft[k]]), ["v", page]]);
   const pic = usePicture(src);
   const alt = empty
@@ -314,41 +324,25 @@ function Frame({ page, draft, changed, wall }) {
       ? "The frame as it would look with your unsaved changes"
       : "The layout with sample pictures in the empty places";
   const badge = empty ? "Example, not on the frame" : changed ? "Not saved yet" : "";
+  const [w, h] =
+    draft.panel_rotation % 180 ? [draft.panel_height, draft.panel_width] : [draft.panel_width, draft.panel_height];
+  // On a phone the picture is kept to a third of the screen's height, so the settings show under it.
   return html`
-    <figure class="grid gap-2" ref=${fig} aria-busy=${pic.loading}>
-      <div class="flex min-h-10 flex-wrap items-center justify-between gap-2 pointer-coarse:min-h-12">
-        <span class="text-sm font-medium">Layout preview</span>
-        <span class="flex items-center gap-2">
-          <span class=${"loader size-4 " + (pic.slow ? "" : "invisible")} role="status" aria-label=${pic.slow ? "Drawing the preview" : undefined}></span>
-          ${badge && html`<span class="rounded-full bg-ink-yellow px-2.5 py-0.5 text-xs font-medium text-neutral-900">${badge}</span>`}
-        </span>
-      </div>
-      <div class=${"bezel " + (mark ? "outline-2 outline-offset-2 outline-ink-yellow" : "")}>
+    <figure class="mx-auto grid w-full gap-2 max-md:max-w-[calc(30dvh*var(--ratio))]" style=${{ "--ratio": w / h }} aria-busy=${pic.loading}>
+      <div class=${"bezel relative " + (mark ? "outline-2 outline-offset-2 outline-ink-yellow" : "")}>
         <div class="relative" style=${{ aspectRatio: aspect(draft) }}>
           ${pic.prev && html`<img class="absolute inset-0 size-full object-contain" src=${pic.prev} alt="" />`}
           ${pic.cur && html`<img key=${pic.cur} class="fade-in relative size-full object-contain" src=${pic.cur} alt=${alt} />`}
         </div>
+        <span class="absolute top-1 right-1 flex items-center gap-2 sm:top-2 sm:right-2">
+          <span class=${"loader size-4 " + (pic.slow ? "" : "invisible")} role="status" aria-label=${pic.slow ? "Drawing the preview" : undefined}></span>
+          ${badge && html`<span class="rounded-full bg-ink-yellow px-2.5 py-0.5 text-xs font-medium text-neutral-900 shadow-sm">${badge}</span>`}
+        </span>
       </div>
-      <figcaption class="flex justify-between text-sm text-muted-foreground">
-        <span>${
-          empty
-            ? "Your layout once pictures come in."
-            : changed
-              ? "What the frame will show once you save. Sample pictures fill the empty places."
-              : "Sample pictures fill the places new topics will take. The Pictures tab lists what is on the frame."
-        }</span>
-        <a class="shrink-0 underline underline-offset-4 hover:text-foreground" href="view" target="_blank" rel="noopener">Open full screen</a>
+      <figcaption class="flex items-start justify-between gap-3 text-sm text-muted-foreground">
+        <span>${summary}</span>
+        <a class="shrink-0 underline underline-offset-4 hover:text-foreground max-md:hidden" href="view" target="_blank" rel="noopener">Open full screen</a>
       </figcaption>
-      <button type="button" aria-label="Back to the frame picture" inert=${!away}
-        onClick=${() => window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
-        class=${
-          "mini fixed right-3 top-20 z-10 w-32 rounded-lg bg-neutral-900 p-1.5 shadow-xl ring-1 ring-white/25 lg:hidden " +
-          (mark ? "outline-2 outline-ink-yellow " : "") +
-          (away ? "" : "pointer-events-none opacity-0")
-        }>
-        <span class="block w-full overflow-hidden rounded-[2px] bg-[#fbfbf8]" style=${{ aspectRatio: aspect(draft) }}>
-          ${pic.cur && html`<img class="size-full object-contain" src=${pic.cur} alt="" />`}</span>
-      </button>
     </figure>`;
 }
 
@@ -423,7 +417,7 @@ function Wall({ state, hot, onHot, onTile, onClear, redrawing, onRedraw }) {
   const [asking, setAsking] = useState("");
   const [renaming, setRenaming] = useState("");
   return html`
-    <${Card} title="On the frame now" intro=${WALL_LEDE[state.settings.layout]}>
+    <${Card} title="On the frame" intro=${WALL_LEDE[state.settings.layout]}>
       ${
         wall.length === 0
           ? html`<p class="rounded-lg border border-dashed p-4 text-center text-muted-foreground">No tiles yet. Topics show up here as soon as they are on the frame.</p>`
@@ -681,10 +675,10 @@ function Timeline({ onState, onSignedOut }) {
   };
 
   return html`
-    <main id="panel-timeline" role="tabpanel" aria-labelledby="tab-timeline" class="mx-auto grid max-w-6xl gap-4 py-6 ps-4 pe-10 sm:pe-20">
+    <main id="panel-pictures" role="tabpanel" aria-labelledby="tab-pictures" class="mx-auto grid max-w-6xl gap-4 pt-4 pb-6 ps-4 pe-10 sm:pe-20">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <div class="grid gap-1">
-          <h2 class="text-lg font-semibold tracking-tight">Timeline</h2>
+          <h2 class="text-lg font-semibold tracking-tight">History</h2>
           <p class="text-muted-foreground">${pics.length === 1 ? "1 picture" : pics.length + " pictures"}${days.length > 1 ? ` over ${days.length} days` : ""}</p>
         </div>
         ${
@@ -908,7 +902,7 @@ function Logs() {
         ? "text-muted-foreground"
         : "";
   return html`
-    <main id="panel-logs" role="tabpanel" aria-labelledby="tab-logs" class="mx-auto grid max-w-6xl gap-4 px-4 py-6">
+    <section class="grid min-w-0 gap-4" aria-label="Logs">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <div class="grid gap-1">
           <h2 class="text-lg font-semibold tracking-tight">Logs</h2>
@@ -943,7 +937,7 @@ function Logs() {
               )
         }
       </div>
-    </main>`;
+    </section>`;
 }
 
 // thumb crops a tile out of the frame's picture, as a CSS background.
@@ -1028,22 +1022,32 @@ function Note({ tone, children }) {
   return html`<p class=${"rounded-lg border px-3 py-2 " + color} role=${tone ? "status" : undefined}>${children}</p>`;
 }
 
-const SECTIONS = [
+const LISTENING = [
   ["listening", "Microphone"],
-  ["topics", "Topic detection"],
+  ["topics", "Topics"],
   ["privacy", "Privacy"],
-  ["pictures", "AI image provider"],
-  ["frame", "E-ink frame"],
+];
+const SYSTEM = [
+  ["status", "Status"],
+  ["pictures", "Image provider"],
+  ["storage", "Storage"],
   ["security", "Security"],
-  ["system", "System status"],
+  ["logs", "Logs"],
 ];
 
-function EmakiTab({ state, draft, set, paused, onState, onSignedOut }) {
-  const initial = SECTIONS.find(([k]) => location.hash === "#emaki/" + k)?.[0] ?? "listening";
+function PicturesSwitch({ view, setView }) {
+  return html`<div class="mx-auto max-w-6xl px-4 pt-6"><${Segments} inline name="view" label="Pictures" value=${view} onChange=${setView}
+    options=${[["now", "On the frame"], ["history", "History"]]} /></div>`;
+}
+
+// SectionTab is a tab of settings with a list of its sections at the side
+// (a scrolling row on a phone), one section shown at a time.
+function SectionTab({ id, sections, state, draft, set, paused, onState, onSignedOut }) {
+  const initial = sections.find(([k]) => location.hash === "#" + id + "/" + k)?.[0] ?? sections[0][0];
   const [section, setSection] = useState(initial);
   const go = (k) => {
     setSection(k);
-    history.replaceState(null, "", "#emaki/" + k);
+    history.replaceState(null, "", "#" + id + "/" + k);
   };
   // On a phone the list is one scrolling row: keep the open section in view.
   const nav = useRef(null);
@@ -1052,10 +1056,10 @@ function EmakiTab({ state, draft, set, paused, onState, onSignedOut }) {
     [section],
   );
   return html`
-    <main id="panel-emaki" role="tabpanel" aria-labelledby="tab-emaki"
+    <main id=${"panel-" + id} role="tabpanel" aria-labelledby=${"tab-" + id}
       class="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start">
-      <nav ref=${nav} aria-label="E-maki settings" class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
-        ${SECTIONS.map(
+      <nav ref=${nav} aria-label="Sections" class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
+        ${sections.map(
           ([k, name]) => html`
           <button type="button" aria-current=${section === k ? "page" : undefined} onClick=${() => go(k)}
             class=${
@@ -1066,14 +1070,15 @@ function EmakiTab({ state, draft, set, paused, onState, onSignedOut }) {
           </button>`,
         )}
       </nav>
-      <div class="grid max-w-3xl gap-6">
+      <div class=${"grid gap-6 " + (section === "logs" ? "min-w-0" : "max-w-3xl")}>
         ${section === "listening" && html`<${Listening} state=${state} draft=${draft} set=${set} paused=${paused} />`}
         ${section === "topics" && html`<${Topics} state=${state} draft=${draft} set=${set} />`}
-        ${section === "privacy" && html`<${Privacy} draft=${draft} set=${set} saved=${state.status.saved} topicAPI=${state.status.topic_api} />`}
+        ${section === "privacy" && html`<${Privacy} draft=${draft} set=${set} />`}
         ${section === "pictures" && html`<${Pictures} state=${state} draft=${draft} set=${set} />`}
-        ${section === "frame" && html`<${Hanging} draft=${draft} set=${set} />`}
+        ${section === "storage" && html`<${Storage} draft=${draft} set=${set} saved=${state.status.saved} topicAPI=${state.status.topic_api} />`}
+        ${section === "logs" && html`<${Logs} />`}
         ${section === "security" && html`<${Security} state=${state} onState=${onState} onSignedOut=${onSignedOut} />`}
-        ${section === "system" && html`<${System} state=${state} />`}
+        ${section === "status" && html`<${System} state=${state} />`}
       </div>
     </main>`;
 }
@@ -1259,10 +1264,6 @@ function diaryNote(s) {
 }
 
 function Topics({ state, draft, set }) {
-  const modes = [
-    ["diary", "Diary", "Collects the day's topics and paints the top ones once a day. For everyday life."],
-    ["party", "Continuous", "Turns each new topic into a picture straight away."],
-  ];
   const seconds = state.status.segment;
   const minutes = (n) => {
     const m = (n * seconds) / 60;
@@ -1298,21 +1299,7 @@ function Topics({ state, draft, set }) {
         The privacy filters still decide which pictures get made, but the service has already read the text. Tell the people in the room.<//>`
       }
     <//>
-    <${Card} title="Mode">
-      <div class="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Mode">
-        ${modes.map(
-          ([v, name, text]) => html`
-          <${Choice} name="mode" checked=${draft.mode === v} onChange=${() => set({ mode: v })}>
-            <span class="grid gap-1"><span class="font-medium">${name}</span><small class="text-muted-foreground">${text}</small></span>
-          <//>`,
-        )}
-      </div>
-      ${
-        draft.mode === "diary" &&
-        html`
-        <${Field} label="Paint at" help=${diaryNote(state)}>
-          <input class="input w-32" type="time" value=${draft.diary_at} onChange=${(e) => set({ diary_at: e.target.value || "07:00" })} /><//>`
-      }
+    <${Card} title="Topics">
       <${Field} label="Minimum confidence" value=${Math.round(draft.min_confidence * 100) + "%"}
         help="Higher means fewer, clearer topics. Lower catches more of the conversation.">
         <${Range} min="0" max="1" step="0.05" value=${draft.min_confidence}
@@ -1357,7 +1344,7 @@ function Pictures({ state, draft, set }) {
   const chosen = provider(providers, draft.image_provider);
   const missing = providers.filter((p) => !p.ready);
   return html`
-    <${Card} title="AI image provider">
+    <${Card} title="Image provider">
       <${Field} label="Provider"
         help=${[
           chosen?.id === "placeholder"
@@ -1374,7 +1361,7 @@ function Pictures({ state, draft, set }) {
           ${ready.map((p) => html`<option value=${p.id}>${p.name}</option>`)}
           ${missing.map((p) => html`<option disabled>${p.id === "local" ? "On this machine" : p.name}: ${p.setup}</option>`)}
         </select><//>
-      <${Field} label="New pictures per day, at most" help=${`${today} made today.${chosen?.local ? "" : " Each one is a paid call to your image API."}`}>
+      <${Field} label="Daily limit" help=${`${today} made today.${chosen?.local ? "" : " Each one is a paid call to your image API."}`}>
         <input class="input w-32" type="number" min="0" max="1000" value=${cap}
           onInput=${(e) => set({ daily_image_cap: Math.max(0, parseInt(e.target.value, 10) || 0) })} /><//>
       ${
@@ -1554,14 +1541,32 @@ const EVERY = [
   [240, "4 hours"],
 ];
 
-function Timing({ draft, set }) {
+function Timing({ state, draft, set }) {
+  const modes = [
+    ["diary", "Diary", "Collects the day's topics and paints the top ones once a day. For everyday life."],
+    ["party", "Continuous", "Turns each new topic into a picture straight away."],
+  ];
   const quiet = draft.quiet_from !== "";
   return html`
     <${Card} title="Timing">
+      <div class="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Mode">
+        ${modes.map(
+          ([v, name, text]) => html`
+          <${Choice} name="mode" checked=${draft.mode === v} onChange=${() => set({ mode: v })}>
+            <span class="grid gap-1"><span class="font-medium">${name}</span><small class="text-muted-foreground">${text}</small></span>
+          <//>`,
+        )}
+      </div>
+      ${
+        draft.mode === "diary" &&
+        html`
+        <${Field} label="Paint at" help=${diaryNote(state)}>
+          <input class="input w-32" type="time" value=${draft.diary_at} onChange=${(e) => set({ diary_at: e.target.value || "07:00" })} /><//>`
+      }
       ${
         draft.mode === "diary"
-          ? html`<p class="text-sm text-muted-foreground">Diary mode paints once a day, at ${draft.diary_at}. Change it under E-maki, Topic detection.</p>`
-          : html`<${Field} label="Minimum time between pictures" help="New topics wait in line and go up one at a time.">
+          ? ""
+          : html`<${Field} label="Picture interval" help="New topics wait in line and go up one at a time.">
         <select class="select w-full" value=${draft.new_every_minutes} onChange=${(e) => set({ new_every_minutes: +e.target.value })}>
           ${withCurrent(EVERY, draft.new_every_minutes, (v) => v + " minutes").map(([v, t]) => html`<option value=${v}>${t}</option>`)}
         </select><//>`
@@ -1589,7 +1594,7 @@ function Timing({ draft, set }) {
     <//>`;
 }
 
-function Privacy({ draft, set, saved, topicAPI }) {
+function Privacy({ draft, set }) {
   const external = draft.topic_provider === "external";
   const blocked = draft.block_sensitive;
   const toggle = (c) =>
@@ -1606,9 +1611,15 @@ function Privacy({ draft, set, saved, topicAPI }) {
       <${NeverPaint} value=${draft.never_paint} onChange=${(v) => set({ never_paint: v })} />
       ${blocked.length === 0 && !draft.block_names && !(draft.never_paint || []).length && html`<${Note} tone="warn">Nothing is held back: every topic can become a picture.<//>`}
     <//>
-    <${Card} title="Stored data">
+    <//>`;
+}
+
+function Storage({ draft, set, saved, topicAPI }) {
+  const external = draft.topic_provider === "external";
+  return html`
+    <${Card} title="Storage">
       <p><strong class="font-semibold">Nothing is recorded.</strong> Audio is never written to disk. What was said lives only in a short rolling window in memory and is gone when E-maki stops or you pause listening.</p>
-      ${external && html`<${Note} tone="warn">The external topic model is on: that window is also sent to ${topicAPI}. Switch back under Topic detection.<//>`}
+      ${external && html`<${Note} tone="warn">The external topic model is on: that window is also sent to ${topicAPI}. Switch back under Listening, Topics.<//>`}
       <p class="text-muted-foreground">The settings and password files hold no audio and no words. See PRIVACY.md in the repository for the full list.</p>
       <${Toggle} checked=${draft.keep_pictures !== false} onChange=${(v) => set({ keep_pictures: v })} disabled=${!saved} title="Keep pictures over a restart"
         text=${
@@ -1647,6 +1658,7 @@ function Look({ draft, set, styles }) {
   const style = draft.image_style || styles[0].name;
   const preset = styles.find((s) => s.name.toLowerCase() === style.toLowerCase() || s.prompt === style);
   const [custom, setCustom] = useState(!preset);
+  const [full, setFull] = useState(false);
   return html`
     <${Card} title="Picture style" intro="Used for new pictures. Tiles already on the frame keep their look.">
       <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Picture style">
@@ -1678,7 +1690,9 @@ function Look({ draft, set, styles }) {
           ...styles.map((s) => [
             s.name,
             !custom && preset === s,
-            html`<p class="rounded-lg bg-muted p-3 italic text-muted-foreground">${s.prompt}</p>`,
+            html`<div class="grid justify-items-start gap-1 rounded-lg bg-muted p-3">
+              <p class=${"italic text-muted-foreground " + (full ? "" : "line-clamp-3")}>${s.prompt}</p>
+              <button type="button" class="text-sm font-medium underline-offset-4 hover:underline" aria-expanded=${full} onClick=${() => setFull(!full)}>${full ? "Show less" : "Show the whole prompt"}</button></div>`,
           ]),
           [
             "",
@@ -1687,10 +1701,7 @@ function Look({ draft, set, styles }) {
              <textarea class="textarea" rows="4" maxlength="1000" placeholder="For example: woodcut print with thick black lines, flat yellow and blue"
                value=${draft.image_style} onInput=${(e) => set({ image_style: e.target.value })}></textarea><//>`,
           ],
-        ].map(
-          ([k, on, el]) => html`
-          <div key=${k} class=${"[grid-area:1/1] " + (on ? "" : "invisible")} inert=${!on}>${el}</div>`,
-        )}
+        ].map(([k, on, el]) => on && html`<div key=${k}>${el}</div>`)}
       </div>
     <//>`;
 }
@@ -1716,8 +1727,12 @@ function withCurrent(options, value, label) {
 
 function Hanging({ draft, set }) {
   return html`
-    <${Card} title="E-ink frame" intro="Set these once, when you hang the frame.">
-      <${Field} label="Panel" help="The size of your e-ink screen. The picture is drawn at its resolution.">
+    <${Card} title="Panel">
+      <details class="group">
+      <summary class="flex cursor-pointer items-center justify-between gap-3 text-muted-foreground">
+        <span>${panelSummary(draft)}</span><span class="shrink-0 text-sm font-medium text-foreground group-open:hidden">Change</span></summary>
+      <div class="grid gap-5 pt-5">
+      <${Field} label="Size" help="The size of your e-ink screen. The picture is drawn at its resolution.">
         <select class="select w-full" value=${draft.panel_width + "x" + draft.panel_height}
           onChange=${(e) => {
             const [w, h] = e.target.value.split("x").map(Number);
@@ -1767,7 +1782,22 @@ function Hanging({ draft, set }) {
             </select><//>`,
           )}
       </div>
+      </div>
+      </details>
     <//>`;
+}
+
+// panelSummary is the Panel card's folded line: size, rotation and buttons.
+function panelSummary(d) {
+  const size =
+    withSize(d).find(([v]) => v === d.panel_width + "x" + d.panel_height)?.[1] ??
+    `${d.panel_width} × ${d.panel_height}`;
+  const n = Object.keys(d.panel_buttons || {}).length;
+  return (
+    [size, d.panel_rotation ? `turned ${d.panel_rotation}°` : "not turned", n ? `${n} buttons` : "no buttons"].join(
+      ", ",
+    ) + "."
+  );
 }
 
 // hasE6 is whether the panel gets /frame.e6, the only place the refresh interval goes.
@@ -1802,7 +1832,7 @@ function System({ state }) {
   const langs = Object.entries(st.by_lang || {});
   const h = state.health;
   return html`
-    <${Card} title="Activity since start">
+    <${Card} title="Since start">
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         ${[
           [a.heard, "segments transcribed"],
@@ -1816,12 +1846,12 @@ function System({ state }) {
         )}
       </div>
     <//>
-    <${Card} title="Models and servers" intro="These are set in the profile and .env, and need a restart to change.">
+    <${Card} title="Services" intro="These are set in the profile and .env, and need a restart to change.">
       <div class="grid gap-3">
         <${Service} name="Speech to text" where=${st.speech} s=${h.speech} />
         <${Service} name="Topic model" s=${h.topics}
           where=${state.settings.topic_provider === "external" && st.topic_api ? `${st.topic_api} (external)` : st.no_local_topics ? "None (NO_LOCAL_TOPICS in .env)" : `${st.topics} at ${st.llm_url}`} />
-        <${Service} name="AI image provider" where=${st.images} s=${h.images} idle="No picture made since E-maki started. Make a test picture under AI image provider." />
+        <${Service} name="Image provider" where=${st.images} s=${h.images} idle="No picture made since E-maki started. Make a test picture under Image provider." />
       </div>
       <${Facts} rows=${[
         ["Profile", st.profile],

@@ -65,14 +65,14 @@ After editing `.env`, run `docker compose up -d` again. Containers whose setting
 
 ### Languages
 
-Stock Whisper is fine for English and weak at Danish and Norwegian. First tick the languages spoken in your home under **E-maki > Microphone** on the settings page: with one, Whisper skips guessing, and with several, a wrong guess (Danish heard as Swedish) is redone in the first one.
+Stock Whisper is fine for English and weak at Danish and Norwegian. First tick the languages spoken in your home under **Listening > Microphone** on the settings page: with one, Whisper skips guessing, and with several, a wrong guess (Danish heard as Swedish) is redone in the first one.
 
 - **One language, Danish or Norwegian:** set `WHISPER_MODEL_URL` to a ggml build of a fine-tune (Edda for Danish, NB-Whisper for Norwegian). That model then handles everything.
 - **A mix of Danish, Norwegian and English:** set `WHISPER_DA_NO=1`. It runs Edda and NB-Whisper next to stock Whisper and sends each segment to the model for its language. Set `WHISPER_DA_MODEL_URL` to an Edda ggml file you trust, and pin it with `WHISPER_DA_MODEL_SHA256`; Edda's makers publish no ggml file. NB-Whisper has a default. It costs about 1.6 GB more RAM.
 
 ### External topic model
 
-If the brain is too slow for a local topic model, E-maki can use an OpenAI-compatible chat API instead (OpenAI, Gemini, OpenRouter, Groq and others). This sends what was said in the last few minutes to that service. Setting `TOPIC_API_URL`, `TOPIC_API_KEY` and `TOPIC_API_MODEL` only makes it available; pick it under **E-maki > Topic detection**, which shows a warning while it is on. See [PRIVACY.md](../PRIVACY.md).
+If the brain is too slow for a local topic model, E-maki can use an OpenAI-compatible chat API instead (OpenAI, Gemini, OpenRouter, Groq and others). This sends what was said in the last few minutes to that service. Setting `TOPIC_API_URL`, `TOPIC_API_KEY` and `TOPIC_API_MODEL` only makes it available; pick it under **Listening > Topics**, which shows a warning while it is on. See [PRIVACY.md](../PRIVACY.md).
 
 If you never use the local model, set `NO_LOCAL_TOPICS=1` too: Ollama and its model download (about 3.4 GB) are then left out, and the page no longer offers the local model.
 
@@ -85,22 +85,24 @@ E-maki doesn't come with an image service or a key. Use your own key and pay for
 - **OpenRouter:** set `OPENROUTER_API_KEY` and the model id in `OPENROUTER_IMAGE_MODEL`.
 - **On the brain:** stable-diffusion.cpp with FLUX.2 klein 4B, so nothing leaves the house. A 5.3 GB download and slow without a GPU. See [Local pictures](local-images.md).
 
-With more than one set up, choose under **E-maki > AI image provider**. Cap spending with the daily picture limit there (50 a day in `docker.json`). Each topic costs one picture when it's first painted; later mentions of it cost nothing. **Make a test picture** in the same place checks that the key works.
+With more than one set up, choose under **System > Image provider**. Cap spending with the daily picture limit there (50 a day in `docker.json`). Each topic costs one picture when it's first painted; later mentions of it cost nothing. **Make a test picture** in the same place checks that the key works.
 
 ## 4. The settings page
 
 Changes apply at once and are kept in the `emaki-data` volume.
 
-- **Frame:** the live picture, the layout (collage, one picture, or a rolling set of 2 to 9), how often a new picture may go up, quiet hours, captions and picture style.
-- **Pictures:** the pictures on the frame (pin, remove, redraw, clear) and the ones waiting to go up, each with the description it was made from.
-- **Timeline:** every picture E-maki made, day by day, with a full-screen viewer. Switch saving off or delete them all there.
-- **E-maki:**
+- **Frame:** the live picture, which stays in view while you change anything that shows in it: the layout (collage, one picture, or a rolling set of 2 to 9), captions, picture style, Diary or Continuous mode, how often a new picture may go up, quiet hours, and the panel (size, rotation, how often the frame checks for a new page, what its buttons do).
+- **Pictures:** *On the frame*: the pictures on the frame (pin, remove, redraw, clear) and the ones waiting to go up, each with the description it was made from. *History*: every picture E-maki made, day by day, with a full-screen viewer. Switch saving off or delete them all there.
+- **Listening:**
   - *Microphone:* which mic, the speech level meter, languages.
-  - *Topic detection:* Diary or Continuous mode, how much talk the topic model reads, its instructions, local or external model.
+  - *Topics:* local or external model, minimum confidence, how much talk the topic model reads, its instructions.
   - *Privacy:* topics that are never painted, and the sensitive-topic filters.
-  - *AI image provider:* which one, the daily limit, a test picture.
-  - *E-ink frame:* panel size, rotation, how often the frame checks for a new page, what its buttons do.
+- **System:**
+  - *Status:* what E-maki has done since it started, and whether its servers answer.
+  - *Image provider:* which one, the daily limit, a test picture.
+  - *Storage:* what is kept on disk.
   - *Security:* a password for the page. Forgot it? Delete `password.json` from the `emaki-data` volume and restart.
+  - *Logs:* E-maki's recent log lines.
   - *System status:* whether whisper, the topic model and the image provider answer.
 - **Logs:** the last lines E-maki logged, kept in memory.
 
@@ -117,7 +119,7 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
   | FRAME_URL=http://<your-brain>:8090 bash
 ```
 
-The four buttons, top to bottom, do this out of the box. Change them under **E-maki > E-ink frame**:
+The four buttons, top to bottom, do this out of the box. Change them under **Frame > Panel**:
 
 | Button | Does |
 | --- | --- |
@@ -128,7 +130,7 @@ The four buttons, top to bottom, do this out of the box. Change them under **E-m
 
 The change shows at the frame's next refresh.
 
-For a 7.3", 5.7" or 4" Inky, pick the size under **E-maki > E-ink frame**. Rotate it there too, for portrait.
+For a 7.3", 5.7" or 4" Inky, pick the size under **Frame > Panel**. Rotate it there too, for portrait.
 
 **ESP32 battery frame and other screens:** see [fugleramme/clients](https://github.com/fugleramme/clients) and [Hardware](hardware.md#battery-frame-esp32).
 
@@ -140,7 +142,7 @@ The page, the picture and the buttons live under `/<token>/` only, so other devi
 
 A frame gets `FRAME_URL=http://<your-brain>:8090/<token>`, and a network microphone sends the token first (see [network-mic.md](network-mic.md)).
 
-`PANEL_OPEN=1` in `.env` turns the token off: then anything on your network can open the page. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet. The settings page can also have a password, under E-maki > Password.
+`PANEL_OPEN=1` in `.env` turns the token off: then anything on your network can open the page. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet. The settings page can also have a password, under System > Security.
 
 The page only answers when it is opened by IP address, as `localhost`, or under a local name (`brain`, `brain.local`). That stops a website on the internet from reaching it through your browser. If you open it under another name, such as a reverse proxy's domain or a VPN name, list that name in `EMAKI_HOSTS` in `.env`.
 
@@ -152,7 +154,7 @@ docker compose logs -f whisper   # speech-to-text
 docker compose logs -f ollama    # the topic model
 ```
 
-The E-maki log has one line per audio segment (level, language, word count, never the words) and one per topic decision. The Logs tab on the settings page shows the same lines. Logs are capped at 30 MB per container.
+The E-maki log has one line per audio segment (level, language, word count, never the words) and one per topic decision. System > Logs on the settings page shows the same lines. Logs are capped at 30 MB per container.
 
 ## Updating
 
@@ -166,7 +168,7 @@ Settings, pictures and models are kept in Docker volumes, so they survive an upd
 ## Troubleshooting
 
 - **No sound, or `miniaudio: Failed to open backend device`:** see the troubleshooting in [Laptop test](laptop-test.md#troubleshooting) or [Windows (WSL)](wsl.md#troubleshooting).
-- **Every segment is "quiet, skipped":** lower the speech level under **E-maki > Microphone**. The meter there shows your mic's level.
+- **Every segment is "quiet, skipped":** lower the speech level under **Listening > Microphone**. The meter there shows your mic's level.
 - **Topics lag behind or segments are dropped:** Whisper is too slow. Use `WHISPER_MODEL=small` or the GPU.
-- **Placeholder tiles instead of pictures:** no image provider is set up, or the key doesn't work. Check **E-maki > System status** and make a test picture.
+- **Placeholder tiles instead of pictures:** no image provider is set up, or the key doesn't work. Check **System > Status** and make a test picture.
 - **The page doesn't open from another device:** check the brain's firewall allows port 8090 and that `PANEL_BIND` is empty.

@@ -46,7 +46,7 @@ func main() {
 	script := flag.String("script", "", "synthetic transcript, one segment per line (runs offline with fakes)")
 	settingsPath := flag.String("settings", "", "file that keeps what the settings page changes (empty: changes last until restart)")
 	flag.Parse()
-	// The Logs tab shows the last lines from memory; stderr gets them too.
+	// System > Logs shows the last lines from memory; stderr gets them too.
 	logs := web.NewLogRing(1000)
 	log.SetOutput(io.MultiWriter(os.Stderr, logs))
 
@@ -175,7 +175,7 @@ func main() {
 		}
 		return filepath.Join(filepath.Dir(*settingsPath), "pictures")
 	}
-	// The Timeline tab's pictures live next to the settings file too.
+	// The pictures for Pictures > History live next to the settings file too.
 	var pics *timeline.Store
 	if *settingsPath != "" {
 		if pics, err = timeline.Open(filepath.Join(filepath.Dir(*settingsPath), "timeline"),
@@ -339,7 +339,7 @@ func main() {
 	log.Printf("profile %s, mode %s, serving the panel on %s", cfg.Profile, mode, cfg.Listen)
 	log.Printf("settings page: %s", strings.TrimSuffix(p.FrameURL, "frame.png"))
 	if tokenFile != "" {
-		// To the terminal only, not the Logs tab: its lines get pasted into
+		// To the terminal only, not System > Logs: its lines get pasted into
 		// bug reports.
 		fmt.Fprintf(os.Stderr, "settings page address: %s (kept in %s; from another device, put this machine's address in place of localhost)\n",
 			strings.Replace(strings.TrimSuffix(p.FrameURL, "frame.png"), "<PANEL_TOKEN>", token, 1), tokenFile)

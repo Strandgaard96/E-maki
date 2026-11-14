@@ -42,7 +42,7 @@ the window.
 You can let a service outside your network find the topics instead of the
 local model: OpenAI, Gemini, OpenRouter, Groq or anything else with an
 OpenAI-compatible chat API. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in
-`.env`, restart, and pick it under E-maki > Topic detection.
+`.env`, restart, and pick it under Listening > Topics.
 
 This breaks the short version above. With it on, **the transcript window
 (what was said in the last few minutes) is sent to that service every few
@@ -61,7 +61,7 @@ Tell the people in the room.
 | `password.json` (same folder) | A salted PBKDF2 hash of the settings page password, if you set one. |
 | `token` (same folder) | The random address of the page, made on the first start when `PANEL_TOKEN` is not set. |
 | `pictures/` (same folder), on unless you switch "Keep pictures over a restart" off | The pictures on the frame and in the queue, with each one's topic label, English picture description, style and times. Also how many pictures were made today and the labels of topics you removed, so the daily limit and a removal hold over a restart. In diary mode also the topics collected for the next morning, as label, picture description and times without a picture. No audio, no words that were said. |
-| `timeline/` (same folder), on unless you switch it off | Every picture made since, as a JPEG with a thumbnail, and its topic label, English picture description, style and time, for the Timeline tab. No audio, no words that were said. |
+| `timeline/` (same folder), on unless you switch it off | Every picture made since, as a JPEG with a thumbnail, and its topic label, English picture description, style and time, for Pictures > History. No audio, no words that were said. |
 
 That is all. No audio, no transcripts, no recordings. "Keep pictures over a
 restart" is on by default, so the frame comes back as it was. Turned off, the
@@ -69,7 +69,7 @@ topics and pictures live in memory and are gone when E-maki restarts, and the
 `pictures/` folder's files are deleted.
 
 The timeline is on by default, so pictures pile up in `timeline/` until you
-delete them. Switch "Save new pictures" off on the Timeline tab to stop that;
+delete them. Switch "Save new pictures" off under Pictures > History to stop that;
 pictures already saved stay until you press "Delete all" there. Without a
 settings file (no `-settings`) nothing is saved.
 
@@ -80,9 +80,9 @@ and word counts, the topic labels it found, what it decided about each, and the
 picture description sent to the image API. It never logs transcript text, and
 a topic held back as sensitive is not logged by name.
 
-The settings page has a Logs tab that shows the last 1,000 of these lines. They
+The settings page has a Logs section (System > Logs) that shows the last 1,000 of these lines. They
 are kept in memory only, behind the page's password when one is set, and are
-gone when E-maki stops. The Frame and Timeline tabs also show each picture's description, style
+gone when E-maki stops. The Pictures tab also shows each picture's description, style
 and when it was made. The microphone card shows device names and a loudness number, never audio.
 
 The sidecars keep their own logs. E-maki can't control those, so check

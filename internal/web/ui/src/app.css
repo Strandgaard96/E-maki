@@ -97,9 +97,6 @@ html {
   .loader {
     @apply inline-block animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground;
   }
-  .mini {
-    transition: opacity 150ms ease-out;
-  }
 }
 @keyframes fade-in {
   from {
@@ -129,9 +126,6 @@ html {
   .skeleton,
   .loader {
     animation: none;
-  }
-  .mini {
-    transition-duration: 100ms;
   }
 }
 

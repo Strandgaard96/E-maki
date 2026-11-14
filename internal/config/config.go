@@ -51,7 +51,7 @@ type Config struct {
 	TestPicturePrompt string `json:"test_picture_prompt"`
 	// Most test pictures a paid image provider makes in a day. 0 is 10.
 	TestPicturesPerDay int `json:"test_pictures_per_day"`
-	// The Timeline tab's saved pictures: thumbnail size (longest side, in
+	// The saved pictures under Pictures > History: thumbnail size (longest side, in
 	// pixels), JPEG quality (1 to 100) and the height of a row of pictures
 	// on a wide screen (in CSS pixels; a phone gets about half).
 	TimelineThumbPx     int `json:"timeline_thumb_px"`
@@ -140,7 +140,7 @@ type Settings struct {
 	// Empty (null) is on.
 	KeepPictures *bool `json:"keep_pictures"`
 	// Save every new picture, with its topic, description, style and time,
-	// next to the settings file for the Timeline tab. Never what was said.
+	// next to the settings file for Pictures > History. Never what was said.
 	// Empty (null) is on.
 	Timeline *bool `json:"timeline"`
 	// The microphone is ignored: nothing is transcribed.
