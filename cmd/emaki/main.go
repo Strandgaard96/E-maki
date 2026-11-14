@@ -60,21 +60,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	// One place (.env) picks the model for both Ollama's pull and E-maki.
-	if m := strings.TrimSpace(os.Getenv("LLM_MODEL")); m != "" {
-		cfg.LLMModel = m
-	}
-	// WHISPER_URL_DA=http://whisper-da:8081 adds a Danish server to
-	// whisper_by_lang (the Danish/Norwegian compose overlay sets these).
-	for _, kv := range os.Environ() {
-		k, v, _ := strings.Cut(kv, "=")
-		if lang, ok := strings.CutPrefix(k, "WHISPER_URL_"); ok && strings.TrimSpace(v) != "" {
-			if cfg.WhisperByLang == nil {
-				cfg.WhisperByLang = map[string]string{}
-			}
-			cfg.WhisperByLang[strings.ToLower(lang)] = strings.TrimSpace(v)
-		}
-	}
+	// What .env sets: the topic model (one place for Ollama's pull and
+	// E-maki), the network microphone, per-language speech servers.
+	cfg.Env(os.Environ())
 	// The external topic model, if set up in .env. Only topic_provider
 	// "external" uses it.
 	ext := topic.ExternalFromEnv(os.Getenv)
@@ -95,9 +83,6 @@ func main() {
 		if !config.Local(u) {
 			log.Printf("WARNING: %s does not look like a local address: audio or transcripts sent there leave your network", u)
 		}
-	}
-	if v, ok := os.LookupEnv("NET_MIC_LISTEN"); ok {
-		cfg.NetMicListen = strings.TrimSpace(v)
 	}
 	// PANEL_TOKEN moves the panel under /<token>/ (see panel.Server).
 	token := strings.TrimSpace(os.Getenv("PANEL_TOKEN"))
@@ -210,7 +195,7 @@ func main() {
 		Timeline: pics, TimelineRow: cfg.TimelineRowPx,
 		Status: web.Status{Profile: cfg.Profile, Topics: cfg.LLMModel, NoLocalTopics: !local, LLMURL: cfg.LLMURL, TopicAPI: externalName(ext), Speech: cfg.WhisperURL,
 			ByLang: cfg.WhisperByLang, Segment: cfg.SegmentSeconds,
-			Locked: token != "", Saved: *settingsPath != "", Started: time.Now()},
+			Locked: token != "", Saved: *settingsPath != "", Started: time.Now(), Env: envRows(cfg, ext)},
 		Apply: func(s config.Settings) (config.Settings, error) {
 			c, err := cfg.With(s)
 			if err != nil {
@@ -419,6 +404,45 @@ func logTopics(c config.Config, ext topic.External, local bool) {
 		return
 	}
 	log.Printf("topics: %s at %s", c.LLMModel, c.LLMURL)
+}
+
+// envRows is what .env sets, for System > Services: values, but for a key
+// or token only whether it is set.
+func envRows(c config.Config, ext topic.External) []web.EnvRow {
+	get := func(k, empty string) string { return cmp.Or(strings.TrimSpace(os.Getenv(k)), empty) }
+	set := func(k string) string {
+		if strings.TrimSpace(os.Getenv(k)) == "" {
+			return "Not set"
+		}
+		return "Set"
+	}
+	on := func(k string) string {
+		if strings.TrimSpace(os.Getenv(k)) == "" {
+			return "Off"
+		}
+		return "On"
+	}
+	row := func(label, k, v string) web.EnvRow { return web.EnvRow{Label: label, Var: k, Value: v} }
+	speech := get("WHISPER_MODEL", "small")
+	if os.Getenv("WHISPER_MODEL_URL") != "" {
+		speech = "Your own file (WHISPER_MODEL_URL)"
+	}
+	return []web.EnvRow{
+		row("Speech-to-text model", "WHISPER_MODEL", speech),
+		row("Danish and Norwegian models", "WHISPER_DA_NO", on("WHISPER_DA_NO")),
+		row("Local topic model", "LLM_MODEL", c.LLMModel),
+		row("Reasoning effort", "LLM_REASONING", cmp.Or(c.LLMReasoning, "Not sent")),
+		row("Ollama left out", "NO_LOCAL_TOPICS", on("NO_LOCAL_TOPICS")),
+		row("External topic model", "TOPIC_API_MODEL", cmp.Or(externalName(ext), "Not set up")),
+		row("Gemini key", "GEMINI_API_KEY", set("GEMINI_API_KEY")),
+		row("OpenAI key", "OPENAI_API_KEY", set("OPENAI_API_KEY")),
+		row("OpenRouter key", "OPENROUTER_API_KEY", set("OPENROUTER_API_KEY")),
+		row("Pictures on this machine", "LOCAL_IMAGES", on("LOCAL_IMAGE_URL")),
+		row("GPU", "GPU", get("GPU", "None, CPU only")),
+		row("Time zone", "TZ", get("TZ", "UTC")),
+		row("Network microphone", "NET_MIC_BIND", on("NET_MIC_LISTEN")),
+		row("Panel token", "PANEL_TOKEN", set("PANEL_TOKEN")),
+	}
 }
 
 // externalName is "" when the external topic model is not set up.

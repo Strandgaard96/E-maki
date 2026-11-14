@@ -17,7 +17,7 @@ type External struct {
 }
 
 // ExternalSetup says what to put in .env when External is not ready.
-const ExternalSetup = "set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then restart E-maki"
+const ExternalSetup = "set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d"
 
 func ExternalFromEnv(getenv func(string) string) External {
 	env := func(k, def string) string {

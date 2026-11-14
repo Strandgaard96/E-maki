@@ -1,73 +1,49 @@
 # Configs
 
-One JSON file per setup. E-maki reads it with `-config`; docker compose picks
-`configs/$EMAKI_CONFIG` (default `docker.json`) and mounts this folder, so
-an edit only needs `docker compose restart emaki`. Secrets and model
-choices for docker live in `.env` (see `.env.example`).
+A profile says how E-maki reaches its servers on this machine. Each setting
+lives in one place:
 
-The settings page (`http://<your-brain>:8090/`) can change `mode`, `min_speech_dbfs`, `languages`, `window_segments`, `extract_every`, `topic_prompt`, `llm_temperature`, `image_style`, `image_provider`, `block_sensitive`, `block_names`, `never_paint`, `half_life_hours`, `min_confidence`, `daily_image_cap`, the layout keys below, `panel_buttons`, `panel_width`, `panel_height`, `panel_rotation` and `panel_poll_minutes` while E-maki runs. The sidecar addresses, models and `segment_seconds` need a restart. Started with `-settings <file>` (docker compose uses `/data/settings.json` in the `emaki-data` volume), it saves them there, and that file overrides the profile on the next start. Delete the file to go back to the profile.
+- **The settings page** holds everything about what the frame shows,
+  listening, topics, privacy and which image provider draws. It saves them
+  in its own file (`/data/settings.json` in docker) and nothing else sets
+  them. Its defaults are in the code.
+- **`.env`** holds keys, models, the GPU and the extras (see
+  [.env.example](../.env.example)). System > Services on the page shows
+  what it is set to.
+- **The profile** holds the rest: the keys below.
 
-A profile is checked when E-maki starts: a key it does not know (a typo) or
-a value out of range stops it with a message, instead of being ignored.
+Docker compose always uses `docker.json`, and you don't need to touch it.
+E-maki reads a profile with `-config`. It is checked at start: a key it does
+not know (a typo) or a value out of range stops it with a message. A key
+that now lives on the settings page or in `.env` is ignored with a warning
+in the log, so an older profile still starts.
 
 | File | For |
 | --- | --- |
-| `docker.json` | Docker compose (default, Qwen 3.5 4B with thinking off) |
-| `docker-gemma.json` | Same, for Gemma 4 models |
+| `docker.json` | Docker compose |
 | `laptop.json` | Running the binary directly next to local sidecars |
-| `jetson.json` | Jetson Orin Nano, diary mode, names blocked too |
+| `jetson.json` | Jetson Orin Nano, with Danish and Norwegian speech servers |
 
 ## Keys
 
+All need a restart.
+
 | Key | What it does |
 | --- | --- |
-| `profile`, `mode` | Name for the log; `party` (Continuous on the settings page: show topics at once) or `diary` (collect the day's topics, paint the top ones once a day) |
-| `diary_at` | Diary mode: when the day's topics are painted, like `"07:00"` (default). Quiet hours can hold them back further; `new_every_minutes` is not used |
-| `listen` | Panel/web address, e.g. `:8090` |
-| `whisper_url`, `whisper_by_lang` | Speech-to-text server, and per-language servers (e.g. `{"da": "http://edda:8081"}`). `WHISPER_URL_DA=http://edda:8081` in the environment adds one too |
-| `languages` | Languages spoken in the house, as Whisper codes, e.g. `["da", "en"]` (any language Whisper knows). One skips language detection; with several, a guess outside the list is redone in the first one. Empty (default) accepts any language |
-| `llm_url`, `llm_model` | OpenAI-compatible LLM server and model. `LLM_MODEL` in the environment overrides the model |
-| `topic_prompt` | Replaces the built-in instructions for naming the topic and writing the image prompt (`topic.DefaultPrompt`). The privacy rules and the JSON answer format are always added after it |
-| `llm_temperature` | 0 = most predictable, higher = more varied topics. Default 0.2 |
-| `llm_reasoning` | Sent as `reasoning_effort`; `"none"` stops thinking models (Qwen 3.5) from spending a minute thinking. Leave out for models that do not think |
+| `profile` | Name shown under System > Services and in the log |
+| `listen` | Panel and web address, e.g. `:8090` |
+| `whisper_url`, `whisper_by_lang` | Speech-to-text server, and per-language servers (e.g. `{"da": "http://edda:8081"}`). `WHISPER_URL_DA=http://edda:8081` in the environment adds one too; docker sets these with `WHISPER_DA_NO=1` |
+| `llm_url` | OpenAI-compatible topic model server. The model is `LLM_MODEL` in `.env` (default `qwen3.5:4b`), and `LLM_REASONING` is sent as `reasoning_effort` (default `none`; set it empty for models that don't think, like Gemma) |
 | `segment_seconds` | Audio per transcription call |
 | `mic_timeout_seconds` | An open microphone that sends no audio this long is reopened, e.g. an unplugged USB mic. Default 5 |
 | `status_check_seconds` | How often System status checks that whisper and the local topic model answer. Default 10 |
 | `test_picture_prompt` | What "Make a test picture" draws. Default: a cartoon teapot |
 | `test_pictures_per_day` | Most test pictures a paid image provider makes in a day. Default: 10. Pictures made on this machine are not counted |
-| `net_mic_listen` | Listen for a network microphone, e.g. `":10700"` (see [docs/network-mic.md](../docs/network-mic.md)). Empty is off. `NET_MIC_LISTEN` overrides it. Needs a restart |
-| `min_speech_dbfs` | Segments whose loudest 200 ms is quieter than this are skipped |
-| `window_segments` | How many recent segments the LLM sees (8 x 15 s = 2 min) |
-| `extract_every` | Segments between topic calls |
-| `half_life_hours`, `min_confidence` | How fast tiles fade; topics below this confidence are ignored |
-| `daily_image_cap` | Most image API calls per day |
-| `block_sensitive` | Sensitive categories never sent to the image API: `health`, `money`, `relationship`, `confidential_work`. With any category listed, a topic the LLM does not clearly mark as `none` or an allowed category is held back too. Empty sends everything |
-| `block_names` | `true` refuses an image prompt that repeats a name heard in the transcript (a word capitalised mid-sentence). It cannot tell people from places or brands, so it also drops "Lofoten" or "Italian". Default `false` |
-| `never_paint` | Words or phrases that never become a picture, for example `["work", "Anna"]`. A topic or picture description that contains one (whole words, any case, plural too) is held back. The list is never logged. Default empty |
-| `image_style` | Art style added to every image prompt: a preset's name (`Comic`, `Clear line`, `Picture book`, `Linocut`, `Paper cut-out`, `Stained glass`, `Screen print`, `Pop art`, `Ink and red`, `Pixel art`) or a style of your own. Empty is `Comic`. The presets are in `internal/imagegen/styles.go` |
-| `image_styles` | Your own presets for the settings page, like `[{"name": "Woodcut", "prompt": "..."}]`. One with a preset's name replaces it, so the first preset is the default. Needs a restart |
-| `image_provider` | Who draws the pictures: `local`, `gemini`, `openai`, `openrouter` or `placeholder`. Empty (default) takes the first one set up in `.env`, local first. Keys and addresses stay in `.env` |
-| `layout`, `tiles` | `collage` (default: the topics talked about most, the newest biggest; tiles fade), `single` (newest topic only; pin to keep it) or `rolling` (newest first, the oldest drops off). `tiles` is the most pictures, 1 to 9 (default 9) |
-| `new_every_minutes` | Least minutes between two new pictures; new topics wait in line. 0 (default) puts each up at once |
-| `rotate_minutes` | When more pictures are saved than fit, show the others in turn, a new set this often. The pinned ones stay, and nothing changes in the quiet hours. 0 (default) is off |
-| `quiet_from`, `quiet_to` | Quiet hours like `"22:00"` and `"07:00"`: no new pictures go up in between. Times follow `TZ` |
-| `hide_captions` | Leave the topic names off the pictures. (`newest_big` is no longer used and is ignored) |
-| `arrange` | The newest picture is always the biggest, unless all are the same size: `hero` (default: the newest big, the rest on a grid), `cascade` (each picture smaller than the one before, newest to oldest), `mosaic` (mixed sizes, the newest biggest; a new mosaic with the first new page each day) or `even` (rows of pictures the same size) |
-| `spacing` | Gaps between pictures and at the edge: `none`, `thin`, `normal` (default) or `wide` |
-| `shape` | `rectangle` (default), `rounded`, `circle` or `arch` (round top) |
-| `background` | `paper` (default), `white` or `black` |
-| `timeline` | `false` stops saving new pictures for Pictures > History (it has the same switch). Default on |
-| `timeline_thumb_px`, `timeline_jpeg_quality`, `timeline_row_px` | Timeline: thumbnail size (longest side, default 480), JPEG quality of saved pictures (default 90), and row height on the tab (default 220; a phone gets about half). Need a restart |
-| `paused` | `true` ignores the microphone (the settings page sets this) |
-| `panel_buttons` | The frame's buttons, by the letter its client sends to `/press` (`A` to `H`), and what each does. Unset or `{}` is a frame without buttons, the default. An Inky Impression's four: `{"A": "pause", "B": "remove", "C": "pin", "D": "next"}`. Actions: `pause` (pause or resume listening), `remove` (take the last picture off), `pin` (pin it, or let it fade again), `next` (put the next waiting picture up), `""` (nothing) |
-| `panel_width`, `panel_height` | The e-ink panel's resolution, landscape: `1600`×`1200` for the 13.3" Inky Impression (the default), `800`×`480` for the 7.3", `600`×`448` for the 5.7", `640`×`400` for the 4". The page is drawn at this size, and in portrait when `panel_rotation` is 90 or 270. `/frame.e6` exists for the 7.3" and 13.3" only |
-| `panel_rotation`, `panel_poll_minutes` | Passed to the Fugleramme panel clients |
+| `image_styles` | Your own picture styles for the settings page, like `[{"name": "Woodcut", "prompt": "..."}]`. One with a preset's name replaces it |
+| `timeline_thumb_px`, `timeline_jpeg_quality`, `timeline_row_px` | History: thumbnail size (longest side, default 480), JPEG quality of saved pictures (default 90), and row height on the tab (default 220; a phone gets about half) |
 
-## Example: your own topic prompt
-
-```json
-"topic_prompt": "You read a transcript of a home conversation. Name its topic in English in at most 8 words, as specific and funny as you can: the exact object, place or mishap, never a category like 'travel'. Write visual_prompt as one literal cartoon scene of at most 30 words."
-```
+Without docker, the network microphone is `NET_MIC_LISTEN=:10700` in the
+environment (see [docs/network-mic.md](../docs/network-mic.md)).
 
 ## Example: your own picture styles
 

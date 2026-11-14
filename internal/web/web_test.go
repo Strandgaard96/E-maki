@@ -7,8 +7,10 @@ import (
 	"image"
 	"image/png"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -448,6 +450,19 @@ func TestTestPicturesHaveADailyLimit(t *testing.T) {
 		resp := send(t, "POST", ts.URL+"/api/test-picture", "application/json", `{"provider":"`+c.provider+`"}`, nil)
 		if resp.StatusCode != c.want {
 			t.Errorf("test picture %d with %s: %s, want %d", i+1, c.provider, resp.Status, c.want)
+		}
+	}
+}
+
+// Every preset has a mood and a sample picture for the style picker.
+func TestStyleSamples(t *testing.T) {
+	for _, s := range imagegen.Styles {
+		if !slices.Contains([]string{"cool", "relaxed", "somber"}, s.Mood) {
+			t.Errorf("%s: mood %q", s.Name, s.Mood)
+		}
+		name := "static/styles/" + strings.ReplaceAll(strings.ToLower(s.Name), " ", "-") + ".png"
+		if _, err := fs.Stat(static, name); err != nil {
+			t.Errorf("%s: no sample picture: %v", s.Name, err)
 		}
 	}
 }

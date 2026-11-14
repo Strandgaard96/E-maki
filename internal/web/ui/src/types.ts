@@ -57,6 +57,7 @@ export interface Tile {
 export interface Style {
   name: string;
   prompt: string;
+  mood?: string; // "cool", "relaxed" or "somber"; empty for a profile's own
 }
 
 export interface Provider {
@@ -88,6 +89,7 @@ export interface Status {
   saved: boolean;
   started: string;
   password: boolean;
+  env: { label: string; var: string; value: string }[] | null;
 }
 
 export interface Activity {

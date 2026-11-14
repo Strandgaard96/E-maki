@@ -832,7 +832,7 @@ func samples(from, n int, hideCaptions bool) []collage.Tile {
 		bg, fg := imagegen.PlaceholderInks(fmt.Sprintf("sample %d", i+3))
 		t := collage.Tile{Ink: bg, Disc: fg}
 		if !hideCaptions {
-			t.Title, t.Meta = fmt.Sprintf("Sample topic %d", i+1), "EXAMPLE"
+			t.Title, t.Meta = fmt.Sprintf("Sample topic %d", i+1), "PREVIEW"
 		}
 		out = append(out, t)
 	}

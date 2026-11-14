@@ -75,7 +75,7 @@ func TestSampleDiscIsWhole(t *testing.T) {
 		for n := 1; n <= MaxTiles; n++ {
 			tiles := make([]Tile, n)
 			for i := range tiles {
-				tiles[i] = Tile{Title: "Sample", Meta: "EXAMPLE", Ink: color.RGBA{36, 66, 140, 255}, Disc: disc}
+				tiles[i] = Tile{Title: "Sample", Meta: "PREVIEW", Ink: color.RGBA{36, 66, 140, 255}, Disc: disc}
 			}
 			page := Render(tiles, DefaultSize, look)
 			for i, r := range Rects(n, DefaultSize, look) {

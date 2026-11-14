@@ -5,7 +5,8 @@ import justifiedLayout from "justified-layout";
 import PhotoSwipe from "photoswipe";
 import type { ComponentChildren, JSX, RefObject, TargetedEvent } from "preact";
 import { render } from "preact";
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { TIPS, type TipText } from "./tips";
 import type {
   Service as Health,
   Mic,
@@ -163,7 +164,9 @@ function App() {
       const s = await api("api/settings", "PUT", pending);
       setState(s);
       setDraft(s.settings);
-      setNotice(s.warning || (s.status.saved ? "Saved." : "Applied. These last until E-maki restarts."));
+      setNotice(
+        s.warning || (s.status.saved ? "Saved and in use now." : "In use now. These last until E-maki restarts."),
+      );
       setError("");
     } catch (e) {
       if (e.signin) setSignin(true);
@@ -385,6 +388,14 @@ const PICTURE_KEYS: (keyof Settings)[] = [
 ];
 // Settings edited on the Listening and System tabs; the rest are on Frame.
 const SYSTEM_KEYS: (keyof Settings)[] = ["image_provider", "daily_image_cap", "keep_pictures"];
+// The settings each section of Listening and System holds, for its unsaved dot.
+const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
+  listening: ["mic_device", "min_speech_dbfs", "languages"],
+  topics: ["topic_provider", "min_confidence", "window_segments", "extract_every", "topic_prompt", "llm_temperature"],
+  privacy: ["block_sensitive", "block_names", "never_paint"],
+  pictures: ["image_provider", "daily_image_cap"],
+  storage: ["keep_pictures"],
+};
 const EMAKI_KEYS: (keyof Settings)[] = [
   "mic_device",
   "min_speech_dbfs",
@@ -468,11 +479,11 @@ function Frame({
     "api/preview.png?" + new URLSearchParams([...PICTURE_KEYS.map((k) => [k, String(draft[k])]), ["v", page]]);
   const pic = usePicture(src);
   const alt = empty
-    ? "Example pictures in the chosen layout"
+    ? "Preview pictures in the chosen layout"
     : changed
       ? "The frame as it would look with your unsaved changes"
       : "The layout with sample pictures in the empty places";
-  const badge = empty ? "Example, not on the frame" : changed ? "Not saved yet" : "";
+  const badge = empty ? "Preview" : changed ? "Not saved yet" : "";
   const [w, h] =
     draft.panel_rotation % 180 ? [draft.panel_height, draft.panel_width] : [draft.panel_width, draft.panel_height];
   // On a phone the picture is kept to a third of the screen's height, so the settings show under it.
@@ -1132,6 +1143,7 @@ function Timeline({ onState, onSignedOut }: { onState: (s: State) => void; onSig
                 onChange={(e) => keep(e.currentTarget.checked)}
               />
               Save new pictures
+              <Tip tip={TIPS.timeline} name="Save new pictures" />
             </label>
             {pics.length > 0 &&
               (asking ? (
@@ -1520,11 +1532,120 @@ function PinIcon() {
   );
 }
 
-function Card({ title, intro, children }: { title: string; intro?: string; children: ComponentChildren }) {
+// Tip is the small "i" after a setting's name: what the setting does and
+// where else it is set. It opens on hover, on keyboard focus and on a tap,
+// and Escape or a tap elsewhere closes it. It sits inside the setting's
+// <label>, so it is a focusable span rather than a button (a button would
+// take the label from the input) and keeps its clicks to itself.
+function Tip({ tip, name }: { tip: TipText; name: string }) {
+  const id = useId();
+  const box = useRef<HTMLSpanElement>(null);
+  const [hover, setHover] = useState(false);
+  const [open, setOpen] = useState(false);
+  const pop = useRef<HTMLSpanElement>(null);
+  const shown = hover || open;
+  const close = () => {
+    setOpen(false);
+    setHover(false);
+  };
+  // The box is fixed to the window, so a card's rounded corners can't clip
+  // it: under the "i", or above it near the bottom, and inside the edges.
+  const place = () => {
+    const el = pop.current;
+    const at = box.current?.getBoundingClientRect();
+    if (!el || !at) return;
+    const { width, height } = el.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const below = at.bottom + 6 + height <= window.innerHeight - 8;
+    el.style.left = Math.max(16, Math.min(at.left, vw - 16 - width)) + "px";
+    el.style.top = (below ? at.bottom + 6 : Math.max(8, at.top - 6 - height)) + "px";
+  };
+  useLayoutEffect(() => {
+    if (!shown) return;
+    place();
+    const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("pointerdown", away);
+    window.addEventListener("scroll", place, { capture: true, passive: true });
+    window.addEventListener("resize", place);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      window.removeEventListener("scroll", place, { capture: true });
+      window.removeEventListener("resize", place);
+    };
+  }, [shown]);
+  return (
+    // The click handler only stops a click on the tip from reaching the
+    // label's input; the trigger inside does the work and has its keys.
+    // biome-ignore lint/a11y/noStaticElementInteractions: see above
+    // biome-ignore lint/a11y/useKeyWithClickEvents: see above
+    <span
+      ref={box}
+      class="relative ms-1.5 inline-flex align-[-2px] font-normal"
+      onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
+      onPointerLeave={() => setHover(false)}
+      onClick={(e) => e.preventDefault()}
+    >
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label={"About " + name}
+        aria-describedby={id}
+        class="cursor-help rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setOpen((o) => !o);
+        }}
+        onFocus={(e) => e.currentTarget.matches(":focus-visible") && setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") close();
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
+      >
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.75" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M8 7v4.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          <circle cx="8" cy="4.75" r="0.95" fill="currentColor" />
+        </svg>
+      </span>
+      <span
+        id={id}
+        ref={pop}
+        role="tooltip"
+        class={
+          "fixed z-50 w-max max-w-[min(20rem,calc(100vw-2rem))] rounded-md border bg-popover px-3 py-2 text-left text-sm leading-snug tracking-normal text-popover-foreground shadow-md " +
+          (shown ? "" : "hidden")
+        }
+      >
+        {tip.text}
+        {tip.where && <span class="mt-1.5 block text-xs text-muted-foreground">{tip.where}</span>}
+      </span>
+    </span>
+  );
+}
+
+function Card({
+  title,
+  intro,
+  tip,
+  children,
+}: {
+  title: string;
+  intro?: string;
+  tip?: TipText;
+  children: ComponentChildren;
+}) {
   return (
     <section class="card">
       <header>
-        <h2 class="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 class="text-lg font-semibold tracking-tight">
+          {title}
+          {tip && <Tip tip={tip} name={title} />}
+        </h2>
         {intro && <p>{intro}</p>}
       </header>
       <section class="grid gap-5">{children}</section>
@@ -1539,12 +1660,14 @@ function Field({
   value,
   help,
   stack,
+  tip,
   children,
 }: {
   label: string;
   value?: string;
   help?: ComponentChildren;
   stack?: boolean;
+  tip?: TipText;
   children: ComponentChildren;
 }) {
   return (
@@ -1552,7 +1675,10 @@ function Field({
       class={"grid gap-2 " + (stack ? "" : "sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-center sm:gap-x-8")}
     >
       <span class="grid gap-0.5">
-        <span class="font-medium">{label}</span>
+        <span class="font-medium">
+          {label}
+          {tip && <Tip tip={tip} name={label} />}
+        </span>
         {help && <small class="text-muted-foreground">{help}</small>}
       </span>
       <span class="flex items-center gap-3">
@@ -1589,17 +1715,22 @@ function Toggle({
   title,
   text,
   disabled,
+  tip,
 }: {
   checked: boolean;
   onChange: (on: boolean) => void;
   title: string;
   text?: string;
   disabled?: boolean;
+  tip?: TipText;
 }) {
   return (
     <label class="flex items-start justify-between gap-4">
       <span class="grid gap-0.5">
-        <span class="font-medium">{title}</span>
+        <span class="font-medium">
+          {title}
+          {tip && <Tip tip={tip} name={title} />}
+        </span>
         {text && <small class="text-muted-foreground">{text}</small>}
       </span>
       <input
@@ -1641,6 +1772,7 @@ function Segments<T>({
   onChange,
   label,
   inline,
+  tip,
 }: {
   name: string;
   options: [T, string][];
@@ -1648,10 +1780,16 @@ function Segments<T>({
   onChange: (v: T) => void;
   label: string;
   inline?: boolean;
+  tip?: TipText;
 }) {
   return (
     <div class="grid gap-2" role="radiogroup" aria-label={label}>
-      {!inline && <span class="font-medium">{label}</span>}
+      {!inline && (
+        <span class="font-medium">
+          {label}
+          {tip && <Tip tip={tip} name={label} />}
+        </span>
+      )}
       <div class="inline-flex w-fit rounded-lg bg-muted p-1">
         {options.map(([v, text]) => (
           <label class="tap cursor-pointer rounded-md px-3 py-1.5 text-sm sm:px-4 font-medium text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring">
@@ -1740,6 +1878,7 @@ function SectionTab({
     () => nav.current?.querySelector("[aria-current]")?.scrollIntoView({ block: "nearest", inline: "nearest" }),
     [section],
   );
+  const unsaved = (k: string) => (SECTION_KEYS[k] || []).some((key) => !same(draft[key], state.settings[key]));
   return (
     <main
       id={"panel-" + id}
@@ -1765,6 +1904,9 @@ function SectionTab({
           >
             {section === k && <i class="size-[7px] shrink-0 rounded-full bg-primary" aria-hidden="true" />}
             {name}
+            {unsaved(k) && (
+              <span class="size-1.5 shrink-0 rounded-full bg-ink-yellow" role="img" aria-label="has unsaved changes" />
+            )}
           </button>
         ))}
       </nav>
@@ -1852,6 +1994,7 @@ function Listening({ state, draft, set, paused }: StateProps & { paused: boolean
         <LevelMeter level={level} threshold={draft.min_speech_dbfs} />
         <Field
           label="Threshold"
+          tip={TIPS.min_speech_dbfs}
           value={draft.min_speech_dbfs + " dB"}
           help={
             (level === null
@@ -1896,7 +2039,11 @@ function Languages({ state, draft, set }: StateProps) {
     .filter((c) => !rows.includes(c))
     .sort((x, y) => name(x).localeCompare(name(y)));
   return (
-    <Card title="Languages" intro="The languages spoken here. With none, Whisper guesses from all it knows.">
+    <Card
+      title="Languages"
+      intro="The languages spoken here. With none, Whisper guesses from all it knows."
+      tip={TIPS.languages}
+    >
       {rows.map((l) => (
         <Toggle
           checked={on.includes(l)}
@@ -1947,7 +2094,7 @@ function Microphone({ draft, set, paused }: DraftProps & { paused: boolean }) {
   const intro = "Plug in another mic and it shows up here within a few seconds.";
   if (!mic) {
     return (
-      <Card title="Microphone" intro={intro}>
+      <Card title="Microphone" intro={intro} tip={TIPS.mic_device}>
         <div class="grid gap-2" aria-busy="true" aria-label="Looking for inputs">
           <span class="skeleton h-16" />
           <span class="skeleton h-16" />
@@ -1974,7 +2121,7 @@ function Microphone({ draft, set, paused }: DraftProps & { paused: boolean }) {
     (v === mic.active || (v === "" && pick === "" && !mic.devices.some((d) => d.name === mic.active)));
   const pos = (db: number) => Math.max(0, Math.min(100, ((db + 80) / 80) * 100));
   return (
-    <Card title="Microphone" intro={intro}>
+    <Card title="Microphone" intro={intro} tip={TIPS.mic_device}>
       {!mic.live && (
         <Note>
           This run is not listening on a microphone (it plays a recording or a script). Your choice is used the next
@@ -2085,6 +2232,7 @@ function Topics({ state, draft, set }: StateProps) {
       <Card title="Topic model">
         <Field
           label="Provider"
+          tip={TIPS.topic_provider}
           help={
             external
               ? ""
@@ -2092,11 +2240,11 @@ function Topics({ state, draft, set }: StateProps) {
                 ? "The local topic model is off (NO_LOCAL_TOPICS in .env), so no topics are found." +
                   (st.topic_api
                     ? " Pick the external one."
-                    : " Set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki.")
+                    : " Set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d.")
                 : "Runs on this machine. What was said stays here." +
                   (st.topic_api
                     ? ""
-                    : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki.")
+                    : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d.")
           }
         >
           <select
@@ -2133,6 +2281,7 @@ function Topics({ state, draft, set }: StateProps) {
       <Card title="Topics">
         <Field
           label="Minimum confidence"
+          tip={TIPS.min_confidence}
           value={Math.round(draft.min_confidence * 100) + "%"}
           help="Higher means fewer, clearer topics. Lower catches more of the conversation."
         >
@@ -2148,6 +2297,7 @@ function Topics({ state, draft, set }: StateProps) {
       <Card title="Transcript window">
         <Field
           label="Window length"
+          tip={TIPS.window_segments}
           value={`${draft.window_segments} segments, ${minutes(draft.window_segments)}`}
           help="Longer gives the model more context; shorter follows the conversation faster."
         >
@@ -2161,6 +2311,7 @@ function Topics({ state, draft, set }: StateProps) {
         </Field>
         <Field
           label="Topic check interval"
+          tip={TIPS.extract_every}
           value={`${draft.extract_every} segments, ${minutes(draft.extract_every)}`}
           help="More often reacts faster but keeps the topic model busier."
         >
@@ -2175,6 +2326,7 @@ function Topics({ state, draft, set }: StateProps) {
       </Card>
       <Card
         title="Topic prompt"
+        tip={TIPS.topic_prompt}
         intro="What the topic model is told a good topic and picture description look like. The privacy rules and answer format are always added."
       >
         <details open={!!draft.topic_prompt}>
@@ -2208,6 +2360,7 @@ function Topics({ state, draft, set }: StateProps) {
         )}
         <Field
           label="Temperature"
+          tip={TIPS.llm_temperature}
           value={temp.toFixed(1)}
           help="0 gives the most predictable topics; higher gives more surprising ones."
         >
@@ -2243,13 +2396,14 @@ function Pictures({ state, draft, set }: StateProps) {
       <Card title="Image provider">
         <Field
           label="Provider"
+          tip={TIPS.image_provider}
           help={[
             chosen?.id === "placeholder"
               ? "Coloured tiles, no pictures. Nothing is sent."
               : chosen?.local
                 ? "Drawn on this machine. Nothing is sent."
                 : "Only the English picture description is sent.",
-            missing.length > 0 && "Greyed-out ones work after that change and a restart.",
+            missing.length > 0 && "Greyed-out ones work after that change in .env and docker compose up -d.",
           ]
             .filter(Boolean)
             .join(" ")}
@@ -2277,6 +2431,7 @@ function Pictures({ state, draft, set }: StateProps) {
         </Field>
         <Field
           label="Daily limit"
+          tip={TIPS.daily_image_cap}
           help={`${today} made today.${chosen?.local ? "" : " Each one is a paid call to your image API."}`}
         >
           <input
@@ -2466,7 +2621,7 @@ function Layout({ draft, set }: DraftProps) {
     ["rolling", "Rolling", "A set number of pictures. Each new one is added and the oldest drops off."],
   ];
   return (
-    <Card title="Layout">
+    <Card title="Layout" tip={TIPS.layout}>
       <div class="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Layout">
         {layouts.map(([v, name, text]) => (
           <Choice name="layout" checked={draft.layout === v} onChange={() => set({ layout: v })}>
@@ -2484,6 +2639,7 @@ function Layout({ draft, set }: DraftProps) {
           value={draft.tiles}
           onChange={(n) => set({ tiles: n })}
           label={draft.layout === "rolling" ? "Number of pictures" : "Maximum pictures"}
+          tip={TIPS.tiles}
           options={TILE_COUNTS.map((n): [number, string] => [n, String(n)])}
         />
       )}
@@ -2491,6 +2647,7 @@ function Layout({ draft, set }: DraftProps) {
         <Segments
           name="arrange"
           label="Arrangement"
+          tip={TIPS.arrange}
           value={draft.arrange}
           onChange={(v) => set({ arrange: v })}
           options={[
@@ -2504,6 +2661,7 @@ function Layout({ draft, set }: DraftProps) {
       <Segments
         name="spacing"
         label="Spacing"
+        tip={TIPS.spacing}
         value={draft.spacing}
         onChange={(v) => set({ spacing: v })}
         options={[
@@ -2516,6 +2674,7 @@ function Layout({ draft, set }: DraftProps) {
       <Segments
         name="shape"
         label="Shape"
+        tip={TIPS.shape}
         value={draft.shape}
         onChange={(v) => set({ shape: v })}
         options={[
@@ -2528,6 +2687,7 @@ function Layout({ draft, set }: DraftProps) {
       <Segments
         name="background"
         label="Background"
+        tip={TIPS.background}
         value={draft.background}
         onChange={(v) => set({ background: v })}
         options={[
@@ -2540,6 +2700,7 @@ function Layout({ draft, set }: DraftProps) {
         checked={!draft.hide_captions}
         onChange={(v) => set({ hide_captions: !v })}
         title="Captions"
+        tip={TIPS.hide_captions}
         text="Topic names under the pictures."
       />
     </Card>
@@ -2610,7 +2771,7 @@ function Timing({ state, draft, set }: StateProps) {
   ];
   const quiet = draft.quiet_from !== "";
   return (
-    <Card title="Timing">
+    <Card title="Timing" tip={TIPS.mode}>
       <div class="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Mode">
         {modes.map(([v, name, text]) => (
           <Choice name="mode" checked={draft.mode === v} onChange={() => set({ mode: v })}>
@@ -2622,7 +2783,7 @@ function Timing({ state, draft, set }: StateProps) {
         ))}
       </div>
       {draft.mode === "diary" && (
-        <Field label="Paint at" help={diaryNote(state)}>
+        <Field label="Paint at" help={diaryNote(state)} tip={TIPS.diary_at}>
           <input
             class="input w-32"
             type="time"
@@ -2634,7 +2795,11 @@ function Timing({ state, draft, set }: StateProps) {
       {draft.mode === "diary" ? (
         ""
       ) : (
-        <Field label="Picture interval" help="New topics wait in line and go up one at a time.">
+        <Field
+          label="Picture interval"
+          help="New topics wait in line and go up one at a time."
+          tip={TIPS.new_every_minutes}
+        >
           <select
             class="select w-full"
             value={draft.new_every_minutes}
@@ -2648,6 +2813,7 @@ function Timing({ state, draft, set }: StateProps) {
       )}
       <Field
         label="Rotate"
+        tip={TIPS.rotate_minutes}
         help="When more pictures are saved than fit, show the others in turn. No new pictures are made."
       >
         <select
@@ -2664,6 +2830,7 @@ function Timing({ state, draft, set }: StateProps) {
         <Toggle
           checked={quiet}
           title="Quiet hours"
+          tip={TIPS.quiet_hours}
           text="No new pictures go up in between. What was talked about appears when they end."
           onChange={(v) => set(v ? { quiet_from: "22:00", quiet_to: "07:00" } : { quiet_from: "", quiet_to: "" })}
         />
@@ -2693,6 +2860,7 @@ function Timing({ state, draft, set }: StateProps) {
       {draft.layout === "collage" && (
         <Field
           label="Fade time"
+          tip={TIPS.half_life_hours}
           help="Time for a tile to shrink to half size. Talking about it again makes it grow back."
         >
           <select
@@ -2718,6 +2886,7 @@ function Privacy({ draft, set }: DraftProps) {
   return (
     <Card
       title="Blocked topics"
+      tip={TIPS.block_sensitive}
       intro={
         external
           ? "Topics like these never get a picture."
@@ -2731,6 +2900,7 @@ function Privacy({ draft, set }: DraftProps) {
         checked={draft.block_names}
         onChange={(v) => set({ block_names: v })}
         title="Spoken names"
+        tip={TIPS.block_names}
         text={
           'Any picture whose description repeats a name that was said out loud. It cannot tell people from places, so "Lofoten" goes too.'
         }
@@ -2767,6 +2937,7 @@ function Storage({ draft, set, saved, topicAPI }: DraftProps & { saved: boolean;
         onChange={(v) => set({ keep_pictures: v })}
         disabled={!saved}
         title="Keep pictures over a restart"
+        tip={TIPS.keep_pictures}
         text={
           saved
             ? "Saves the pictures and their descriptions next to the settings. Turning it off deletes them."
@@ -2793,6 +2964,7 @@ function NeverPaint({ value, onChange }: { value: string[] | null; onChange: (v:
     <Field
       stack
       label="Never paint"
+      tip={TIPS.never_paint}
       help="One word or phrase a line. A topic or picture description that contains one never becomes a picture. Not case sensitive."
     >
       <textarea
@@ -2811,39 +2983,91 @@ function NeverPaint({ value, onChange }: { value: string[] | null; onChange: (v:
   );
 }
 
+// Picture style moods, in the order the grid shows them.
+const MOODS: [string, string][] = [
+  ["", "All"],
+  ["cool", "Cool"],
+  ["relaxed", "Relaxed"],
+  ["somber", "Somber"],
+];
+
 function Look({ draft, set, styles }: DraftProps & { styles: State["styles"] }) {
   // image_style holds a preset's name; older settings hold its prompt, and empty is the first preset.
   const style = draft.image_style || styles[0].name;
   const preset = styles.find((s) => s.name.toLowerCase() === style.toLowerCase() || s.prompt === style);
   const [custom, setCustom] = useState(!preset);
   const [full, setFull] = useState(false);
+  const [mood, setMood] = useState("");
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  // Presets in mood order; a profile's own styles, without a mood, last.
+  const order = (m?: string) => {
+    const i = MOODS.findIndex(([v]) => v && v === m);
+    return i < 0 ? MOODS.length : i;
+  };
+  const shown = styles
+    .filter((s) => (!mood || s.mood === mood) && (s.name + " " + s.prompt).toLowerCase().includes(q))
+    .sort((a, b) => order(a.mood) - order(b.mood));
+  const tile =
+    "tap grid cursor-pointer content-start gap-1 rounded-lg border p-1.5 text-sm font-medium transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary/5 has-checked:ring-1 has-checked:ring-primary has-focus-visible:ring-2 has-focus-visible:ring-ring";
   return (
     <Card title="Picture style" intro="Used for new pictures. Tiles already on the frame keep their look.">
-      <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Picture style">
-        {[
-          ...styles.map((s): [string, boolean, () => void] => [
-            s.name,
-            !custom && preset === s,
-            () => {
-              setCustom(false);
-              set({ image_style: s.name });
-            },
-          ]),
-          [
-            "Your own",
-            custom,
-            () => {
-              setCustom(true);
-              if (preset) set({ image_style: preset.prompt });
-            },
-          ] as [string, boolean, () => void],
-        ].map(([name, on, pick]) => (
-          <label class="tap cursor-pointer rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring">
-            <input type="radio" name="style" class="sr-only" checked={on} onChange={pick} />
-            {name}
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          class="input w-auto min-w-0 flex-1 basis-48"
+          placeholder="Search styles"
+          aria-label="Search styles"
+          value={query}
+          onInput={(e) => setQuery(e.currentTarget.value)}
+        />
+        <Segments name="mood" inline label="Mood" value={mood} onChange={setMood} options={MOODS} />
+      </div>
+      <div
+        class="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2"
+        role="radiogroup"
+        aria-label="Picture style"
+      >
+        {shown.map((s) => (
+          <label class={tile} key={s.name}>
+            <input
+              type="radio"
+              name="style"
+              class="sr-only"
+              checked={!custom && preset === s}
+              onChange={() => {
+                setCustom(false);
+                set({ image_style: s.name });
+              }}
+            />
+            <img
+              src={`ui/styles/${s.name.toLowerCase().replaceAll(" ", "-")}.png`}
+              alt=""
+              loading="lazy"
+              class="aspect-4/3 w-full rounded bg-muted object-cover [image-rendering:pixelated]"
+              onError={(e) => {
+                e.currentTarget.style.visibility = "hidden";
+              }}
+            />
+            <span class="truncate px-0.5">{s.name}</span>
           </label>
         ))}
+        <label class={tile}>
+          <input
+            type="radio"
+            name="style"
+            class="sr-only"
+            checked={custom}
+            onChange={() => {
+              setCustom(true);
+              if (preset) set({ image_style: preset.prompt });
+            }}
+          />
+          <span class="grid aspect-4/3 w-full place-items-center rounded bg-muted text-muted-foreground">Aa</span>
+          <span class="truncate px-0.5">Your own</span>
+        </label>
       </div>
+      {!shown.length && <p class="text-muted-foreground">No style matches "{query.trim()}".</p>}
       <div class="grid">
         {[
           ...styles.map((s): [string, boolean, JSX.Element] => [
@@ -2915,7 +3139,11 @@ function Hanging({ draft, set }: DraftProps) {
           <span class="shrink-0 text-sm font-medium text-foreground group-open:hidden">Change</span>
         </summary>
         <div class="grid gap-5 pt-5">
-          <Field label="Size" help="The size of your e-ink screen. The picture is drawn at its resolution.">
+          <Field
+            label="Size"
+            help="The size of your e-ink screen. The picture is drawn at its resolution."
+            tip={TIPS.panel_size}
+          >
             <select
               class="select w-full"
               value={draft.panel_width + "x" + draft.panel_height}
@@ -2930,7 +3158,10 @@ function Hanging({ draft, set }: DraftProps) {
             </select>
           </Field>
           <div class="grid gap-2" role="radiogroup" aria-label="Rotation">
-            <span class="font-medium">Rotation</span>
+            <span class="font-medium">
+              Rotation
+              <Tip tip={TIPS.panel_rotation} name="Rotation" />
+            </span>
             <div class="flex flex-wrap gap-2">
               {ROTATIONS.map((v) => (
                 <label class="grid w-16 cursor-pointer justify-items-center gap-1 rounded-lg border p-2 hover:bg-accent has-checked:border-primary has-checked:ring-1 has-checked:ring-primary has-focus-visible:ring-2 has-focus-visible:ring-ring">
@@ -2959,6 +3190,7 @@ function Hanging({ draft, set }: DraftProps) {
           {hasE6(draft) && (
             <Field
               label="Refresh interval"
+              tip={TIPS.panel_poll_minutes}
               help="How long a battery frame (like the EE02) sleeps between checks for a new picture. Less often saves battery. Frames on mains power check on their own."
             >
               <select
@@ -2979,6 +3211,7 @@ function Hanging({ draft, set }: DraftProps) {
           <div class="grid gap-3">
             <Field
               label="Buttons"
+              tip={TIPS.panel_buttons}
               help={
                 <>
                   {
@@ -3008,7 +3241,7 @@ function Hanging({ draft, set }: DraftProps) {
             {Object.keys(draft.panel_buttons || {})
               .sort()
               .map((b) => (
-                <Field label={"Button " + b}>
+                <Field label={"Button " + b} tip={TIPS.panel_button}>
                   <select
                     class="select w-full"
                     value={draft.panel_buttons?.[b]}
@@ -3096,7 +3329,7 @@ function System({ state }: { state: State }) {
           ))}
         </div>
       </Card>
-      <Card title="Services" intro="These are set in the profile and .env, and need a restart to change.">
+      <Card title="Services">
         <div class="grid gap-3">
           <Service name="Speech to text" where={st.speech} s={h.speech} />
           <Service
@@ -3128,6 +3361,22 @@ function System({ state }: { state: State }) {
             ],
           ]}
         />
+      </Card>
+      <Card
+        title="Set in .env"
+        intro="These can't be changed here. Edit .env next to docker-compose.yml, then run docker compose up -d."
+      >
+        <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr_max-content]">
+          {(st.env || []).map((r) => (
+            <>
+              <dt class="text-muted-foreground">{r.label}</dt>
+              <dd class="break-words">{r.value}</dd>
+              <dd class="mb-2 sm:mb-0">
+                <code class="text-xs">{r.var}</code>
+              </dd>
+            </>
+          ))}
+        </dl>
       </Card>
     </>
   );
