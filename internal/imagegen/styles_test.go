@@ -40,7 +40,7 @@ func TestAddStyles(t *testing.T) {
 	saved := Styles
 	t.Cleanup(func() { Styles, DefaultStyle = saved, saved[0].Prompt })
 	Styles = append([]Style(nil), saved...)
-	AddStyles([]Style{{"comic", "my comic"}, {"Woodcut", "woodcut print"}})
+	AddStyles([]Style{{Name: "comic", Prompt: "my comic"}, {Name: "Woodcut", Prompt: "woodcut print"}})
 	if DefaultStyle != "my comic" || StylePrompt("woodcut") != "woodcut print" || len(Styles) != len(saved)+1 {
 		t.Errorf("got %d styles, default %q", len(Styles), DefaultStyle)
 	}

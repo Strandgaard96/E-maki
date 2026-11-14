@@ -9,6 +9,9 @@ import (
 type Style struct {
 	Name   string `json:"name"`
 	Prompt string `json:"prompt"`
+	// Mood groups the presets on the settings page: "cool", "relaxed" or
+	// "somber". A profile's own styles may leave it empty.
+	Mood string `json:"mood,omitempty"`
 }
 
 // panelInks is added to every preset. A Spectra 6 panel has six inks and no
@@ -26,16 +29,28 @@ const panelInks = "Use only flat areas of pure black, white, red, yellow, blue a
 // look in a sentence, which the Gemini image models follow better than a
 // list of keywords.
 var Styles = []Style{
-	{"Comic", "Draw it as a single comic-book panel in a bold cartoon style: thick black ink outlines, bright flat fills and funny, exaggerated expressions. " + panelInks},
-	{"Clear line", "Draw it in the European clear-line comic style: even, unbroken black outlines of one weight, flat colour fills with no hatching, and a calm, tidy composition. " + panelInks},
-	{"Picture book", "Draw it as a friendly children's picture-book illustration: rounded shapes, clean dark outlines and simple, cheerful characters. " + panelInks},
-	{"Linocut", "Make it a hand-carved linocut print: chunky black shapes with rough, confident carved edges, white paper showing through, and two or three flat blocks of colour. " + panelInks},
-	{"Paper cut-out", "Make it a cut-paper collage: big, simple shapes cut from flat sheets of coloured paper and laid on white paper, slightly overlapping, with crisp edges. " + panelInks},
-	{"Stained glass", "Make it a stained-glass window: the scene split into large panes of flat, saturated colour held together by thick black lead lines. " + panelInks},
-	{"Screen print", "Make it a mid-century screen-print illustration: strong simplified silhouettes, a few flat spot colours with crisp edges, and wide calm areas of sky or ground. " + panelInks},
-	{"Pop art", "Make it a pop-art painting: heavy black outlines, big flat colour fields, playful and loud. " + panelInks},
-	{"Ink and red", "Make it a black ink drawing on white paper with bold brush lines and solid black shadows, and red as the only colour, for the most important thing. " + panelInks},
-	{"Pixel art", "Make it chunky retro pixel art: a low-resolution scene with big square pixels, a small palette and no anti-aliasing. " + panelInks},
+	{"Comic", "Draw it as a single comic-book panel in a bold cartoon style: thick black ink outlines, bright flat fills and funny, exaggerated expressions. " + panelInks, "cool"},
+	{"Clear line", "Draw it in the European clear-line comic style: even, unbroken black outlines of one weight, flat colour fills with no hatching, and a calm, tidy composition. " + panelInks, "relaxed"},
+	{"Picture book", "Draw it as a friendly children's picture-book illustration: rounded shapes, clean dark outlines and simple, cheerful characters. " + panelInks, "relaxed"},
+	{"Linocut", "Make it a hand-carved linocut print: chunky black shapes with rough, confident carved edges, white paper showing through, and two or three flat blocks of colour. " + panelInks, "somber"},
+	{"Paper cut-out", "Make it a cut-paper collage: big, simple shapes cut from flat sheets of coloured paper and laid on white paper, slightly overlapping, with crisp edges. " + panelInks, "relaxed"},
+	{"Stained glass", "Make it a stained-glass window: the scene split into large panes of flat, saturated colour held together by thick black lead lines. " + panelInks, "somber"},
+	{"Screen print", "Make it a mid-century screen-print illustration: strong simplified silhouettes, a few flat spot colours with crisp edges, and wide calm areas of sky or ground. " + panelInks, "relaxed"},
+	{"Pop art", "Make it a pop-art painting: heavy black outlines, big flat colour fields, playful and loud. " + panelInks, "cool"},
+	{"Ink and red", "Make it a black ink drawing on white paper with bold brush lines and solid black shadows, and red as the only colour, for the most important thing. " + panelInks, "somber"},
+	{"Pixel art", "Make it chunky retro pixel art: a low-resolution scene with big square pixels, a small palette and no anti-aliasing. " + panelInks, "cool"},
+	{"Bauhaus", "Make it a Bauhaus poster: the scene built from circles, squares and triangles in flat primary colours, arranged with strict geometry on a plain ground. " + panelInks, "cool"},
+	{"Synthwave", "Make it a synthwave poster: a big striped sun, a grid floor running to the horizon and hard neon edges on a black night sky. " + panelInks, "cool"},
+	{"Constructivist", "Make it a constructivist poster: bold diagonal composition, strong red and black blocks, simple heroic silhouettes and sharp angles. " + panelInks, "cool"},
+	{"Street stencil", "Make it a spray-painted street stencil on a white wall: one-layer black cut-out shapes with crisp edges and a single splash of red. " + panelInks, "cool"},
+	{"Risograph", "Make it a two-colour risograph print: blue and red inks on white paper, simple shapes, slightly misregistered edges. " + panelInks, "relaxed"},
+	{"Travel poster", "Make it a vintage travel poster: a wide, sunny view simplified into big bands of sky, sea and land, with bold silhouettes in the foreground. " + panelInks, "relaxed"},
+	{"Botanical", "Make it an old botanical plate: fine black ink lines on white paper, mostly empty space, with small flat touches of green, yellow and red. " + panelInks, "relaxed"},
+	{"Woodblock", "Make it a Japanese woodblock print: flat areas of colour with firm black key lines, stylised waves and clouds, and a quiet, still mood. " + panelInks, "somber"},
+	{"Etching", "Make it an old etching: black crosshatched lines on white paper, deep black shadows, no colour at all. " + panelInks, "somber"},
+	{"Ink wash", "Make it a Japanese brush painting: bold black ink strokes on white paper with lots of empty space, and one small red seal stamp in a corner. " + panelInks, "somber"},
+	{"Charcoal", "Make it a charcoal sketch on white paper: loose, heavy black strokes and solid black shadows, no colour. " + panelInks, "somber"},
+	{"Golden age", "Make it a quiet nineteenth-century Danish landscape painting, simplified into flat areas: low horizon, wide sky, calm water and a few quiet touches of colour. " + panelInks, "somber"},
 }
 
 // DefaultStyle is used when image_style is empty: the first preset.
