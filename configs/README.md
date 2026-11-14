@@ -53,7 +53,7 @@ a value out of range stops it with a message, instead of being ignored.
 | `timeline` | `false` stops saving new pictures for the Timeline tab (the tab has the same switch). Default on |
 | `timeline_thumb_px`, `timeline_jpeg_quality`, `timeline_row_px` | Timeline: thumbnail size (longest side, default 480), JPEG quality of saved pictures (default 90), and row height on the tab (default 220; a phone gets about half). Need a restart |
 | `paused` | `true` ignores the microphone (the settings page sets this) |
-| `panel_buttons` | What the frame's buttons do, e.g. `{"A": "pause", "B": "remove", "C": "pin", "D": "next"}` (the default). Actions: `pause` (pause or resume listening), `remove` (take the last picture off), `pin` (pin it, or let it fade again), `next` (put the next waiting picture up), `""` (nothing). A button left out keeps its default |
+| `panel_buttons` | The frame's buttons, by the letter its client sends to `/press` (`A` to `H`), and what each does. Unset is an Inky Impression's four: `{"A": "pause", "B": "remove", "C": "pin", "D": "next"}`. `{}` is a frame without buttons. Actions: `pause` (pause or resume listening), `remove` (take the last picture off), `pin` (pin it, or let it fade again), `next` (put the next waiting picture up), `""` (nothing) |
 | `panel_width`, `panel_height` | The e-ink panel's resolution, landscape: `1600`×`1200` for the 13.3" Inky Impression (the default), `800`×`480` for the 7.3", `600`×`448` for the 5.7", `640`×`400` for the 4". The page is drawn at this size, and in portrait when `panel_rotation` is 90 or 270. `/frame.e6` exists for the 7.3" and 13.3" only |
 | `panel_rotation`, `panel_poll_minutes` | Passed to the Fugleramme panel clients |
 

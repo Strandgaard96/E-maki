@@ -144,10 +144,12 @@ type Settings struct {
 	// The microphone is ignored: nothing is transcribed.
 	Paused bool `json:"paused"`
 
-	// What each of the frame's buttons does: "pause" (pause or resume
-	// listening), "remove" (take the last picture off), "pin" (pin it or let
-	// it fade again), "next" (put the next waiting picture up) or "" for
-	// nothing. A button left out does its default (DefaultButtons).
+	// The frame's buttons, by the letter its client sends to /press, and
+	// what each does: "pause" (pause or resume listening), "remove" (take
+	// the last picture off), "pin" (pin it or let it fade again), "next"
+	// (put the next waiting picture up) or "" for nothing. Only the buttons
+	// listed exist; {} is a frame without buttons. Unset (null) is the four
+	// buttons of an Inky Impression (DefaultButtons).
 	PanelButtons map[string]string `json:"panel_buttons"`
 
 	// The panel's resolution as its maker gives it, landscape: 1600x1200
@@ -161,19 +163,21 @@ type Settings struct {
 	PanelPoll     int `json:"panel_poll_minutes"`
 }
 
-// Buttons are the frame's buttons, and ButtonActions what they can do.
+// Buttons are the letters a frame's buttons can send, and ButtonActions what
+// they can do.
 var (
-	Buttons        = []string{"A", "B", "C", "D"}
+	Buttons        = []string{"A", "B", "C", "D", "E", "F", "G", "H"}
 	ButtonActions  = []string{"pause", "remove", "pin", "next", ""}
 	DefaultButtons = map[string]string{"A": "pause", "B": "remove", "C": "pin", "D": "next"}
 )
 
-// Button is what a button does with these settings.
+// Button is what a button does with these settings: "" for a button the
+// frame doesn't have.
 func (s Settings) Button(b string) string {
-	if a, ok := s.PanelButtons[b]; ok {
-		return a
+	if s.PanelButtons == nil {
+		return DefaultButtons[b]
 	}
-	return DefaultButtons[b]
+	return s.PanelButtons[b]
 }
 
 // Categories are the sensitive categories block_sensitive can name.
@@ -252,7 +256,7 @@ func (c Config) validate() error {
 	}
 	for b, a := range c.PanelButtons {
 		if !slices.Contains(Buttons, b) || !slices.Contains(ButtonActions, a) {
-			return fmt.Errorf("panel_buttons: %q: %q is not a button (A to D) and one of pause, remove, pin, next or \"\"", b, a)
+			return fmt.Errorf("panel_buttons: %q: %q is not a button (A to H) and one of pause, remove, pin, next or \"\"", b, a)
 		}
 	}
 	for _, w := range c.NeverPaint {
@@ -370,9 +374,9 @@ func (c *Config) defaults() {
 	if c.TimelineRowPx == 0 {
 		c.TimelineRowPx = 220
 	}
-	buttons := maps.Clone(DefaultButtons)
-	maps.Copy(buttons, c.PanelButtons)
-	c.PanelButtons = buttons
+	if c.PanelButtons == nil {
+		c.PanelButtons = maps.Clone(DefaultButtons)
+	}
 	if c.PanelWidth == 0 && c.PanelHeight == 0 {
 		c.PanelWidth, c.PanelHeight = 1600, 1200
 	}
@@ -389,10 +393,17 @@ func LoadSettings(path string, c Config) (Config, error) {
 		return c, err
 	}
 	s := c.Settings
+	// Decoding into the profile's map would merge into it, and a frame
+	// saved with fewer buttons would get them back.
+	buttons := s.PanelButtons
+	s.PanelButtons = nil
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&s); err != nil {
 		return c, fmt.Errorf("%s: %w", path, err)
+	}
+	if s.PanelButtons == nil {
+		s.PanelButtons = buttons
 	}
 	c, err = c.With(s)
 	if err != nil {
