@@ -29,6 +29,10 @@ Claude Code wrote most of the code. I steered the design, tested it on my own la
 
 I'm a hobbyist, and I fell for [Fugleramme](https://github.com/arnegiacomo/fugleramme): an e-ink frame that shows a collage of the birds [BirdNET-Go](https://github.com/tphakala/birdnet-go) hears in the garden. I wanted the same idea for the people in the room, a frame that slowly fills with what we have been talking about. The topics a small local model picks out of a dinner conversation are often funny, and that is half the point.
 
+## The name
+
+An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pictures as you unroll it, which is roughly what the frame does with a conversation. The *e* (絵) means picture, and it also stands for e-ink.
+
 ## How it works
 
 1. **Listen.** A mic records the room in 15-30 second segments. Audio stays in memory and is never saved.
@@ -117,8 +121,6 @@ The settings page is at <http://localhost:8090/>, the picture at <http://localho
 | `internal/timeline` | the saved pictures behind the Timeline tab |
 | `internal/web` | the settings page (Preact, Tailwind and Basecoat; source in `internal/web/ui`, built files embedded) |
 | `internal/pipeline` | wires it together |
-
-Design decisions are summarised in [docs/design.md](docs/design.md).
 
 ## Contributing
 
