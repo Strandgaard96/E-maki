@@ -21,6 +21,9 @@ func TestWhisperAndRouter(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls = append(calls, r.FormValue("language"))
+			if r.FormValue("no_language_probabilities") != "true" {
+				t.Error("asked for language probabilities")
+			}
 			json.NewEncoder(w).Encode(map[string]string{"text": text, "language": lang})
 		}))
 	}
@@ -55,6 +58,15 @@ func (f fake) Transcribe(_ context.Context, _ []int16, lang string) (Segment, er
 		lang = f.guess
 	}
 	return Segment{Text: f.name, Lang: lang}, nil
+}
+
+func TestNoSpeech(t *testing.T) {
+	var calls []string
+	r := Router{Detect: fake{"", "en", &calls}, ByLang: map[string]Transcriber{"da": fake{"edda", "da", &calls}}}
+	seg, err := r.In(context.Background(), nil, []string{"da", "en"})
+	if err != nil || seg.Text != "" || len(calls) != 1 {
+		t.Fatalf("got %+v, %v from calls %v; want one call and no text", seg, err, calls)
+	}
 }
 
 func TestLanguagesSpoken(t *testing.T) {

@@ -1277,15 +1277,18 @@ function Topics({ state, draft, set }) {
         help=${
           external
             ? ""
-            : "Runs on this machine. What was said stays here." +
-              (
-                st.topic_api
+            : st.no_local_topics
+              ? "The local topic model is off (NO_LOCAL_TOPICS in .env), so no topics are found." +
+                (st.topic_api
+                  ? " Pick the external one."
+                  : " Set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki.")
+              : "Runs on this machine. What was said stays here." +
+                (st.topic_api
                   ? ""
-                  : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki."
-              )
+                  : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki.")
         }>
         <select class="select" value=${external ? "external" : "local"} onChange=${(e) => set({ topic_provider: e.target.value })}>
-          <option value="local">On this machine: ${st.topics}</option>
+          <option value="local" disabled=${st.no_local_topics}>On this machine: ${st.no_local_topics ? "off" : st.topics}</option>
           ${st.topic_api && html`<option value="external">External: ${st.topic_api}</option>`}
         </select><//>
       ${
@@ -1817,7 +1820,7 @@ function System({ state }) {
       <div class="grid gap-3">
         <${Service} name="Speech to text" where=${st.speech} s=${h.speech} />
         <${Service} name="Topic model" s=${h.topics}
-          where=${state.settings.topic_provider === "external" && st.topic_api ? `${st.topic_api} (external)` : `${st.topics} at ${st.llm_url}`} />
+          where=${state.settings.topic_provider === "external" && st.topic_api ? `${st.topic_api} (external)` : st.no_local_topics ? "None (NO_LOCAL_TOPICS in .env)" : `${st.topics} at ${st.llm_url}`} />
         <${Service} name="AI image provider" where=${st.images} s=${h.images} idle="No picture made since E-maki started. Make a test picture under AI image provider." />
       </div>
       <${Facts} rows=${[

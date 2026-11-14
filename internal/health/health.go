@@ -85,14 +85,11 @@ func (t *Tracker) Record(name string, start time.Time, err error) {
 	}
 }
 
-// setProbe stores a probe's result and reports whether it changed.
-func (t *Tracker) setProbe(name string, s State) bool {
+// setProbe stores a probe's result.
+func (t *Tracker) setProbe(name string, s State) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	e := t.get(name)
-	changed := e.probe != s
-	e.probe = s
-	return changed
+	t.get(name).probe = s
 }
 
 // Forget drops what is known about a service, e.g. when another one is
@@ -144,17 +141,27 @@ func Probe(ctx context.Context, c *http.Client, url string) (State, error) {
 	return Up, nil
 }
 
+// startGrace is how long Watch keeps quiet about a service that has not
+// answered yet: at start the sidecars are often still starting, and their
+// names do not even resolve until their containers exist.
+const startGrace = 2 * time.Minute
+
 // Watch probes the addresses targets returns every interval until ctx
 // ends, and logs when a service starts or stops answering. targets maps a
 // service name to its address; a service left out is not probed.
 func (t *Tracker) Watch(ctx context.Context, every time.Duration, targets func() map[string]string) {
 	c := &http.Client{Timeout: 3 * time.Second}
+	start := time.Now()
+	logged := map[string]State{} // what the log last said about each service
 	for {
 		for name, url := range targets() {
 			s, err := Probe(ctx, c, url)
-			if !t.setProbe(name, s) {
+			t.setProbe(name, s)
+			was, ok := logged[name]
+			if s == was || !ok && s == Down && time.Since(start) < startGrace {
 				continue
 			}
+			logged[name] = s
 			switch s {
 			case Up:
 				log.Printf("%s: answering at %s", name, url)

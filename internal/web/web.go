@@ -45,18 +45,19 @@ var static embed.FS
 
 // Status is what the page says about the running setup.
 type Status struct {
-	Profile  string            `json:"profile"`
-	Topics   string            `json:"topics"`    // the topic LLM
-	LLMURL   string            `json:"llm_url"`   // where it runs
-	TopicAPI string            `json:"topic_api"` // the external topic model, "" when not set up
-	Speech   string            `json:"speech"`    // the speech-to-text server
-	ByLang   map[string]string `json:"by_lang"`   // per-language speech servers
-	Segment  int               `json:"segment"`   // seconds of audio per transcription
-	Images   string            `json:"images"`    // the image provider in use, filled in per request
-	Locked   bool              `json:"locked"`    // PANEL_TOKEN is set
-	Saved    bool              `json:"saved"`     // changes are saved to a settings file
-	Started  time.Time         `json:"started"`
-	Password bool              `json:"password"` // filled in per request
+	Profile       string            `json:"profile"`
+	Topics        string            `json:"topics"`          // the topic LLM
+	LLMURL        string            `json:"llm_url"`         // where it runs
+	TopicAPI      string            `json:"topic_api"`       // the external topic model, "" when not set up
+	NoLocalTopics bool              `json:"no_local_topics"` // NO_LOCAL_TOPICS: Ollama is left out
+	Speech        string            `json:"speech"`          // the speech-to-text server
+	ByLang        map[string]string `json:"by_lang"`         // per-language speech servers
+	Segment       int               `json:"segment"`         // seconds of audio per transcription
+	Images        string            `json:"images"`          // the image provider in use, filled in per request
+	Locked        bool              `json:"locked"`          // PANEL_TOKEN is set
+	Saved         bool              `json:"saved"`           // changes are saved to a settings file
+	Started       time.Time         `json:"started"`
+	Password      bool              `json:"password"` // filled in per request
 }
 
 // Mic is the microphone as the page shows it: names and a loudness, never
