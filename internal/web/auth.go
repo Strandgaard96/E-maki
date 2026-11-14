@@ -26,6 +26,8 @@ import (
 type Auth struct {
 	Path string // "" keeps the password in memory only, until restart
 
+	checking sync.Mutex // one password check at a time, so every wrong one is counted
+
 	mu    sync.Mutex
 	data  authData
 	fails map[string]fail
@@ -120,6 +122,8 @@ func random(n int) []byte {
 // one address lock it out for a while, so a password cannot be guessed fast.
 func (a *Auth) Check(r *http.Request, password string) (ok bool, wait time.Duration) {
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	a.checking.Lock()
+	defer a.checking.Unlock()
 	a.mu.Lock()
 	d, f := a.data, a.fails[ip]
 	a.mu.Unlock()

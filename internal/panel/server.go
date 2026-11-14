@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 )
 
@@ -94,6 +95,18 @@ func (s *Server) Register(mux *http.ServeMux) {
 		s.serve(w, r, "application/octet-stream", true)
 	})
 	mux.HandleFunc("POST "+pre+"/press", func(w http.ResponseWriter, r *http.Request) {
+		// A frame sends neither header; a web page on another site sends
+		// both, and must not press the buttons.
+		if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+			http.Error(w, "buttons are pressed on the frame only", http.StatusForbidden)
+			return
+		}
+		if o := r.Header.Get("Origin"); o != "" {
+			if u, err := url.Parse(o); err != nil || u.Host != r.Host {
+				http.Error(w, "buttons are pressed on the frame only", http.StatusForbidden)
+				return
+			}
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, 1024)
 		b := r.FormValue("button")
 		if len(b) != 1 || b < "A" || b > "H" {
