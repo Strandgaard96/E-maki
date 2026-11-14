@@ -33,6 +33,7 @@ type Pipeline struct {
 	BlockNames     bool            // refuse image prompts that repeat a name from the transcript
 	NeverPaint     []string        // words and phrases that never become a picture
 	HideCaptions   bool            // draw the pictures without their captions
+	Look           collage.Look    // arrangement, spacing, background and shape; its Seed is set here
 	Style          string          // the picture style's name, kept with each picture
 	FrameURL       string          // where the picture can be seen, for the log
 	KeepDir        string          // where pictures are kept across a restart; "" keeps them in memory only (see keep.go)
@@ -48,6 +49,7 @@ type Pipeline struct {
 	drawn  bool              // a page has been drawn
 	shown  []string          // the tiles on that page, in order
 	paused bool              // listening is paused: segments are dropped unheard
+	seed   uint64            // the mosaic's seed: the day of the last page drawn
 
 	start     sync.Once
 	jobs      chan job       // pictures to make, see paint
@@ -358,7 +360,7 @@ func (p *Pipeline) Wall() []Tile {
 	tiles := []Tile{}
 	wall := p.Mem.Wall(p.Now())
 	size := p.size()
-	rects := collage.Rects(len(wall), size)
+	rects := collage.Rects(len(wall), size, p.look())
 	w, h := float64(size.X), float64(size.Y)
 	for i, t := range wall {
 		tile := p.tile(t)
@@ -682,6 +684,7 @@ type Options struct {
 	BlockNames     bool
 	NeverPaint     []string
 	HideCaptions   bool
+	Look           collage.Look
 	Style          string
 	KeepDir        string
 	Timeline       *timeline.Store
@@ -695,7 +698,7 @@ type Options struct {
 func (p *Pipeline) Configure(o Options, mem memory.Settings) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.Images, p.BlockSensitive, p.BlockNames, p.HideCaptions = o.Images, o.BlockSensitive, o.BlockNames, o.HideCaptions
+	p.Images, p.BlockSensitive, p.BlockNames, p.HideCaptions, p.Look = o.Images, o.BlockSensitive, o.BlockNames, o.HideCaptions, o.Look
 	p.Style, p.Timeline, p.NeverPaint, p.Size = o.Style, o.Timeline, o.NeverPaint, o.Size
 	if p.KeepDir != o.KeepDir {
 		if o.KeepDir == "" {
@@ -722,6 +725,23 @@ func (p *Pipeline) Configure(o Options, mem memory.Settings) error {
 		return nil
 	}
 	return p.redraw(p.Now())
+}
+
+// look is the page's Look with the mosaic's seed: that of the page on the
+// frame, or today's before the first page. It needs p.mu held.
+func (p *Pipeline) look() collage.Look {
+	l := p.Look
+	l.Seed = p.seed
+	if !p.drawn {
+		l.Seed = day(p.Now())
+	}
+	return l
+}
+
+// day is a date as a number, like 20261114.
+func day(t time.Time) uint64 {
+	y, m, d := t.Date()
+	return uint64(y*10000 + int(m)*100 + d)
 }
 
 // size needs p.mu held.
@@ -757,8 +777,10 @@ func (p *Pipeline) redraw(now time.Time) error {
 	tiles := p.tiles(now, p.HideCaptions)
 	log.Printf("wall: %d tiles, see %s", len(tiles), p.FrameURL)
 	p.drawn, p.shown = true, p.order(now)
+	// The mosaic changes with the first page of a new day, not at midnight.
+	p.seed = day(now)
 	p.keep()
-	page := collage.Render(tiles, p.size())
+	page := collage.Render(tiles, p.size(), p.look())
 	if p.paused {
 		collage.Paused(page, len(tiles) == 0)
 	}
@@ -783,28 +805,29 @@ func (p *Pipeline) tiles(now time.Time, hideCaptions bool) []collage.Tile {
 // the pictures already in memory. Nothing changes: the frame keeps its page.
 // With no pictures yet it fills the layout with sample tiles, so a layout
 // can be seen before the room has talked about anything.
-func (p *Pipeline) Draft(mem memory.Settings, hideCaptions bool, size image.Point) *image.RGBA {
+func (p *Pipeline) Draft(mem memory.Settings, hideCaptions bool, look collage.Look, size image.Point) *image.RGBA {
 	p.mu.Lock()
 	cur := p.Mem.Settings()
 	p.Mem.SetSettings(mem)
 	tiles := p.tiles(p.Now(), hideCaptions)
 	p.Mem.SetSettings(cur)
+	look.Seed = p.look().Seed
 	p.mu.Unlock()
 	// Slots the pictures do not fill yet get sample tiles, so the layout shows.
 	n := max(min(mem.MaxTiles, collage.MaxTiles), 1)
 	if len(tiles) < n {
 		tiles = append(tiles, samples(len(tiles), n, hideCaptions)...)
 	}
-	return collage.Render(tiles, size)
+	return collage.Render(tiles, size, look)
 }
 
-// samples are stand-in tiles for a layout preview, slots from up to n: flat
-// shapes, no image API.
+// samples are stand-in tiles for a layout preview, slots from up to n: a
+// disc on flat ink, drawn to fit each tile, no image API.
 func samples(from, n int, hideCaptions bool) []collage.Tile {
 	var out []collage.Tile
 	for i := from; i < n; i++ {
-		img, _ := imagegen.Placeholder{}.Generate(context.Background(), fmt.Sprintf("sample %d", i+3))
-		t := collage.Tile{Image: img}
+		bg, fg := imagegen.PlaceholderInks(fmt.Sprintf("sample %d", i+3))
+		t := collage.Tile{Ink: bg, Disc: fg}
 		if !hideCaptions {
 			t.Title, t.Meta = fmt.Sprintf("Sample topic %d", i+1), "EXAMPLE"
 		}

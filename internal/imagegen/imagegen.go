@@ -22,13 +22,7 @@ type Placeholder struct{}
 var inks = []color.RGBA{{36, 66, 140, 255}, {196, 62, 50, 255}, {232, 186, 52, 255}, {52, 112, 72, 255}, {24, 22, 22, 255}}
 
 func (Placeholder) Generate(_ context.Context, prompt string) (image.Image, error) {
-	h := fnv.New32a()
-	h.Write([]byte(prompt))
-	n := h.Sum32()
-	bg, fg := inks[n%uint32(len(inks))], inks[(n/7+1)%uint32(len(inks))]
-	if fg == bg {
-		fg = color.RGBA{252, 250, 244, 255}
-	}
+	bg, fg := PlaceholderInks(prompt)
 	img := image.NewRGBA(image.Rect(0, 0, 600, 600))
 	draw.Draw(img, img.Bounds(), &image.Uniform{bg}, image.Point{}, draw.Src)
 	// a centred disc, so tiles read as pictures rather than flat colour
@@ -40,4 +34,17 @@ func (Placeholder) Generate(_ context.Context, prompt string) (image.Image, erro
 		}
 	}
 	return img, nil
+}
+
+// PlaceholderInks are the two inks Placeholder draws for a prompt: the
+// background and the disc.
+func PlaceholderInks(prompt string) (bg, fg color.RGBA) {
+	h := fnv.New32a()
+	h.Write([]byte(prompt))
+	n := h.Sum32()
+	bg, fg = inks[n%uint32(len(inks))], inks[(n/7+1)%uint32(len(inks))]
+	if fg == bg {
+		fg = color.RGBA{252, 250, 244, 255}
+	}
+	return bg, fg
 }

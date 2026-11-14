@@ -15,7 +15,7 @@ func TestRenderIsDeterministic(t *testing.T) {
 		img, _ := imagegen.Placeholder{}.Generate(context.Background(), p)
 		tiles = append(tiles, Tile{Title: p, Meta: "KITCHEN · SUN", Image: img})
 	}
-	a, b := Render(tiles, DefaultSize), Render(tiles, DefaultSize)
+	a, b := Render(tiles, DefaultSize, Look{}), Render(tiles, DefaultSize, Look{})
 	if a.Bounds().Size() != DefaultSize {
 		t.Fatalf("size %v", a.Bounds())
 	}

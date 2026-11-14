@@ -254,6 +254,10 @@ const PICTURE_KEYS = [
   "tiles",
   "newest_big",
   "hide_captions",
+  "arrange",
+  "spacing",
+  "background",
+  "shape",
   "half_life_hours",
   "panel_width",
   "panel_height",
@@ -1495,6 +1499,17 @@ function Layout({ draft, set }) {
         html`<${Toggle} checked=${draft.newest_big} onChange=${(v) => set({ newest_big: v })}
         title="Newest picture largest" text="Instead of the most talked-about one." />`
       }
+      ${
+        draft.layout !== "single" &&
+        html`<${Segments} name="arrange" label="Arrangement" value=${draft.arrange} onChange=${(v) => set({ arrange: v })}
+        options=${[["hero", "One big"], ["even", "Even"], ["mosaic", "Mosaic"]]} />`
+      }
+      <${Segments} name="spacing" label="Spacing" value=${draft.spacing} onChange=${(v) => set({ spacing: v })}
+        options=${[["none", "None"], ["thin", "Thin"], ["normal", "Normal"], ["wide", "Wide"]]} />
+      <${Segments} name="shape" label="Shape" value=${draft.shape} onChange=${(v) => set({ shape: v })}
+        options=${[["rectangle", "Rectangle"], ["rounded", "Rounded"], ["circle", "Circle"], ["arch", "Arch"]]} />
+      <${Segments} name="background" label="Background" value=${draft.background} onChange=${(v) => set({ background: v })}
+        options=${[["paper", "Paper"], ["white", "White"], ["black", "Black"]]} />
       <${Toggle} checked=${!draft.hide_captions} onChange=${(v) => set({ hide_captions: !v })}
         title="Captions" text="Topic names under the pictures." />
     <//>`;

@@ -153,6 +153,7 @@ func main() {
 		BlockNames:     cfg.BlockNames,
 		NeverPaint:     cfg.NeverPaint,
 		HideCaptions:   cfg.HideCaptions,
+		Look:           cfg.Look(),
 		Style:          styleName(cfg.ImageStyle),
 		Size:           cfg.PageSize(),
 		Now:            time.Now,
@@ -185,7 +186,7 @@ func main() {
 		}
 		return pipeline.Options{Extractor: ex, WindowSegments: c.WindowSegments, ExtractEvery: c.ExtractEvery,
 			Images: images(c), BlockSensitive: c.BlockSensitive, BlockNames: c.BlockNames, NeverPaint: c.NeverPaint,
-			HideCaptions: c.HideCaptions, Style: styleName(c.ImageStyle), KeepDir: keepDir(c), Timeline: timelineFor(c), Paused: c.Paused,
+			HideCaptions: c.HideCaptions, Look: c.Look(), Style: styleName(c.ImageStyle), KeepDir: keepDir(c), Timeline: timelineFor(c), Paused: c.Paused,
 			Size: c.PageSize()}
 	}
 	p.Timeline = timelineFor(cfg)
@@ -257,7 +258,7 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
-			return p.Draft(memSettings(c), c.HideCaptions, c.PageSize()), nil
+			return p.Draft(memSettings(c), c.HideCaptions, c.Look(), c.PageSize()), nil
 		},
 	}
 	// The settings page's optional password lives next to the settings.
