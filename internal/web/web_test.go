@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,7 +58,7 @@ func setup(t *testing.T, token string) (*httptest.Server, *Server, *[]config.Set
 	mux := http.NewServeMux()
 	srv.Register(mux)
 	w.Register(mux)
-	ts := httptest.NewServer(mux)
+	ts := httptest.NewServer(Protect(mux, []string{"frame.example.com"}))
 	t.Cleanup(ts.Close)
 	return ts, w, &saved
 }
@@ -385,5 +386,71 @@ func TestTestPictureAndRedraw(t *testing.T) {
 	}
 	if resp, _ := post("/api/redraw", `{"label": "gone"}`); resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("redraw of an unknown topic: %d, want 404", resp.StatusCode)
+	}
+}
+
+// A web page on the internet that points its own domain at E-maki (DNS
+// rebinding) is refused, whatever it asks for.
+func TestForeignHostIsRefused(t *testing.T) {
+	ts, _, _ := setup(t, "")
+	for host, want := range map[string]int{
+		"evil.example:8090":      http.StatusForbidden,
+		"evil.example":           http.StatusForbidden,
+		"192.168.1.20:8090":      http.StatusOK,
+		"[fe80::1]:8090":         http.StatusOK,
+		"localhost:8090":         http.StatusOK,
+		"brain:8090":             http.StatusOK,
+		"brain.local":            http.StatusOK,
+		"FRAME.example.com:8090": http.StatusOK, // listed in EMAKI_HOSTS
+	} {
+		for _, path := range []string{"/api/state", "/frame.png", "/"} {
+			req, _ := http.NewRequest("GET", ts.URL+path, nil)
+			req.Host = host
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != want {
+				t.Errorf("Host %s, %s: %s, want %d", host, path, resp.Status, want)
+			}
+			if resp.Header.Get("X-Content-Type-Options") != "nosniff" {
+				t.Errorf("Host %s, %s: no nosniff header", host, path)
+			}
+		}
+	}
+	req, _ := http.NewRequest("POST", ts.URL+"/api/clear", strings.NewReader("{}"))
+	req.Host = "evil.example:8090"
+	req.Header.Set("Origin", "http://evil.example:8090")
+	req.Header.Set("Content-Type", "application/json")
+	if resp, _ := http.DefaultClient.Do(req); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("a change from a rebound domain: %s", resp.Status)
+	}
+}
+
+// Wrong passwords sent at the same time are each counted, so the lockout
+// cannot be outrun.
+func TestParallelWrongPasswordsAreCounted(t *testing.T) {
+	a := &Auth{}
+	if err := a.Set("correct horse"); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			r := httptest.NewRequest("POST", "/api/login", nil)
+			r.RemoteAddr = "10.0.0.9:1234"
+			a.Check(r, "wrong")
+		})
+	}
+	wg.Wait()
+	// Five are checked and counted; the rest meet the lockout.
+	if n := a.fails["10.0.0.9"].n; n != 5 {
+		t.Fatalf("8 wrong passwords at once counted as %d, want 5", n)
+	}
+	r := httptest.NewRequest("POST", "/api/login", nil)
+	r.RemoteAddr = "10.0.0.9:1234"
+	if ok, wait := a.Check(r, "correct horse"); ok || wait == 0 {
+		t.Fatalf("after 5 wrong passwords: ok %v, wait %v", ok, wait)
 	}
 }
