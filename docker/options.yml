@@ -1,0 +1,45 @@
+# Pieces that docker-compose.yml pulls in with extends, picked by the
+# options in .env. This file runs nothing on its own.
+#
+# What the GPU-using services (whisper, ollama, sd) add for each GPU= value.
+
+services:
+  # GPU empty: everything on the CPU.
+  cpu: {}
+
+  # Integrated graphics (AMD Radeon / Intel) through Vulkan, on Linux. The
+  # whisper and sd images bring their own Mesa drivers and only need the
+  # GPU device from the host: ls /dev/dri/renderD*
+  # Ollama stays on the CPU here. Not yet tested on a Linux machine.
+  vulkan:
+    devices: ["/dev/dri"]
+
+  # The same on Windows (WSL). WSL exposes the GPU as /dev/dxg plus the
+  # D3D12 libraries in /usr/lib/wsl, and Mesa's "dozen" (dzn) driver turns
+  # that into Vulkan. Debian's Mesa has no dzn, so it is borrowed from WSL:
+  #   ls /usr/share/vulkan/icd.d/dzn_icd.json /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so
+  # must exist (install mesa-vulkan-drivers in WSL if not). Ollama uses its
+  # Vulkan backend on the same driver.
+  vulkan-wsl:
+    devices: ["/dev/dxg"]
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:/usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:ro
+      - /usr/share/vulkan/icd.d/dzn_icd.json:/usr/share/vulkan/icd.d/dzn_icd.json:ro
+      - /usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:/usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:ro
+    environment:
+      OLLAMA_VULKAN: "1"
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
+
+# On or off for the optional services (LOCAL_IMAGES=1, WHISPER_DA_NO=1).
+# "Off" puts a service in a profile nothing turns on, so compose neither
+# builds nor starts it.
+  optional:
+    profiles: [off]
+  optional-on: {}
+  # The same for sd, which also takes the GPU.
+  optional-gpu:
+    profiles: [off]
+  optional-gpu-on:
+    extends: ${GPU:-cpu}

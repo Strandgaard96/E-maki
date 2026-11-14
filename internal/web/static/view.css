@@ -1,0 +1,4 @@
+html, body { margin: 0; height: 100%; background: #e9e1ca; }
+body { display: grid; place-items: center; font: 1.25rem/1.5 system-ui, sans-serif; color: #1d1c21; }
+img { max-width: 100vw; max-height: 100vh; object-fit: contain; image-rendering: pixelated; }
+p { max-width: 30ch; text-align: center; }
