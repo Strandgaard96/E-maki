@@ -51,6 +51,7 @@ Then `docker compose up -d --build` again. What the host needs is in [docker/opt
 | `LLM_MODEL` | The local topic model, `qwen3.5:4b` by default |
 | `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` | An external topic model. See [External topic model](#external-topic-model) |
 | `PANEL_TOKEN` | Puts the page behind a secret address. See [Lock it down](#lock-it-down) |
+| `EMAKI_HOSTS` | Extra names the page answers to, for a reverse proxy or a VPN name. See [Lock it down](#lock-it-down) |
 | `PULSE_SOCKET`, `EMAKI_UID`, `EMAKI_GID` | Where the mic is |
 
 After editing `.env`, run `docker compose up -d` again. Containers whose settings changed are recreated.
@@ -127,6 +128,8 @@ To pause listening from Home Assistant or a script, see the **[HTTP API](api.md)
 ### Lock it down
 
 Anything on your local network can open the page, change the settings and press the buttons. To stop that, set `PANEL_TOKEN` in `.env` to a long random word (`openssl rand -hex 16`). The page, the picture and the buttons then live under `/<your-token>/` only, and the frame gets `FRAME_URL=http://<your-brain>:8090/<your-token>`. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet.
+
+The page only answers when it is opened by IP address, as `localhost`, or under a local name (`brain`, `brain.local`). That stops a website on the internet from reaching it through your browser. If you open it under another name, such as a reverse proxy's domain or a VPN name, list that name in `EMAKI_HOSTS` in `.env`.
 
 ## Logs
 

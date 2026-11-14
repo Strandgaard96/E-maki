@@ -17,8 +17,10 @@ import (
 	"io/fs"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -125,7 +127,6 @@ func (s *Server) Register(mux *http.ServeMux) {
 	page := func(name string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			b, _ := fs.ReadFile(files, name)
-			headers(w)
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(b)
 		}
@@ -134,7 +135,6 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+pre+"/view", page("view.html"))
 	assets := http.StripPrefix(pre+"/ui/", http.FileServerFS(files))
 	mux.Handle("GET "+pre+"/ui/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		headers(w)
 		w.Header().Set("Cache-Control", "no-cache")
 		assets.ServeHTTP(w, r)
 	}))
@@ -279,6 +279,41 @@ func init() {
 	// Some minimal Linux images have no mime table: module scripts must be
 	// served as JavaScript or the browser refuses them.
 	mime.AddExtensionType(".mjs", "text/javascript")
+}
+
+// Protect wraps everything E-maki serves. It sets the headers below on
+// every answer, and refuses a request whose Host is a public domain name: a
+// web page on the internet can point its own domain at this machine (DNS
+// rebinding), and the browser would then let it read and change the settings
+// page. An IP address, localhost, a name without a dot and names ending in
+// .local, .lan, .internal or .home.arpa are let through, and so is any name
+// in hosts (EMAKI_HOSTS), for a reverse proxy or a VPN name.
+func Protect(next http.Handler, hosts []string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers(w)
+		if !localHost(r.Host, hosts) {
+			http.Error(w, "E-maki does not answer to this address. Open it by IP address, or add the name to EMAKI_HOSTS in .env.", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func localHost(hostport string, extra []string) bool {
+	host := hostport
+	if h, _, err := net.SplitHostPort(hostport); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	if net.ParseIP(host) != nil || host == "localhost" || slices.Contains(extra, host) {
+		return true
+	}
+	for _, suffix := range []string{".local", ".lan", ".internal", ".home.arpa"} {
+		if strings.HasSuffix(host, suffix) {
+			return true
+		}
+	}
+	return host != "" && !strings.Contains(host, ".")
 }
 
 // headers keep the page to itself: no framing by other sites, no scripts
