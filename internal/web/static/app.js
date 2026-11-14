@@ -273,7 +273,7 @@ var Fi=Object.create;var St=Object.defineProperty;var Zi=Object.getOwnPropertyDe
     options=${[["now","On the frame"],["history","History"]]} /></div>`}function xi({id:s,sections:e,state:t,draft:i,set:o,paused:n,onState:a,onSignedOut:r}){let h=e.find(([c])=>location.hash==="#"+s+"/"+c)?.[0]??e[0][0],[d,l]=$(h),m=c=>{l(c),history.replaceState(null,"","#"+s+"/"+c)},u=ne(null);return F(()=>u.current?.querySelector("[aria-current]")?.scrollIntoView({block:"nearest",inline:"nearest"}),[d]),p`
     <main id=${"panel-"+s} role="tabpanel" aria-labelledby=${"tab-"+s}
       class="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start">
-      <nav ref=${u} aria-label="Sections" class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
+      <nav ref=${u} aria-label=${s[0].toUpperCase()+s.slice(1)+" sections"} class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
         ${e.map(([c,g])=>p`
           <button type="button" aria-current=${d===c?"page":void 0} onClick=${()=>m(c)}
             class=${"flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent "+(d===c?"bg-accent":"")}>
@@ -497,7 +497,6 @@ var Fi=Object.create;var St=Object.defineProperty;var Zi=Object.getOwnPropertyDe
         text='Any picture whose description repeats a name that was said out loud. It cannot tell people from places, so "Lofoten" goes too.' />
       <${kn} value=${s.never_paint} onChange=${n=>e({never_paint:n})} />
       ${i.length===0&&!s.block_names&&!(s.never_paint||[]).length&&p`<${q} tone="warn">Nothing is held back: every topic can become a picture.<//>`}
-    <//>
     <//>`}function Sn({draft:s,set:e,saved:t,topicAPI:i}){let o=s.topic_provider==="external";return p`
     <${L} title="Storage">
       <p><strong class="font-semibold">Nothing is recorded.</strong> Audio is never written to disk. What was said lives only in a short rolling window in memory and is gone when E-maki stops or you pause listening.</p>
