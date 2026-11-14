@@ -164,7 +164,9 @@ function App() {
       const s = await api("api/settings", "PUT", pending);
       setState(s);
       setDraft(s.settings);
-      setNotice(s.warning || (s.status.saved ? "Saved." : "Applied. These last until E-maki restarts."));
+      setNotice(
+        s.warning || (s.status.saved ? "Saved and in use now." : "In use now. These last until E-maki restarts."),
+      );
       setError("");
     } catch (e) {
       if (e.signin) setSignin(true);
@@ -386,6 +388,14 @@ const PICTURE_KEYS: (keyof Settings)[] = [
 ];
 // Settings edited on the Listening and System tabs; the rest are on Frame.
 const SYSTEM_KEYS: (keyof Settings)[] = ["image_provider", "daily_image_cap", "keep_pictures"];
+// The settings each section of Listening and System holds, for its unsaved dot.
+const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
+  listening: ["mic_device", "min_speech_dbfs", "languages"],
+  topics: ["topic_provider", "min_confidence", "window_segments", "extract_every", "topic_prompt", "llm_temperature"],
+  privacy: ["block_sensitive", "block_names", "never_paint"],
+  pictures: ["image_provider", "daily_image_cap"],
+  storage: ["keep_pictures"],
+};
 const EMAKI_KEYS: (keyof Settings)[] = [
   "mic_device",
   "min_speech_dbfs",
@@ -1868,6 +1878,7 @@ function SectionTab({
     () => nav.current?.querySelector("[aria-current]")?.scrollIntoView({ block: "nearest", inline: "nearest" }),
     [section],
   );
+  const unsaved = (k: string) => (SECTION_KEYS[k] || []).some((key) => !same(draft[key], state.settings[key]));
   return (
     <main
       id={"panel-" + id}
@@ -1893,6 +1904,9 @@ function SectionTab({
           >
             {section === k && <i class="size-[7px] shrink-0 rounded-full bg-primary" aria-hidden="true" />}
             {name}
+            {unsaved(k) && (
+              <span class="size-1.5 shrink-0 rounded-full bg-ink-yellow" role="img" aria-label="has unsaved changes" />
+            )}
           </button>
         ))}
       </nav>
