@@ -90,7 +90,7 @@ The same frame as Fugleramme's "frame only" build: a Pi drives the panel and fet
 | Power | The official supply for the board |
 | Frame | IKEA RÖDALM 21x30 (A4) for the 13.3", 13x18 for the 7.3" |
 
-Software is Fugleramme's Inky client, one command on the Pi: see [Setup](setup.md#5-put-it-on-a-frame). The Inky's four buttons pause listening, remove or pin the last picture, and put the next one up.
+Software is Fugleramme's Inky client, one command on the Pi: see [Setup](setup.md#5-put-it-on-a-frame). Set Buttons to 4 under Frame > Panel and the Inky's four buttons pause listening, remove or pin the last picture, and put the next one up.
 
 Fugleramme's [hardware guide](https://github.com/arnegiacomo/fugleramme/blob/main/docs/hardware.md) has more on the Pi and the panel, and its [mounting guide](https://github.com/arnegiacomo/fugleramme/blob/main/docs/mounting.md) covers fitting the panel in the frame, the passepartout, airflow and stand feet. It all applies here unchanged. The Pi only fetches a picture every few minutes, so it stays cool.
 
@@ -105,11 +105,38 @@ A Seeed Studio XIAO ESP32-S3 board drives the panel and runs from a battery, wit
 | Power | Single-cell 3.7 V lithium battery with a JST 2.0 connector |
 | Frame | IKEA RÖDALM 21x30 (A4) |
 
-Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". Its buttons work on the board itself and don't reach E-maki, so set Buttons to None on the settings page.
+Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". Its buttons work on the board itself and don't reach E-maki, so leave Buttons at None on the settings page.
 
 ### No e-ink
 
 The page is a plain PNG, so a TV, an old tablet or any browser can show it. Open `http://<your-brain>:8090/frame.png`. Other devices people have made work with Fugleramme's protocol are in [fugleramme/clients](https://github.com/fugleramme/clients).
+
+### Any device
+
+A frame is anything that fetches a picture over HTTP now and then. It needs no buttons, and nothing on the E-maki side waits for one. Pick the format your device can show:
+
+| Fetch | What you get |
+| --- | --- |
+| `GET http://<your-brain>:8090/frame.png` | A 6-colour PNG at the panel size set under Frame > Panel (1600x1200 unless you change it). Works for any screen |
+| `GET http://<your-brain>:8090/frame.e6` | The same picture packed for a 13.3" or 7.3" Spectra 6 panel, the format Fugleramme's ESP32 firmware reads. Its header says how many minutes to sleep (Refresh interval) |
+
+Both send an `ETag`. Send it back as `If-None-Match` and you get `304 Not Modified` until the picture changes, so polling often costs almost nothing. With `PANEL_TOKEN` set, put `/<your-token>` in front of each path.
+
+Buttons are optional. A device with buttons sends one request per press, with a letter from `A` to `H`:
+
+```bash
+curl -X POST -d button=A http://<your-brain>:8090/press
+```
+
+Then set Buttons under Frame > Panel to how many it has, and pick what each letter does. A letter that isn't set does nothing.
+
+Which clients send presses today:
+
+| Client | Presses |
+| --- | --- |
+| Fugleramme's Inky client on a Pi | Yes, A to D |
+| Fugleramme's ESP32 firmware (EE02, EE04, XIAO) | No |
+| A browser, TV or tablet showing `frame.png` | No |
 
 ## A small, quiet build (the plan)
 

@@ -1765,7 +1765,7 @@ function Hanging({ draft, set }) {
         </select><//>`
       }
       <div class="grid gap-3">
-        <${Field} label="Buttons" help="How many buttons your frame has. The frame sends A, B, C… when one is pressed; an Inky Impression has four, top to bottom.">
+        <${Field} label="Buttons" help=${html`Buttons only work if your frame's software tells E-maki when one is pressed. The Inky client on a Pi does (four buttons, A to D from the top). ESP32 frames and screens that only show the picture don't, so leave this at None for them. <a class="underline underline-offset-4 hover:text-foreground" href="https://github.com/Strandgaard96/E-maki/blob/main/docs/hardware.md#any-device" target="_blank" rel="noopener">How a frame sends a press</a>`}>
           <select class="select w-full" value=${Object.keys(draft.panel_buttons || {}).length}
             onChange=${(e) => set({ panel_buttons: buttons(draft.panel_buttons, +e.target.value) })}>
             ${["", ...BUTTON_LETTERS].map((_, n) => html`<option value=${n}>${n === 0 ? "None" : n}</option>`)}
