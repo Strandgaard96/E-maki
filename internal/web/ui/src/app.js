@@ -161,9 +161,9 @@ function App() {
             ${TABS.map(
               ([k, name]) => html`
               <button type="button" role="tab" id=${"tab-" + k} aria-selected=${tab === k} aria-controls=${"panel-" + k}
-                tabindex=${tab === k ? 0 : -1}
+                tabindex=${tab === k ? 0 : -1} class="relative"
                 onClick=${() => show(k)}>${name}
-                <span class=${"size-1.5 rounded-full bg-ink-yellow " + (where[k] ? "" : "invisible")} role="img"
+                <span class=${"absolute top-1 right-0.5 size-1.5 rounded-full bg-ink-yellow " + (where[k] ? "" : "invisible")} role="img"
                   aria-label=${where[k] ? "has unsaved changes" : undefined} aria-hidden=${!where[k]}></span></button>`,
             )}
           </nav>

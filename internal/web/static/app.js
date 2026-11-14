@@ -8,9 +8,9 @@ var Li=Object.create;var wt=Object.defineProperty;var Ai=Object.getOwnPropertyDe
             onKeyDown=${_=>{if(_.key!=="ArrowLeft"&&_.key!=="ArrowRight")return;let W=te.findIndex(([ee])=>ee===l),j=te[(W+(_.key==="ArrowRight"?1:te.length-1))%te.length][0];E(j),document.getElementById("tab-"+j).focus()}}>
             ${te.map(([_,W])=>p`
               <button type="button" role="tab" id=${"tab-"+_} aria-selected=${l===_} aria-controls=${"panel-"+_}
-                tabindex=${l===_?0:-1}
+                tabindex=${l===_?0:-1} class="relative"
                 onClick=${()=>E(_)}>${W}
-                <span class=${"size-1.5 rounded-full bg-ink-yellow "+(k[_]?"":"invisible")} role="img"
+                <span class=${"absolute top-1 right-0.5 size-1.5 rounded-full bg-ink-yellow "+(k[_]?"":"invisible")} role="img"
                   aria-label=${k[_]?"has unsaved changes":void 0} aria-hidden=${!k[_]}></span></button>`)}
           </nav>
         </div>
