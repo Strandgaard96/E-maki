@@ -89,7 +89,7 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
 
 ## Configure
 
-- **`.env`** (copy from [.env.example](.env.example)): image API keys, the Whisper and topic models, GPU compose files, the mic socket. See [Setup](docs/setup.md#2-settings-in-env).
+- **`.env`** (copy from [.env.example](.env.example)): image API keys, the Whisper and topic models, the GPU and other extras, the mic socket. See [Setup](docs/setup.md#2-settings-in-env).
 - **The settings page** (`http://<your-brain>:8090/`): what the frame shows, and the listening and topic settings. What you change there is saved separately and overrides the profile.
 - **`configs/*.json`**: one profile per setup (`docker.json`, `docker-gemma.json`, `laptop.json`, `jetson.json`). Every key is explained in **[Configs](configs/README.md)**.
 

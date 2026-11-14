@@ -6,13 +6,13 @@ It is off until you set it up, and it is hardware-dependent: please report how i
 
 ## Turn it on
 
-With docker compose, add the overlay:
+With docker compose, set this in `.env` and run `docker compose up -d`:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.netmic.yml up -d
+NET_MIC_BIND=0.0.0.0
 ```
 
-or add `docker-compose.netmic.yml` to `COMPOSE_FILE` in `.env`. Without docker, set `net_mic_listen` in your profile (for example `":10700"`) or `NET_MIC_LISTEN`. Then open the settings page, go to E-maki → Microphone and pick **Network microphone**. The level meter moves once a sender is connected.
+`NET_MIC_PORT` changes the port (10700). Without docker, set `net_mic_listen` in your profile (for example `":10700"`) or `NET_MIC_LISTEN`. Then open the settings page, go to E-maki → Microphone and pick **Network microphone**. The level meter moves once a sender is connected.
 
 One sender at a time. A new connection replaces the old one, so a sender that restarts is heard again at once.
 

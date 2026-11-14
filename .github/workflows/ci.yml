@@ -71,11 +71,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker compose config --quiet
-      - run: docker compose -f docker-compose.yml -f docker-compose.igpu.yml config --quiet
-      - run: docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml config --quiet
-      - run: docker compose -f docker-compose.yml -f docker-compose.local-images.yml config --quiet
-      - run: docker compose -f docker-compose.yml -f docker-compose.local-images.yml -f docker-compose.local-images-igpu.yml config --quiet
-      - run: docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml -f docker-compose.local-images.yml -f docker-compose.local-images-igpu-wsl.yml config --quiet
+      - run: GPU=vulkan docker compose config --quiet
+      - run: GPU=vulkan-wsl docker compose config --quiet
+      - run: LOCAL_IMAGES=1 WHISPER_DA_NO=1 WHISPER_DA_MODEL_URL=https://example.invalid/edda.bin COMPOSE_PROFILES=local-images,da-no docker compose config --quiet
+      - run: GPU=vulkan-wsl LOCAL_IMAGES=1 COMPOSE_PROFILES=local-images docker compose config --quiet
       - run: sh -n docker/whisper-entrypoint.sh
       - run: sh -n docker/sd-entrypoint.sh
       - run: docker build -f docker/emaki.Dockerfile .

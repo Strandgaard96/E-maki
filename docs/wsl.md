@@ -20,19 +20,13 @@ Only that socket is mounted into the container, not the rest of `/mnt/wslg`. Aft
 
 ## Integrated GPU
 
-Use the WSL override instead of the Linux one. What WSL needs is listed at the top of the file.
+Set this in `.env`, then `docker compose up -d --build`. What WSL needs is listed in [docker/gpu.yml](../docker/gpu.yml).
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml up --build
+GPU=vulkan-wsl
 ```
 
-Plain `docker compose up` does not use the GPU. To make it the default, add this line to `.env`:
-
-```sh
-COMPOSE_FILE=docker-compose.yml:docker-compose.igpu-wsl.yml
-```
-
-`docker compose config | grep -A3 dockerfile` should then show `WHISPER_GPU: vulkan`.
+`docker compose config | grep WHISPER_GPU` should then show `vulkan`.
 
 ## Troubleshooting
 

@@ -44,7 +44,7 @@ func FromEnv(getenv func(string) string) []Choice {
 
 	localURL := env("LOCAL_IMAGE_URL", "")
 	local := Choice{ID: "local", Name: "On this machine (" + env("LOCAL_IMAGE_MODEL", "stable-diffusion.cpp") + ")", Local: true,
-		Ready: localURL != "", Setup: "start E-maki with -f docker-compose.local-images.yml added, see docs/local-images.md"}
+		Ready: localURL != "", Setup: "set LOCAL_IMAGES=1 in .env, see docs/local-images.md"}
 	if local.Ready {
 		size := env("LOCAL_IMAGE_SIZE", "1024x768")
 		// A CPU can take minutes for one picture.

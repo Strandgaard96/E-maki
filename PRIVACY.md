@@ -30,7 +30,7 @@ which you have to switch on yourself (see below).
    leaves the house.
 7. Only the English picture description is sent to your image API (Gemini,
    OpenAI or OpenRouter, with your own key). That is the one thing that leaves
-   your network. With local pictures (`docker-compose.local-images.yml`) it
+   your network. With local pictures (`LOCAL_IMAGES=1`) it
    goes to stable-diffusion.cpp on your own machine instead, which has no
    route to the internet, and nothing leaves at all.
 

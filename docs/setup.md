@@ -26,18 +26,28 @@ Plain `docker compose up` runs everything on the CPU, uses the brain's own mic a
 
 ### Integrated GPU
 
-An AMD or Intel integrated GPU runs speech-to-text and the topic model through Vulkan. Add a line to `.env` so every `docker compose` command uses it:
+An AMD or Intel integrated GPU runs speech-to-text (and on WSL the topic model) through Vulkan. Set `GPU` in `.env`:
 
 ```bash
-# Linux
-COMPOSE_FILE=docker-compose.yml:docker-compose.igpu.yml
-# Windows (WSL)
-COMPOSE_FILE=docker-compose.yml:docker-compose.igpu-wsl.yml
+GPU=vulkan       # Linux
+GPU=vulkan-wsl   # Windows (WSL)
 ```
 
-Then `docker compose up -d --build` again. What the host needs is at the top of each file. On WSL, `docker compose config | grep -A3 dockerfile` should show `WHISPER_GPU: vulkan`, and the whisper log names a `Vulkan0` device.
+Then `docker compose up -d --build` again. What the host needs is in [docker/gpu.yml](../docker/gpu.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
 
-More compose files go in the same line, separated by `:`, for example `docker-compose.yml:docker-compose.igpu-wsl.yml:docker-compose.da-no.yml`.
+### Coming from the old compose files
+
+There used to be one compose file per extra (`docker-compose.igpu-wsl.yml` and so on). They are gone, and `.env` decides instead. If your `.env` has a `COMPOSE_FILE` line, delete it and set the matching options:
+
+| Old file | In `.env` now |
+| --- | --- |
+| `docker-compose.igpu.yml` | `GPU=vulkan` |
+| `docker-compose.igpu-wsl.yml` | `GPU=vulkan-wsl` |
+| `docker-compose.local-images.yml` (and its igpu files) | `LOCAL_IMAGES=1` |
+| `docker-compose.da-no.yml` | `WHISPER_DA_NO=1` |
+| `docker-compose.netmic.yml` | `NET_MIC_BIND=0.0.0.0` |
+
+Copy the `COMPOSE_PROFILES=...` line from [.env.example](../.env.example) too, or `LOCAL_IMAGES` and `WHISPER_DA_NO` do nothing. Volumes keep their names, so no model is downloaded again.
 
 ## 2. Settings in `.env`
 
@@ -48,10 +58,10 @@ More compose files go in the same line, separated by `:`, for example `docker-co
 | `GEMINI_API_KEY` | Real pictures through Gemini. See [Pictures](#3-pictures) |
 | `OPENAI_API_KEY`, `OPENROUTER_API_KEY` | Other image services |
 | `TZ` | Your time zone, for quiet hours, diary time and the times on the frame |
-| `COMPOSE_FILE` | GPU and other extras, see above |
+| `GPU` | Integrated GPU, see above |
 | `WHISPER_MODEL` | `small` (default, fast on a CPU) or `large-v3-turbo-q5_0` (more accurate, wants a GPU) |
 | `WHISPER_MODEL_URL` | A ggml fine-tune instead of stock Whisper |
-| `WHISPER_DA_MODEL_URL` | Edda for Danish, with `docker-compose.da-no.yml`. See [Languages](#languages) |
+| `WHISPER_DA_NO`, `WHISPER_DA_MODEL_URL` | Edda for Danish and NB-Whisper for Norwegian. See [Languages](#languages) |
 | `LLM_MODEL` | The local topic model, `qwen3.5:4b` by default |
 | `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` | An external topic model. See [External topic model](#external-topic-model) |
 | `PANEL_TOKEN` | Puts the page behind a secret address. See [Lock it down](#lock-it-down) |
@@ -64,7 +74,7 @@ After editing `.env`, run `docker compose up -d` again. Containers whose setting
 Stock Whisper is fine for English and weak at Danish and Norwegian. First tick the languages spoken in your home under **E-maki > Microphone** on the settings page: with one, Whisper skips guessing, and with several, a wrong guess (Danish heard as Swedish) is redone in the first one.
 
 - **One language, Danish or Norwegian:** set `WHISPER_MODEL_URL` to a ggml build of a fine-tune (Edda for Danish, NB-Whisper for Norwegian). That model then handles everything.
-- **A mix of Danish, Norwegian and English:** add `docker-compose.da-no.yml`. It runs Edda and NB-Whisper next to stock Whisper and sends each segment to the model for its language. Set `WHISPER_DA_MODEL_URL` to an Edda ggml file you trust, and pin it with `WHISPER_DA_MODEL_SHA256`; Edda's makers publish no ggml file. NB-Whisper has a default. It costs about 1.6 GB more RAM.
+- **A mix of Danish, Norwegian and English:** set `WHISPER_DA_NO=1`. It runs Edda and NB-Whisper next to stock Whisper and sends each segment to the model for its language. Set `WHISPER_DA_MODEL_URL` to an Edda ggml file you trust, and pin it with `WHISPER_DA_MODEL_SHA256`; Edda's makers publish no ggml file. NB-Whisper has a default. It costs about 1.6 GB more RAM.
 
 ### External topic model
 

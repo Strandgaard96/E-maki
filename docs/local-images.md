@@ -15,27 +15,15 @@ Local pictures are one more container on the same machine, started by the same `
 
 ## Start it
 
-Add the local-images file to the compose command:
+Set this in `.env` and run `docker compose up -d --build`:
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.local-images.yml up -d --build
+LOCAL_IMAGES=1
 ```
 
 The first start builds sd-server from source and downloads the model. Once it is up, the settings page lists "On this machine" under E-maki, AI image provider. With "Automatic" it is picked over any API key in `.env`.
 
-On integrated AMD or Intel graphics (Linux), add the Vulkan file as well:
-
-```sh
-docker compose -f docker-compose.yml -f docker-compose.local-images.yml \
-  -f docker-compose.local-images-igpu.yml up -d --build
-```
-
-On Windows (WSL), with the same host setup as `docker-compose.igpu-wsl.yml`:
-
-```sh
-docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml \
-  -f docker-compose.local-images.yml -f docker-compose.local-images-igpu-wsl.yml up -d --build
-```
+With `GPU=vulkan` or `GPU=vulkan-wsl` (see [Setup](setup.md#integrated-gpu)) it draws on the integrated GPU as well.
 
 ## The model
 

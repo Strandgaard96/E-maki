@@ -40,7 +40,7 @@ body:
     id: profile
     attributes:
       label: Config profile and compose files
-      placeholder: docker.json, docker-compose.yml + docker-compose.igpu.yml
+      placeholder: docker.json, GPU=vulkan
 
   - type: textarea
     id: logs

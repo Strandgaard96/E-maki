@@ -29,7 +29,7 @@ The E-maki log shows one line per 15 s segment: its level, the detected language
 - Topics need about a minute of talk (4 segments) before the first call to the LLM.
 - Health, money, relationship and confidential work topics are held back. The log then says `topic rejected` with the reason. Switch them off on the settings page (E-maki tab, Privacy) to see everything while testing.
 - The default speech model is stock Whisper `small`: fast on a laptop CPU, fine for English, weak for Danish. To try a Danish fine-tune, set a ggml model URL, e.g. `WHISPER_MODEL=edda WHISPER_MODEL_URL=<ggml .bin url> docker compose up`.
-- By default no GPU is used. With integrated graphics (`docker-compose.igpu.yml`, see [Setup](setup.md#integrated-gpu)) there is room for the more accurate `WHISPER_MODEL=large-v3-turbo-q5_0`. If Whisper falls behind (segments dropped in the log), go back to `small`.
+- By default no GPU is used. With integrated graphics (`GPU=vulkan`, see [Setup](setup.md#integrated-gpu)) there is room for the more accurate `WHISPER_MODEL=large-v3-turbo-q5_0`. If Whisper falls behind (segments dropped in the log), go back to `small`.
 
 ## Troubleshooting
 
