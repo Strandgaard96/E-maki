@@ -282,9 +282,9 @@ func TestDraftFillsEmptyPlaces(t *testing.T) {
 	if n := len(p.Mem.Wall(now)); n != 1 {
 		t.Fatalf("wall has %d pictures, want 1", n)
 	}
-	four := p.Draft(set, false, collage.DefaultSize)
+	four := p.Draft(set, false, collage.Look{}, collage.DefaultSize)
 	set.MaxTiles = 1
-	one := p.Draft(set, false, collage.DefaultSize)
+	one := p.Draft(set, false, collage.Look{}, collage.DefaultSize)
 	if bytes.Equal(four.Pix, one.Pix) {
 		t.Fatal("four places and one place give the same preview")
 	}

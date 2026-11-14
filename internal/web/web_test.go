@@ -242,7 +242,7 @@ func TestDraftPreviewLeavesTheFrameAlone(t *testing.T) {
 	var got config.Settings
 	w.Draft = func(s config.Settings) (image.Image, error) {
 		got = s
-		return w.Pipeline.Draft(memory.Settings{HalfLife: time.Hour, MaxTiles: 1, MinWeight: 0.1, Newest: true}, s.HideCaptions, collage.DefaultSize), nil
+		return w.Pipeline.Draft(memory.Settings{HalfLife: time.Hour, MaxTiles: 1, MinWeight: 0.1, Newest: true}, s.HideCaptions, s.Look(), collage.DefaultSize), nil
 	}
 	before := w.Panel.ETag()
 	r, err := http.Get(ts.URL + "/api/preview.png?layout=single&hide_captions=true&tiles=3")

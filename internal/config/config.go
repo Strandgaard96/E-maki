@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Strandgaard96/e-maki/internal/collage"
 	"github.com/Strandgaard96/e-maki/internal/imagegen"
 	"github.com/Strandgaard96/e-maki/internal/stt"
 )
@@ -133,6 +134,12 @@ type Settings struct {
 	QuietTo   string `json:"quiet_to"`
 	// Captions under the pictures are left out.
 	HideCaptions bool `json:"hide_captions"`
+	// How the page is drawn; see collage.Look. Empty is the first of
+	// collage.Arrangements, Spacings, Backgrounds and Shapes.
+	Arrange    string `json:"arrange"`
+	Spacing    string `json:"spacing"`
+	Background string `json:"background"`
+	Shape      string `json:"shape"`
 	// Save the pictures on the frame and in the queue, with their topics and
 	// descriptions, next to the settings file so the frame comes back after
 	// a restart. Never what was said. Off keeps them in memory only.
@@ -234,6 +241,10 @@ func (c Config) validate() error {
 		{c.Tiles >= 1 && c.Tiles <= 9, "tiles must be between 1 and 9"},
 		{c.NewEveryMinutes >= 0 && c.NewEveryMinutes <= 24*60, "new_every_minutes must be between 0 and 1440"},
 		{(c.QuietFrom == "") == (c.QuietTo == ""), "set both quiet_from and quiet_to, or neither"},
+		{slices.Contains(collage.Arrangements, c.Arrange), "arrange must be one of " + strings.Join(collage.Arrangements, ", ")},
+		{slices.Contains(collage.Spacings, c.Spacing), "spacing must be one of " + strings.Join(collage.Spacings, ", ")},
+		{slices.Contains(collage.Backgrounds, c.Background), "background must be one of " + strings.Join(collage.Backgrounds, ", ")},
+		{slices.Contains(collage.Shapes, c.Shape), "shape must be one of " + strings.Join(collage.Shapes, ", ")},
 	} {
 		if !e.ok {
 			return fmt.Errorf("%s", e.msg)
@@ -314,6 +325,11 @@ func (c Config) MinMentions() int {
 	return 2
 }
 
+// Look is how these settings draw the page.
+func (s Settings) Look() collage.Look {
+	return collage.Look{Arrange: s.Arrange, Spacing: s.Spacing, Background: s.Background, Shape: s.Shape}
+}
+
 // KeepPicturesOn reports whether the frame's pictures are kept over a restart.
 func (s Settings) KeepPicturesOn() bool { return s.KeepPictures == nil || *s.KeepPictures }
 
@@ -353,6 +369,14 @@ func (c *Config) defaults() {
 	}
 	if c.Tiles == 0 {
 		c.Tiles = 9
+	}
+	for _, d := range []struct {
+		v    *string
+		from []string
+	}{{&c.Arrange, collage.Arrangements}, {&c.Spacing, collage.Spacings}, {&c.Background, collage.Backgrounds}, {&c.Shape, collage.Shapes}} {
+		if *d.v == "" {
+			*d.v = d.from[0]
+		}
 	}
 	if c.DiaryAt == "" {
 		c.DiaryAt = "07:00"

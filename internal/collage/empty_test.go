@@ -7,7 +7,7 @@ import (
 
 // An empty page is not blank paper: it carries the mark and a line of text.
 func TestEmptyPageHasTheMark(t *testing.T) {
-	page := Render(nil, DefaultSize)
+	page := Render(nil, DefaultSize, Look{})
 	inks := map[color.RGBA]bool{}
 	for y := 0; y < DefaultSize.Y; y += 4 {
 		for x := 0; x < DefaultSize.X; x += 4 {

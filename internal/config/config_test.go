@@ -103,12 +103,19 @@ func TestLayoutSettings(t *testing.T) {
 	if c.Layout != "collage" || c.Tiles != 9 {
 		t.Fatalf("defaults: layout %q, tiles %d", c.Layout, c.Tiles)
 	}
+	if l := c.Look(); l.Arrange != "hero" || l.Spacing != "normal" || l.Background != "paper" || l.Shape != "rectangle" {
+		t.Fatalf("default look %+v", l)
+	}
 	for name, edit := range map[string]func(*Settings){
 		"layout":     func(s *Settings) { s.Layout = "mosaic" },
 		"tiles":      func(s *Settings) { s.Tiles = 12 },
 		"half quiet": func(s *Settings) { s.QuietFrom = "22:00" },
 		"bad clock":  func(s *Settings) { s.QuietFrom, s.QuietTo = "25:00", "07:00" },
 		"every":      func(s *Settings) { s.NewEveryMinutes = -1 },
+		"arrange":    func(s *Settings) { s.Arrange = "spiral" },
+		"spacing":    func(s *Settings) { s.Spacing = "huge" },
+		"background": func(s *Settings) { s.Background = "pink" },
+		"shape":      func(s *Settings) { s.Shape = "star" },
 	} {
 		s := c.Settings
 		edit(&s)
@@ -118,6 +125,7 @@ func TestLayoutSettings(t *testing.T) {
 	}
 	s := c.Settings
 	s.Layout, s.Tiles, s.QuietFrom, s.QuietTo = "rolling", 4, "22:00", "07:00"
+	s.Arrange, s.Spacing, s.Background, s.Shape = "mosaic", "wide", "black", "arch"
 	if _, err := c.With(s); err != nil {
 		t.Error(err)
 	}

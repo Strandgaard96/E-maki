@@ -51,6 +51,10 @@ a value out of range stops it with a message, instead of being ignored.
 | `new_every_minutes` | Least minutes between two new pictures; new topics wait in line. 0 (default) puts each up at once |
 | `quiet_from`, `quiet_to` | Quiet hours like `"22:00"` and `"07:00"`: no new pictures go up in between. Times follow `TZ` |
 | `newest_big`, `hide_captions` | Collage: the newest topic takes the big tile. Leave the topic names off the pictures |
+| `arrange` | `hero` (default: the first picture big, the rest on a grid), `even` (rows of pictures the same size) or `mosaic` (mixed sizes; a new mosaic with the first new page each day) |
+| `spacing` | Gaps between pictures and at the edge: `none`, `thin`, `normal` (default) or `wide` |
+| `shape` | `rectangle` (default), `rounded`, `circle` or `arch` (round top) |
+| `background` | `paper` (default), `white` or `black` |
 | `timeline` | `false` stops saving new pictures for Pictures > History (it has the same switch). Default on |
 | `timeline_thumb_px`, `timeline_jpeg_quality`, `timeline_row_px` | Timeline: thumbnail size (longest side, default 480), JPEG quality of saved pictures (default 90), and row height on the tab (default 220; a phone gets about half). Need a restart |
 | `paused` | `true` ignores the microphone (the settings page sets this) |
