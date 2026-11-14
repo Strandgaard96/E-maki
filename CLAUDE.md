@@ -64,7 +64,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## 5. E-maki project context
 
-E-maki listens to a room, works out what people talk about, and paints those topics as a living collage on a 13.3" Spectra 6 colour e-ink frame. Design doc: see `docs/design.md`.
+E-maki listens to a room, works out what people talk about, and paints those topics as a living collage on a 13.3" Spectra 6 colour e-ink frame. How it works, privacy and modes: see `README.md`.
 
 **Privacy rules (non-negotiable):**
 - Audio is never written to disk. It lives only in RAM buffers.
