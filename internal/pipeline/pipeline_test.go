@@ -437,13 +437,15 @@ func TestTickRotates(t *testing.T) {
 		Images: imagegen.Placeholder{}, Panel: &panel.Server{},
 		WindowSegments: 1, ExtractEvery: 1, Now: func() time.Time { return now },
 	}
+	// A second apart, so the wall's order does not hang on map order.
 	for _, label := range []string{"garden gnome theft", "rollerblading date"} {
 		p.Extractor = fixed{Topic: label, Confidence: 0.9, VisualPrompt: "a picture", Sensitive: "none"}
 		if err := feed(p, "synthetic talk"); err != nil {
 			t.Fatal(err)
 		}
+		p.Tick()
+		now = now.Add(time.Second)
 	}
-	p.Tick()
 	before, tag := p.Wall()[0].Label, p.Panel.ETag()
 	now = now.Add(time.Hour)
 	p.Tick()
