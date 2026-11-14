@@ -49,6 +49,8 @@ type Config struct {
 	StatusCheckSeconds int `json:"status_check_seconds"`
 	// What "Make a test picture" draws. Empty uses a built-in description.
 	TestPicturePrompt string `json:"test_picture_prompt"`
+	// Most test pictures a paid image provider makes in a day. 0 is 10.
+	TestPicturesPerDay int `json:"test_pictures_per_day"`
 	// The Timeline tab's saved pictures: thumbnail size (longest side, in
 	// pixels), JPEG quality (1 to 100) and the height of a row of pictures
 	// on a wide screen (in CSS pixels; a phone gets about half).
@@ -214,6 +216,7 @@ func (c Config) validate() error {
 		{c.SegmentSeconds > 0, "segment_seconds must be above 0"},
 		{c.MicTimeoutSeconds >= 0, "mic_timeout_seconds must not be negative"},
 		{c.StatusCheckSeconds > 0, "status_check_seconds must be above 0"},
+		{c.TestPicturesPerDay >= 1, "test_pictures_per_day must be above 0"},
 		{c.TimelineThumbPx >= 64 && c.TimelineThumbPx <= 2048, "timeline_thumb_px must be 64 to 2048"},
 		{c.TimelineJPEGQuality >= 1 && c.TimelineJPEGQuality <= 100, "timeline_jpeg_quality must be 1 to 100"},
 		{c.TimelineRowPx >= 60 && c.TimelineRowPx <= 800, "timeline_row_px must be 60 to 800"},
@@ -364,6 +367,9 @@ func (c *Config) defaults() {
 	}
 	if c.StatusCheckSeconds == 0 {
 		c.StatusCheckSeconds = 10
+	}
+	if c.TestPicturesPerDay == 0 {
+		c.TestPicturesPerDay = 10
 	}
 	if c.TimelineThumbPx == 0 {
 		c.TimelineThumbPx = 480

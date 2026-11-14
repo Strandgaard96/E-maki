@@ -1,7 +1,8 @@
 # E-maki with its two sidecars: whisper-server (speech-to-text) and Ollama
 # (topic LLM), listening on this machine's microphone.
 #   cp .env.example .env && docker compose up -d --build
-# then open http://localhost:8090/frame.png (reload to see new topics).
+# then open the address E-maki prints:
+#   docker compose logs emaki | grep "settings page address"
 # Written for Linux. On Windows (WSL) set PULSE_SOCKET in .env, see
 # docs/wsl.md.
 # The first start downloads the Whisper model and the topic LLM
@@ -228,13 +229,14 @@ services:
     read_only: true
     tmpfs: [/tmp]
     # The page is E-maki's screen, so it is reachable from your local
-    # network. It shows what the room talked about: set PANEL_TOKEN in .env
-    # to keep other devices out, or PANEL_BIND=127.0.0.1 for this machine
-    # only. Never forward port 8090 to the internet.
+    # network. It shows what the room talked about, so it lives under a
+    # secret path: PANEL_TOKEN from .env, or a random one kept in /data.
+    # PANEL_BIND=127.0.0.1 is for this machine only. Never forward port 8090
+    # to the internet.
     # The network microphone port (docs/network-mic.md) is published on
     # NET_MIC_BIND. Left empty, it is only on 127.0.0.1 and E-maki does not
-    # listen on it. Audio crosses your network unencrypted: set PANEL_TOKEN
-    # so only senders that know it are heard.
+    # listen on it. Audio crosses your network unencrypted; only
+    # senders that know the page's token are heard.
     ports:
       - "${PANEL_BIND:-0.0.0.0}:8090:8090"
       - "${NET_MIC_BIND:-127.0.0.1}:${NET_MIC_PORT:-10700}:10700"

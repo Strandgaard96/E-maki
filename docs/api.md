@@ -2,7 +2,7 @@
 
 The settings page talks to E-maki over a small JSON API. Other tools on your network can use it too, for example Home Assistant to pause listening when you leave home.
 
-All paths are under `http://<your-brain>:8090/`. With `PANEL_TOKEN` set, they are under `/<your-token>/` instead.
+All paths are under `http://<your-brain>:8090/<token>/`: your `PANEL_TOKEN`, or the token E-maki made on the first start (`docker compose exec emaki cat /data/token`). With `PANEL_OPEN=1` there is no token and they are under `http://<your-brain>:8090/`.
 
 ## Rules
 
@@ -47,15 +47,15 @@ A pause switch, with no password set on the settings page. In `configuration.yam
 ```yaml
 rest_command:
   emaki_pause:
-    url: http://<your-brain>:8090/api/pause
+    url: http://<your-brain>:8090/<token>/api/pause
     method: post
     content_type: application/json
     payload: '{"paused": true}'
   emaki_resume:
-    url: http://<your-brain>:8090/api/pause
+    url: http://<your-brain>:8090/<token>/api/pause
     method: post
     content_type: application/json
     payload: '{"paused": false}'
 ```
 
-Call `rest_command.emaki_pause` from an automation, for example when everyone has left. Put `PANEL_TOKEN` in the URL if you set one.
+Call `rest_command.emaki_pause` from an automation, for example when everyone has left. Put the token in the URL.

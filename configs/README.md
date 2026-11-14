@@ -34,6 +34,7 @@ a value out of range stops it with a message, instead of being ignored.
 | `mic_timeout_seconds` | An open microphone that sends no audio this long is reopened, e.g. an unplugged USB mic. Default 5 |
 | `status_check_seconds` | How often System status checks that whisper and the local topic model answer. Default 10 |
 | `test_picture_prompt` | What "Make a test picture" draws. Default: a cartoon teapot |
+| `test_pictures_per_day` | Most test pictures a paid image provider makes in a day. Default: 10. Pictures made on this machine are not counted |
 | `net_mic_listen` | Listen for a network microphone, e.g. `":10700"` (see [docs/network-mic.md](../docs/network-mic.md)). Empty is off. `NET_MIC_LISTEN` overrides it. Needs a restart |
 | `min_speech_dbfs` | Segments whose loudest 200 ms is quieter than this are skipped |
 | `window_segments` | How many recent segments the LLM sees (8 x 15 s = 2 min) |

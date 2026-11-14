@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -452,5 +454,60 @@ func TestParallelWrongPasswordsAreCounted(t *testing.T) {
 	r.RemoteAddr = "10.0.0.9:1234"
 	if ok, wait := a.Check(r, "correct horse"); ok || wait == 0 {
 		t.Fatalf("after 5 wrong passwords: ok %v, wait %v", ok, wait)
+	}
+}
+
+// Without PANEL_TOKEN the page gets a random address, the same one after a
+// restart.
+func TestLoadTokenMakesOneAndKeepsIt(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "token")
+	first, err := LoadToken(path)
+	if err != nil || len(first) != 32 {
+		t.Fatalf("token %q, %v", first, err)
+	}
+	again, err := LoadToken(path)
+	if err != nil || again != first {
+		t.Fatalf("after a restart: %q, %v, want %q", again, err, first)
+	}
+	if other, _ := LoadToken(filepath.Join(t.TempDir(), "token")); other == first {
+		t.Fatal("two installs got the same token")
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o600 {
+		t.Fatalf("token file mode %v, want 0600", fi.Mode().Perm())
+	}
+}
+
+// The old address says where to look, without giving the token away.
+func TestRootPointsToTheLog(t *testing.T) {
+	ts, _, _ := setup(t, "s3cret")
+	resp, err := http.Get(ts.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound || !strings.Contains(string(b), "docker compose logs") || strings.Contains(string(b), "s3cret") {
+		t.Fatalf("%s: %s", resp.Status, b)
+	}
+}
+
+// A paid provider makes only so many test pictures a day; one on this
+// machine is not counted.
+func TestTestPicturesHaveADailyLimit(t *testing.T) {
+	ts, w, _ := setup(t, "")
+	w.Health = &health.Tracker{}
+	w.TestPicturesPerDay = 2
+	w.Images = imagegen.FromEnv(func(string) string { return "" })
+	paid := w.Images[len(w.Images)-1] // the placeholders, as a provider that is not local
+	paid.ID, paid.Local = "paid", false
+	w.Images = append([]imagegen.Choice{paid}, w.Images...)
+	for i, c := range []struct {
+		provider string
+		want     int
+	}{{"paid", 200}, {"paid", 200}, {"paid", 429}, {"placeholder", 200}, {"paid", 429}} {
+		resp := send(t, "POST", ts.URL+"/api/test-picture", "application/json", `{"provider":"`+c.provider+`"}`, nil)
+		if resp.StatusCode != c.want {
+			t.Errorf("test picture %d with %s: %s, want %d", i+1, c.provider, resp.Status, c.want)
+		}
 	}
 }
