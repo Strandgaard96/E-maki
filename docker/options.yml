@@ -45,3 +45,13 @@ services:
     profiles: [off]
   optional-gpu-on:
     extends: ${GPU:-cpu}
+
+# The local topic model (ollama, ollama-pull) is on unless NO_LOCAL_TOPICS=1,
+# for setups that only use an external topic model.
+  local-topics: {}
+  local-topics-off:
+    profiles: [off]
+  local-topics-gpu:
+    extends: ${GPU:-cpu}
+  local-topics-gpu-off:
+    profiles: [off]
