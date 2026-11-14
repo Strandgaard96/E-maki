@@ -13,5 +13,5 @@ say exactly what. If no, write "No change". -->
 
 ## Checks
 
-- [ ] `gofmt -l .` prints nothing, `go vet ./...` and `go test ./...` pass
+- [ ] `pre-commit run --all-files` and `go test ./...` pass
 - [ ] No real conversations in tests, fixtures or logs

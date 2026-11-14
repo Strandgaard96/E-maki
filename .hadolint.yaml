@@ -1,0 +1,3 @@
+ignored:
+  - DL3008 # apt package versions: the base image tag pins them well enough
+  - SC2046 # $([ "$GPU" = vulkan ] && echo ...) adds packages and flags on purpose

@@ -35,24 +35,30 @@ You need Go (version in `go.mod`) and a C compiler for the audio library.
 Docker is only needed for the sidecars.
 
 ```sh
-gofmt -l .        # should print nothing
 go vet ./...
 go test ./...     # runs offline: model and API calls have fakes
 ```
 
-CI runs the same checks plus `go test -race` and `govulncheck`.
-
-To run the quick ones on every commit, install the
-[pre-commit](https://pre-commit.com) hooks once:
+Install the [pre-commit](https://pre-commit.com) hooks once:
 
 ```sh
 pipx install pre-commit   # or: pip install pre-commit
-pre-commit install
+pre-commit install --hook-type pre-commit --hook-type pre-push
 pre-commit run --all-files   # optional first run over the whole tree
 ```
 
-They run a [gitleaks](https://github.com/gitleaks/gitleaks) secret scan,
-`gofmt`, `go vet` and a 1 MB limit on new files.
+Each commit then runs, on the files it touches: a
+[gitleaks](https://github.com/gitleaks/gitleaks) secret scan, golangci-lint
+(gofmt, goimports, go vet, staticcheck), Biome and `tsc` for the settings
+page, hadolint, shellcheck, actionlint, yamllint, markdownlint and a 1 MB
+limit on new files. `git push` also runs `go test`. The `tsc` hook needs
+`npm ci` in `internal/web/ui` first.
+
+CI runs the same hooks in its `lint` job, then only what the change touches:
+`go` (tests, with `-race` and `govulncheck` on main), `ui` (typecheck and
+build) and `docker` (compose files and the E-maki image). The whisper and sd
+images take long to compile, so they only build when their own Dockerfile or
+entrypoint changes.
 
 The settings page lives in `internal/web/ui` (Preact, Tailwind and Basecoat).
 The built files in `internal/web/static` are committed, so `go build` needs no

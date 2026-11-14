@@ -1,4 +1,5 @@
 # E-maki
+
 A picture frame that listens to the room and paints what you talk about. Speech-to-text and topic spotting run locally, each topic becomes a cartoon, and the cartoons fill a collage on a colour e-ink panel, a TV or any screen.
 
 <p align="center">
@@ -29,6 +30,10 @@ Claude Code wrote most of the code. I steered the design, tested it on my own la
 
 I'm a hobbyist, and I fell for [Fugleramme](https://github.com/arnegiacomo/fugleramme): an e-ink frame that shows a collage of the birds [BirdNET-Go](https://github.com/tphakala/birdnet-go) hears in the garden. I wanted the same idea for the people in the room, a frame that slowly fills with what we have been talking about. The topics a small local model picks out of a dinner conversation are often funny, and that is half the point.
 
+## The name
+
+An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pictures as you unroll it, which is roughly what the frame does with a conversation. The *e* (絵) means picture, and it also stands for e-ink.
+
 ## How it works
 
 1. **Listen.** A mic records the room in 15-30 second segments. Audio stays in memory and is never saved.
@@ -37,7 +42,7 @@ I'm a hobbyist, and I fell for [Fugleramme](https://github.com/arnegiacomo/fugle
 4. **Paint it.** A new topic becomes a short image prompt, which is sent to an image API with your own key. This prompt is the only thing about your conversations that leaves your network. Or draw the pictures locally with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp), and nothing leaves at all.
 5. **Show it.** The picture joins the collage. Topics that keep coming up grow, one-offs fade. The page is dithered for a Spectra 6 e-ink panel and served over HTTP.
 
-Two modes: **party** paints a topic as soon as it comes up, for when guests are over. **Diary** buys no pictures during the day. It collects the topics that came up at least twice, and once a day (`diary_at`, 07:00 by default) paints the top few, so you wake up to yesterday on the wall and the frame refreshes once a day. Diary is meant for a frame on the wall; `jetson.json` uses it. The Docker and laptop profiles use party mode so you see results on the first run. Switch on the settings page.
+Two modes: **Continuous** paints a topic as soon as it comes up, for when guests are over. **Diary** buys no pictures during the day. It collects the topics that came up at least twice, and once a day (`diary_at`, 07:00 by default) paints the top few, so you wake up to yesterday on the wall and the frame refreshes once a day. Diary is meant for a frame on the wall; `jetson.json` uses it. The Docker and laptop profiles use Continuous mode (`"mode": "party"` in the file) so you see results on the first run. Switch on the settings page.
 
 > [!TIP]
 > E-maki is a single Go binary. Speech-to-text and the LLM run as separate containers it talks to over HTTP, and differences between machines live in [config profiles](configs/). It runs on a laptop today, with integrated GPU support through Vulkan. The page is a plain PNG, so any browser can show it.
@@ -123,8 +128,6 @@ The settings page is at <http://localhost:8090/>, the picture at <http://localho
 | `internal/timeline` | the saved pictures behind the Timeline tab |
 | `internal/web` | the settings page (Preact, Tailwind and Basecoat; source in `internal/web/ui`, built files embedded) |
 | `internal/pipeline` | wires it together |
-
-Design decisions are summarised in [docs/design.md](docs/design.md).
 
 ## Contributing
 

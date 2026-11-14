@@ -20,7 +20,7 @@ E-maki prints the settings page's address when it starts:
 docker compose logs emaki | grep "settings page address"
 ```
 
-It looks like `http://localhost:8090/3f9c…/`. Open it, or put the brain's address in place of `localhost` to open it from a phone or laptop on your network. It shows what the frame shows and updates as you talk. In party mode the first topic shows up after about a minute of talk.
+It looks like `http://localhost:8090/3f9c…/`. Open it, or put the brain's address in place of `localhost` to open it from a phone or laptop on your network. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
 
 Plain `docker compose up` runs everything on the CPU, uses the brain's own mic and makes placeholder pictures. The steps below change that.
 
@@ -40,20 +40,6 @@ GPU=vulkan-wsl   # Windows (WSL)
 ```
 
 Then `docker compose up -d --build` again. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
-
-### Coming from the old compose files
-
-There used to be one compose file per extra (`docker-compose.igpu-wsl.yml` and so on). They are gone, and `.env` decides instead. If your `.env` has a `COMPOSE_FILE` line, delete it and set the matching options:
-
-| Old file | In `.env` now |
-| --- | --- |
-| `docker-compose.igpu.yml` | `GPU=vulkan` |
-| `docker-compose.igpu-wsl.yml` | `GPU=vulkan-wsl` |
-| `docker-compose.local-images.yml` (and its igpu files) | `LOCAL_IMAGES=1` |
-| `docker-compose.da-no.yml` | `WHISPER_DA_NO=1` |
-| `docker-compose.netmic.yml` | `NET_MIC_BIND=0.0.0.0` |
-
-Volumes keep their names, so no model is downloaded again.
 
 ## 2. Settings in `.env`
 
@@ -107,7 +93,7 @@ Changes apply at once and are kept in the `emaki-data` volume.
 - **Timeline:** every picture E-maki made, day by day, with a full-screen viewer. Switch saving off or delete them all there.
 - **E-maki:**
   - *Microphone:* which mic, the speech level meter, languages.
-  - *Topic detection:* diary or party mode, how much talk the topic model reads, its instructions, local or external model.
+  - *Topic detection:* Diary or Continuous mode, how much talk the topic model reads, its instructions, local or external model.
   - *Privacy:* topics that are never painted, and the sensitive-topic filters.
   - *AI image provider:* which one, the daily limit, a test picture.
   - *E-ink frame:* panel size, rotation, how often the frame checks for a new page, what its buttons do.

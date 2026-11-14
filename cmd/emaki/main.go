@@ -313,7 +313,7 @@ func main() {
 	// until they answer. An external topic model is not probed.
 	go tracker.Watch(context.Background(), time.Duration(cfg.StatusCheckSeconds)*time.Second, func() map[string]string {
 		t := map[string]string{health.Speech: strings.TrimRight(cfg.WhisperURL, "/") + "/health"}
-		if c := live.Load(); !(c.TopicProvider == "external" && ext.Ready()) {
+		if c := live.Load(); c.TopicProvider != "external" || !ext.Ready() {
 			t[health.Topics] = strings.TrimRight(c.LLMURL, "/") + "/v1/models"
 		}
 		return t

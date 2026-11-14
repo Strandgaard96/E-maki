@@ -1,0 +1,7 @@
+version: "2"
+linters:
+  default: standard # govet, ineffassign, staticcheck, unused, errcheck
+  disable:
+    - errcheck # the code ignores errors from writing HTTP responses on purpose
+formatters:
+  enable: [gofmt, goimports]

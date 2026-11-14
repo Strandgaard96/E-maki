@@ -11,7 +11,7 @@ RUN git clone --depth 1 --branch ${WHISPER_VERSION} https://github.com/ggml-org/
 WORKDIR /src
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_TESTS=OFF \
     $([ "$WHISPER_GPU" = vulkan ] && echo -DGGML_VULKAN=ON) \
- && cmake --build build -j --target whisper-server
+ && cmake --build build -j"$(nproc)" --target whisper-server
 
 FROM debian:trixie-slim
 ARG WHISPER_GPU=

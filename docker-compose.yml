@@ -225,7 +225,7 @@ services:
       whisper-no: { condition: service_healthy, required: false }
     # Runs as your own user, so PulseAudio/PipeWire accepts it. Set
     # EMAKI_UID/EMAKI_GID in .env if `id -u` is not 1000.
-    user: "${EMAKI_UID:-${EKIRU_UID:-1000}}:${EMAKI_GID:-${EKIRU_GID:-1000}}"
+    user: "${EMAKI_UID:-1000}:${EMAKI_GID:-1000}"
     read_only: true
     tmpfs: [/tmp]
     # The page is E-maki's screen, so it is reachable from your local
@@ -259,7 +259,7 @@ services:
       LOCAL_IMAGE_SIZE: ${LOCAL_IMAGE_SIZE:-}
     # configs/ is mounted, so editing a config only needs a restart.
     # /data keeps what the settings page changes (no topics, no transcripts).
-    command: ["-config", "/configs/${EMAKI_CONFIG:-${EKIRU_CONFIG:-docker.json}}", "-settings", "/data/settings.json", "-mic"]
+    command: ["-config", "/configs/${EMAKI_CONFIG:-docker.json}", "-settings", "/data/settings.json", "-mic"]
     volumes:
       - ./configs:/configs:ro
       - emaki-data:/data

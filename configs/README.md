@@ -21,7 +21,7 @@ a value out of range stops it with a message, instead of being ignored.
 
 | Key | What it does |
 | --- | --- |
-| `profile`, `mode` | Name for the log; `party` (show topics at once) or `diary` (collect the day's topics, paint the top ones once a day) |
+| `profile`, `mode` | Name for the log; `party` (Continuous on the settings page: show topics at once) or `diary` (collect the day's topics, paint the top ones once a day) |
 | `diary_at` | Diary mode: when the day's topics are painted, like `"07:00"` (default). Quiet hours can hold them back further; `new_every_minutes` is not used |
 | `listen` | Panel/web address, e.g. `:8090` |
 | `whisper_url`, `whisper_by_lang` | Speech-to-text server, and per-language servers (e.g. `{"da": "http://edda:8081"}`). `WHISPER_URL_DA=http://edda:8081` in the environment adds one too |
