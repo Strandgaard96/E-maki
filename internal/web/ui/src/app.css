@@ -157,3 +157,10 @@ html {
   max-width: 48rem;
   margin-inline: auto;
 }
+
+/* A switch that is off keeps a visible track and knob on the light theme. */
+@layer components {
+  .input.input[type="checkbox"][role="switch"]:not(:checked) {
+    @apply bg-zinc-400 dark:bg-input/80;
+  }
+}
