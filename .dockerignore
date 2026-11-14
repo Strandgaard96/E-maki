@@ -1,0 +1,12 @@
+# Keep secrets and everything the build does not need out of the build
+# context (and so out of image layers and the build cache).
+.env
+.env.*
+!.env.example
+.git
+.github
+docs
+*.wav
+/gallery/
+/emaki
+/bin/

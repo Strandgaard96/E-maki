@@ -1,0 +1,80 @@
+name: CI
+
+# Docs-only changes skip CI.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      # The race detector makes the image tests about ten times slower, so
+      # pull requests run the plain tests and main runs them with -race.
+      - run: go test ${{ github.event_name == 'push' && '-race' || '' }} ./...
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # scan every commit, not just the tip
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      # Same version as .pre-commit-config.yaml.
+      - name: gitleaks
+        run: go run github.com/zricethezav/gitleaks/v8@v8.30.1 git --redact --no-banner .
+
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: internal/web/ui
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: internal/web/ui/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: built page is committed
+        run: git diff --exit-code -- ../static || { echo "Run npm run build in internal/web/ui and commit the result."; exit 1; }
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker compose config --quiet
+      - run: GPU=vulkan docker compose config --quiet
+      - run: GPU=vulkan-wsl docker compose config --quiet
+      - run: LOCAL_IMAGES=1 WHISPER_DA_NO=1 WHISPER_DA_MODEL_URL=https://example.invalid/edda.bin COMPOSE_PROFILES=local-images,da-no docker compose config --quiet
+      - run: GPU=vulkan-wsl LOCAL_IMAGES=1 COMPOSE_PROFILES=local-images docker compose config --quiet
+      - run: sh -n docker/whisper-entrypoint.sh
+      - run: sh -n docker/sd-entrypoint.sh
+      - run: docker build -f docker/emaki.Dockerfile .

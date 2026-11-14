@@ -1,0 +1,6 @@
+/emaki
+/bin/
+*.wav
+/gallery/
+.env
+node_modules/

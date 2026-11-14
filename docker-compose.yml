@@ -1,0 +1,283 @@
+# E-maki with its two sidecars: whisper-server (speech-to-text) and Ollama
+# (topic LLM), listening on this machine's microphone.
+#   cp .env.example .env && docker compose up -d --build
+# then open http://localhost:8090/frame.png (reload to see new topics).
+# Written for Linux. On Windows (WSL) set PULSE_SOCKET in .env, see
+# docs/wsl.md.
+# The first start downloads the Whisper model and the topic LLM
+# (qwen3.5:4b by default, ~3.4 GB).
+#
+# Networks: whisper and ollama hear the audio and read the transcript, so
+# they sit on "local", which has no route to the internet. Their models are
+# fetched by two one-shot services (whisper-model, ollama-pull) that never
+# see audio or text. Only emaki can reach the internet, for the image API.
+#
+# Everything else is switched on in .env, not with extra compose files:
+#   GPU=vulkan or vulkan-wsl      integrated graphics (docker/gpu.yml)
+#   LOCAL_IMAGES=1                pictures made on this machine (sd, sd-model)
+#   WHISPER_DA_NO=1               Danish and Norwegian models (whisper-da, whisper-no)
+#   NET_MIC_BIND=0.0.0.0          a microphone elsewhere on the network
+# The optional services are compose profiles, which the COMPOSE_PROFILES
+# line in .env turns on from LOCAL_IMAGES and WHISPER_DA_NO.
+
+# Fixed project name, so volumes are emaki_* whatever the folder is called.
+name: emaki
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+# Both whisper services run the same image, built for Vulkan when GPU is set.
+x-whisper-build: &whisper-build
+  context: .
+  dockerfile: docker/whisper.Dockerfile
+  args: { WHISPER_GPU: "${GPU:+vulkan}" }
+
+# The GPU device and drivers for GPU=..., see docker/gpu.yml.
+x-gpu: &gpu
+  file: docker/gpu.yml
+  service: ${GPU:-cpu}
+
+# The Danish and Norwegian servers (WHISPER_DA_NO=1) run on the CPU.
+x-whisper-extra: &whisper-extra
+  <<: *hardening
+  profiles: [da-no]
+  build: { context: ., dockerfile: docker/whisper.Dockerfile }
+
+x-whisper-health: &whisper-health
+  test: ["CMD", "curl", "-fs", "http://localhost:8081/"]
+  interval: 10s
+  retries: 120
+  start_period: 30s
+
+x-sd-build: &sd-build
+  context: .
+  dockerfile: docker/sd.Dockerfile
+  args: { SD_GPU: "${GPU:+vulkan}" }
+
+x-sd-models: &sd-models
+  SD_MODEL_URL: ${SD_MODEL_URL:-}
+  SD_TEXT_ENCODER_URL: ${SD_TEXT_ENCODER_URL:-}
+  SD_VAE_URL: ${SD_VAE_URL:-}
+
+services:
+  whisper-model:
+    <<: *hardening
+    build: *whisper-build
+    command: ["download"]
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_MODEL_URL: ${WHISPER_MODEL_URL:-}
+      WHISPER_MODEL_SHA256: ${WHISPER_MODEL_SHA256:-}
+    volumes: [whisper-models:/models]
+    restart: on-failure
+
+  whisper:
+    <<: *hardening
+    extends: *gpu
+    build: *whisper-build
+    depends_on:
+      whisper-model: { condition: service_completed_successfully }
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_THREADS: ${WHISPER_THREADS:-}
+    volumes: [whisper-models:/models:ro]
+    networks: [local]
+    restart: unless-stopped
+    healthcheck: *whisper-health
+
+  # Ollama only downloads through its own server, so this one-shot service
+  # starts a private server on the shared volume, pulls the model and exits.
+  # A model already in the volume is kept as it is: "ollama pull" would
+  # fetch it again whenever its tag is re-uploaded. LLM_MODEL_UPDATE=1 in
+  # .env (or on the command line) pulls the newest upload anyway.
+  ollama-pull:
+    <<: *hardening
+    image: ollama/ollama:0.40.15
+    environment:
+      OLLAMA_NO_CLOUD: "true"
+      LLM_MODEL: "${LLM_MODEL:-qwen3.5:4b}"
+      LLM_MODEL_UPDATE: "${LLM_MODEL_UPDATE:-}"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        ollama serve >/dev/null 2>&1 &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        if [ -z "$$LLM_MODEL_UPDATE" ] && ollama show "$$LLM_MODEL" >/dev/null 2>&1; then
+          echo "$$LLM_MODEL is already here"; exit 0
+        fi
+        exec ollama pull "$$LLM_MODEL"
+    volumes: [ollama:/root/.ollama]
+    restart: on-failure
+
+  ollama:
+    <<: *hardening
+    extends: *gpu
+    image: ollama/ollama:0.40.15
+    depends_on:
+      ollama-pull: { condition: service_completed_successfully }
+    # Belt and braces with the network: also turn off Ollama's cloud models.
+    # Keep the LLM loaded; otherwise it unloads after 5 idle minutes and
+    # every topic call waits ~10 s to load it again.
+    environment: { OLLAMA_NO_CLOUD: "true", OLLAMA_KEEP_ALIVE: "-1" }
+    volumes: [ollama:/root/.ollama]
+    networks: [local]
+    restart: unless-stopped
+
+  # Danish and Norwegian speech models next to stock Whisper (WHISPER_DA_NO=1).
+  # Stock Whisper still detects the language and handles English; a Danish
+  # segment is transcribed again by Edda, a Norwegian one by NB-Whisper.
+  # Edda's makers publish no ggml file, so WHISPER_DA_MODEL_URL must point to
+  # a conversion you trust (pin it with WHISPER_DA_MODEL_SHA256). NB-Whisper
+  # defaults to medium q5_0 from the National Library of Norway. Together
+  # about 1.6 GB of RAM on top of stock Whisper.
+  whisper-da-model:
+    <<: *whisper-extra
+    command: ["download"]
+    environment:
+      WHISPER_MODEL: ${WHISPER_DA_MODEL:-edda-v0.2}
+      WHISPER_MODEL_URL: ${WHISPER_DA_NO:+${WHISPER_DA_MODEL_URL:?set WHISPER_DA_MODEL_URL in .env to a ggml build of Edda v0.2, see docs/setup.md}}
+      WHISPER_MODEL_SHA256: ${WHISPER_DA_MODEL_SHA256:-}
+    volumes: [whisper-models:/models]
+    restart: on-failure
+
+  whisper-da:
+    <<: *whisper-extra
+    depends_on:
+      whisper-da-model: { condition: service_completed_successfully }
+    environment:
+      WHISPER_MODEL: ${WHISPER_DA_MODEL:-edda-v0.2}
+      WHISPER_THREADS: ${WHISPER_THREADS:-}
+    volumes: [whisper-models:/models:ro]
+    networks: [local]
+    restart: unless-stopped
+    healthcheck: *whisper-health
+
+  whisper-no-model:
+    <<: *whisper-extra
+    command: ["download"]
+    environment:
+      WHISPER_MODEL: ${WHISPER_NO_MODEL:-nb-whisper-medium-q5_0}
+      WHISPER_MODEL_URL: ${WHISPER_NO_MODEL_URL:-https://huggingface.co/NbAiLab/nb-whisper-medium/resolve/main/ggml-model-q5_0.bin}
+      WHISPER_MODEL_SHA256: ${WHISPER_NO_MODEL_SHA256:-}
+    volumes: [whisper-models:/models]
+    restart: on-failure
+
+  whisper-no:
+    <<: *whisper-extra
+    depends_on:
+      whisper-no-model: { condition: service_completed_successfully }
+    environment:
+      WHISPER_MODEL: ${WHISPER_NO_MODEL:-nb-whisper-medium-q5_0}
+      WHISPER_THREADS: ${WHISPER_THREADS:-}
+    volumes: [whisper-models:/models:ro]
+    networks: [local]
+    restart: unless-stopped
+    healthcheck: *whisper-health
+
+  # Pictures made on this machine with stable-diffusion.cpp (LOCAL_IMAGES=1),
+  # so nothing at all leaves the house. The first start downloads FLUX.2
+  # klein 4B (about 5.3 GB). It wants about 8 GB of free RAM on top of
+  # whisper and Ollama, and a CPU takes minutes per picture. See
+  # docs/local-images.md.
+  sd-model:
+    <<: *hardening
+    profiles: [local-images]
+    build: *sd-build
+    command: ["download"]
+    environment: *sd-models
+    volumes: [sd-models:/models]
+    restart: on-failure
+
+  sd:
+    <<: *hardening
+    extends: *gpu
+    profiles: [local-images]
+    build: *sd-build
+    depends_on:
+      sd-model: { condition: service_completed_successfully }
+    environment:
+      <<: *sd-models
+      SD_STEPS: ${SD_STEPS:-}
+      SD_THREADS: ${SD_THREADS:-}
+      SD_ARGS: ${SD_ARGS:-}
+    volumes: [sd-models:/models:ro]
+    networks: [local]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:1234/v1/models"]
+      interval: 10s
+      retries: 60
+      start_period: 60s
+
+  emaki:
+    <<: *hardening
+    build: { context: ., dockerfile: docker/emaki.Dockerfile }
+    # No depends_on for the main models: the settings page is up while they
+    # download, and System status shows each one as not answering until it
+    # does. The Danish and Norwegian servers are waited for, when on.
+    depends_on:
+      whisper-da: { condition: service_healthy, required: false }
+      whisper-no: { condition: service_healthy, required: false }
+    # Runs as your own user, so PulseAudio/PipeWire accepts it. Set
+    # EMAKI_UID/EMAKI_GID in .env if `id -u` is not 1000.
+    user: "${EMAKI_UID:-${EKIRU_UID:-1000}}:${EMAKI_GID:-${EKIRU_GID:-1000}}"
+    read_only: true
+    tmpfs: [/tmp]
+    # The page is E-maki's screen, so it is reachable from your local
+    # network. It shows what the room talked about: set PANEL_TOKEN in .env
+    # to keep other devices out, or PANEL_BIND=127.0.0.1 for this machine
+    # only. Never forward port 8090 to the internet.
+    # The network microphone port (docs/network-mic.md) is published on
+    # NET_MIC_BIND. Left empty, it is only on 127.0.0.1 and E-maki does not
+    # listen on it. Audio crosses your network unencrypted: set PANEL_TOKEN
+    # so only senders that know it are heard.
+    ports:
+      - "${PANEL_BIND:-0.0.0.0}:8090:8090"
+      - "${NET_MIC_BIND:-127.0.0.1}:${NET_MIC_PORT:-10700}:10700"
+    # The API keys and PANEL_TOKEN come straight from .env (git-ignored),
+    # so a stale value exported in the shell cannot override them.
+    env_file: [{ path: .env, required: false }]
+    environment:
+      HOME: /tmp
+      PULSE_SERVER: "unix:/pulse/native"
+      GEMINI_IMAGE_MODEL: ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+      LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
+      # Quiet hours and the times on the frame use this; containers run in UTC otherwise.
+      TZ: ${TZ:-UTC}
+      # Only set when the matching option in .env is on.
+      NET_MIC_LISTEN: ${NET_MIC_BIND:+:10700}
+      WHISPER_URL_DA: ${WHISPER_DA_NO:+http://whisper-da:8081}
+      WHISPER_URL_NO: ${WHISPER_DA_NO:+http://whisper-no:8081}
+      LOCAL_IMAGE_URL: ${LOCAL_IMAGES:+http://sd:1234}
+      LOCAL_IMAGE_MODEL: ${LOCAL_IMAGE_MODEL:-FLUX.2 klein 4B}
+      LOCAL_IMAGE_SIZE: ${LOCAL_IMAGE_SIZE:-}
+    # configs/ is mounted, so editing a config only needs a restart.
+    # /data keeps what the settings page changes (no topics, no transcripts).
+    command: ["-config", "/configs/${EMAKI_CONFIG:-${EKIRU_CONFIG:-docker.json}}", "-settings", "/data/settings.json", "-mic"]
+    volumes:
+      - ./configs:/configs:ro
+      - emaki-data:/data
+      # The microphone: only the PulseAudio/PipeWire socket, nothing else
+      # from the desktop session. If the audio server restarts, restart
+      # emaki too (the mounted socket goes stale).
+      - type: bind
+        source: ${PULSE_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native}
+        target: /pulse/native
+        bind: { create_host_path: false }
+    networks: [local, default]
+    restart: unless-stopped
+
+networks:
+  local:
+    internal: true
+
+volumes:
+  whisper-models:
+  ollama:
+  emaki-data:
+  sd-models:
