@@ -59,7 +59,6 @@ Tell the people in the room.
 | --- | --- |
 | `settings.json` (next to `-settings`, in docker the `emaki-data` volume) | The options from the settings page, including the never-paint list you typed. No audio and nothing that was said. |
 | `password.json` (same folder) | A salted PBKDF2 hash of the settings page password, if you set one. |
-| `token` (same folder) | The random address of the page, made on the first start when `PANEL_TOKEN` is not set. |
 | `pictures/` (same folder), on unless you switch "Keep pictures over a restart" off | The pictures on the frame and in the queue, with each one's topic label, English picture description, style and times. Also how many pictures were made today and the labels of topics you removed, so the daily limit and a removal hold over a restart. In diary mode also the topics collected for the next morning, as label, picture description and times without a picture. No audio, no words that were said. |
 | `timeline/` (same folder), on unless you switch it off | Every picture made since, as a JPEG with a thumbnail, and its topic label, English picture description, style and time, for Pictures > History. No audio, no words that were said. |
 
@@ -91,7 +90,8 @@ whisper-server's, Ollama's and sd-server's logging if that matters to you.
 ## What the settings page shows
 
 The frame preview with its topic labels, the settings, and counts (segments
-heard, topics found, topics held back). It never shows transcripts. It lives at a private address, so only devices that have the address can open it; a password can be set on top. See [SECURITY.md](SECURITY.md).
+heard, topics found, topics held back). It never shows transcripts. Anyone on your network can open it unless you set
+a password; see [SECURITY.md](SECURITY.md).
 
 ## Compared with recording apps
 

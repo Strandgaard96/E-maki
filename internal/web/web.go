@@ -129,10 +129,6 @@ func (s *Server) Register(mux *http.ServeMux) {
 	if s.Token != "" {
 		pre = "/" + s.Token
 		mux.Handle("GET "+pre+"", http.RedirectHandler(pre+"/", http.StatusFound))
-		// The old address says where to look, not where the page is.
-		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "E-maki's page is at a private address. E-maki prints it when it starts:\n\n  docker compose logs emaki | grep \"settings page address\"\n\nIf you set PANEL_TOKEN in .env, it is /<PANEL_TOKEN>/ instead.", http.StatusNotFound)
-		})
 	}
 	files, _ := fs.Sub(static, "static")
 	page := func(name string) http.HandlerFunc {

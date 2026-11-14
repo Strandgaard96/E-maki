@@ -69,23 +69,6 @@ func LoadAuth(path string) (*Auth, error) {
 	return a, nil
 }
 
-// LoadToken reads the page's secret address from path, or makes a random
-// one and saves it there when the file does not exist yet. E-maki uses it
-// when no PANEL_TOKEN is set, so the page is not open to the whole network
-// out of the box.
-func LoadToken(path string) (string, error) {
-	b, err := os.ReadFile(path)
-	if err == nil {
-		if t := strings.TrimSpace(string(b)); t != "" {
-			return t, nil
-		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-	t := hex.EncodeToString(random(16))
-	return t, os.WriteFile(path, []byte(t+"\n"), 0o600)
-}
-
 // Enabled reports whether a password is set.
 func (a *Auth) Enabled() bool {
 	if a == nil {
