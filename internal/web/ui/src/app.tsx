@@ -414,9 +414,9 @@ const EMAKI_KEYS: (keyof Settings)[] = [
 function summary(s: State, d: Settings) {
   const layout = (
     {
-      collage: `Collage of up to ${d.tiles}`,
+      collage: `Most talked about, up to ${d.tiles}`,
       single: "One picture",
-      rolling: `Rolling, ${d.tiles} pictures`,
+      rolling: `The latest ${d.tiles}`,
     } as Record<string, string>
   )[d.layout];
   const when =
@@ -429,9 +429,11 @@ function summary(s: State, d: Settings) {
   const turn = ROTATE.find(([v]) => v === d.rotate_minutes);
   const rotate =
     d.rotate_minutes > 0 ? `, rotating ${turn ? String(turn[1]).toLowerCase() : `every ${d.rotate_minutes} min`}` : "";
+  // A topic heard once leaves at a tenth of its weight: about 3.3 half-lives.
+  const gone = Math.round(d.half_life_hours * 3.3);
   const fade =
     d.layout === "collage"
-      ? `. Tiles halve in ${d.half_life_hours >= 24 ? d.half_life_hours / 24 + " days" : d.half_life_hours + " hours"}`
+      ? `. A quiet topic leaves after about ${gone >= 48 ? Math.round(gone / 24) + " days" : gone + " hours"}`
       : "";
   return `${layout}, ${when}${quiet}${rotate}${fade}. ${s.wall.length} on the frame now.`;
 }
@@ -606,9 +608,10 @@ function Loading({ error }: { error: string }) {
 }
 
 const WALL_LEDE: Record<string, string> = {
-  collage: "The newest topic gets the big tile. Tiles fade as a topic stops coming up; pin one to keep it.",
+  collage:
+    "The topics talked about most, the newest biggest. A topic that stops coming up fades and leaves; pin one to keep it.",
   single: "Only the newest topic is on the frame. Pin it to keep it there for good.",
-  rolling: "The newest topic comes first, and the oldest drops off when the frame is full. Pin one to keep it.",
+  rolling: "The newest topics, the newest biggest. The oldest drops off when a new one comes in; pin one to keep it.",
 };
 
 function Wall({
@@ -2616,9 +2619,9 @@ const TILE_COUNTS = [2, 3, 4, 5, 6, 7, 8, 9];
 
 function Layout({ draft, set }: DraftProps) {
   const layouts: [string, string, string][] = [
-    ["collage", "Collage", "Up to 9 pictures. The newest is biggest; tiles fade over time."],
+    ["collage", "Most talked about", "Topics that come up a lot stay. One that goes quiet fades and leaves."],
     ["single", "One picture", "The newest topic fills the frame. Pin it to keep it."],
-    ["rolling", "Rolling", "A set number of pictures. Each new one is added and the oldest drops off."],
+    ["rolling", "Latest", "Always the newest topics. Each new one pushes the oldest off."],
   ];
   return (
     <Card title="Layout" tip={TIPS.layout}>
@@ -2707,39 +2710,32 @@ function Layout({ draft, set }: DraftProps) {
   );
 }
 
-// Small drawings of the three layouts, in the frame's proportions.
+// Small drawings of the three layouts: bars for the topics talked about
+// most, one picture, and a row with the newest first for the latest.
 function LayoutIcon({ kind, on }: { kind: string; on: boolean }) {
-  const cells = (
+  const hi = on ? "fill-primary" : "fill-muted-foreground/50";
+  const lo = "fill-muted-foreground/30";
+  const shapes: [number, number, number, number, string][] = (
     {
       collage: [
-        [0, 0, 2, 2],
-        [2, 0, 1, 1],
-        [3, 0, 1, 1],
-        [2, 1, 1, 1],
-        [3, 1, 1, 1],
-        [0, 2, 1, 1],
-        [1, 2, 1, 1],
-        [2, 2, 1, 1],
-        [3, 2, 1, 1],
+        [1, 5, 9, 27, hi],
+        [12, 11, 9, 21, lo],
+        [23, 17, 9, 15, lo],
+        [34, 24, 9, 8, lo],
       ],
-      single: [[0, 0, 4, 3]],
+      single: [[1, 1, 42, 31, hi]],
       rolling: [
-        [0, 0, 2, 3],
-        [2, 0, 2, 3],
+        [1, 6, 18, 21, hi],
+        [21, 9, 10, 15, lo],
+        [33, 11, 7, 11, lo],
+        [42, 13, 1, 7, lo],
       ],
-    } as Record<string, number[][]>
+    } as Record<string, [number, number, number, number, string][]>
   )[kind];
   return (
     <svg class="h-9 w-12" viewBox="0 0 44 33" aria-hidden="true">
-      {cells.map(([c, r, cs, rs], i) => (
-        <rect
-          x={c * 11 + 1}
-          y={r * 11 + 1}
-          width={cs * 11 - 2}
-          height={rs * 11 - 2}
-          rx="1.5"
-          class={i === 0 && on ? "fill-primary" : "fill-muted-foreground/30"}
-        />
+      {shapes.map(([x, y, w, h, c]) => (
+        <rect x={x} y={y} width={w} height={h} rx="1.5" class={c} />
       ))}
     </svg>
   );
@@ -2861,7 +2857,7 @@ function Timing({ state, draft, set }: StateProps) {
         <Field
           label="Fade time"
           tip={TIPS.half_life_hours}
-          help="Time for a tile to shrink to half size. Talking about it again makes it grow back."
+          help="A topic heard once leaves after about three times this. Talking about it again keeps it."
         >
           <select
             class="select w-full"

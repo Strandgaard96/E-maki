@@ -66,7 +66,7 @@ export const TIPS = {
 
   // Frame > Layout
   layout: {
-    text: "How the pictures share the frame. Collage keeps the most talked-about topics. One picture shows only the newest. Rolling keeps the newest few.",
+    text: "Which topics are on the frame. Most talked about keeps the topics that come up most, and a quiet one leaves. One picture shows only the newest. Latest keeps the newest few, however much each was talked about.",
   },
   tiles: { text: "The most pictures on the frame at once." },
   arrange: {
@@ -89,7 +89,9 @@ export const TIPS = {
   quiet_hours: {
     text: "No new pictures go up between these times. Topics still collect and go up when quiet hours end.",
   },
-  half_life_hours: { text: "How long it takes a picture to shrink to half its size when nobody talks about it." },
+  half_life_hours: {
+    text: "How long it takes a topic nobody mentions to count half as much. One heard once leaves after about three times this; one talked about a lot stays longer.",
+  },
 
   // Frame > Panel
   panel_size: { text: "Your e-ink screen's resolution. The picture is drawn at this size." },
