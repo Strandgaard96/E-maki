@@ -103,7 +103,7 @@ func Check(cs []Choice, id string) error {
 	}
 	for _, c := range cs {
 		if c.ID == id {
-			return fmt.Errorf("%s is not set up: %s, then restart E-maki", c.Name, c.Setup)
+			return fmt.Errorf("%s is not set up: %s, then run docker compose up -d", c.Name, c.Setup)
 		}
 	}
 	return fmt.Errorf("unknown image provider %q", id)

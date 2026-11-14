@@ -1,5 +1,7 @@
-// Package config loads a hardware profile. Everything that differs between a
-// laptop, a Pi 5 and a Jetson lives here, not in code.
+// Package config loads a hardware profile: how this machine is wired (the
+// sidecar addresses, segment length and the like). Each setting has one
+// home. What the settings page changes lives only in its settings file,
+// what .env sets only in the environment, and the rest in the profile.
 package config
 
 import (
@@ -8,9 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"log"
 	"net"
 	"net/url"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -29,11 +33,12 @@ type Config struct {
 	WhisperURL    string            `json:"whisper_url"`
 	WhisperByLang map[string]string `json:"whisper_by_lang"`
 
-	LLMURL   string `json:"llm_url"`
-	LLMModel string `json:"llm_model"` // the LLM_MODEL environment variable overrides it
-	// reasoning ("none", "low", ...) is sent as reasoning_effort, e.g.
-	// "none" so Qwen 3.5 answers without thinking.
-	LLMReasoning string `json:"llm_reasoning"`
+	LLMURL string `json:"llm_url"`
+	// The topic model and its reasoning_effort ("none" so Qwen 3.5 answers
+	// without thinking, empty to send none), from LLM_MODEL and
+	// LLM_REASONING in the environment (see Env).
+	LLMModel     string `json:"-"`
+	LLMReasoning string `json:"-"`
 
 	SegmentSeconds int `json:"segment_seconds"` // audio per transcription call
 	// An open microphone that sends no audio this long is reopened (a USB
@@ -59,18 +64,17 @@ type Config struct {
 	TimelineRowPx       int `json:"timeline_row_px"`
 
 	// Where to listen for a network microphone (audio.NetMic), e.g.
-	// ":10700". Empty is off. The NET_MIC_LISTEN environment variable
-	// overrides it. The settings page then offers it as an input.
-	NetMicListen string `json:"net_mic_listen"`
+	// ":10700", from NET_MIC_LISTEN in the environment. Empty is off. The
+	// settings page then offers it as an input.
+	NetMicListen string `json:"-"`
 
-	// The keys the settings page can change. They sit at the top level of
-	// the profile like the rest.
-	Settings
+	// What the settings page changes. Never read from the profile.
+	Settings `json:"-"`
 }
 
-// Settings are the options the settings page can change while E-maki runs.
-// They are saved to their own file, which overrides the profile, so a
-// profile stays a clean template. They hold no topics and no transcript text.
+// Settings are the options the settings page changes while E-maki runs. They
+// start from Defaults and are saved to their own file, the only place they
+// live. They hold no topics and no transcript text.
 type Settings struct {
 	Mode string `json:"mode"` // "diary" or "party"
 	// When diary mode paints the topics it collected, like "07:00". Empty
@@ -191,24 +195,92 @@ func (s Settings) Button(b string) string {
 // Categories are the sensitive categories block_sensitive can name.
 var Categories = []string{"health", "money", "relationship", "confidential_work"}
 
+// DefaultLLM is the topic model when LLM_MODEL is not set.
+const DefaultLLM = "qwen3.5:4b"
+
+// Defaults are the settings before anything is changed on the settings page.
+func Defaults() Settings {
+	return Settings{
+		Mode: "party", MinSpeechDBFS: -50, WindowSegments: 8, ExtractEvery: 4,
+		HalfLifeHours: 48, MinConfidence: 0.5, DailyImageCap: 50,
+		BlockSensitive: slices.Clone(Categories), PanelPoll: 5,
+	}
+}
+
+// moved says where a key that a profile no longer holds is set now: each
+// settings page key, and the keys .env took over.
+var moved = func() map[string]string {
+	m := map[string]string{
+		"llm_model":      "with LLM_MODEL in .env",
+		"llm_reasoning":  "with LLM_REASONING in .env",
+		"net_mic_listen": "with NET_MIC_BIND in .env (NET_MIC_LISTEN without docker)",
+	}
+	t := reflect.TypeFor[Settings]()
+	for i := range t.NumField() {
+		if k, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ","); k != "" && k != "-" {
+			m[k] = "on the settings page"
+		}
+	}
+	return m
+}()
+
 // Load reads and checks a profile. A key it does not know is an error: a
-// misspelt block_sensitive must not silently send everything.
+// misspelt key must not be silently ignored. A key that now lives on the
+// settings page or in .env is skipped with a warning, so an older profile
+// still starts.
 func Load(path string) (Config, error) {
 	var c Config
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return c, err
 	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(b, &keys); err != nil {
+		return c, fmt.Errorf("%s: %w", path, err)
+	}
+	for k := range keys {
+		if where, ok := moved[k]; ok {
+			log.Printf("%s: %s is set %s now; ignoring it in the profile", path, k, where)
+			delete(keys, k)
+		}
+	}
+	b, _ = json.Marshal(keys)
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&c); err != nil {
 		return c, fmt.Errorf("%s: %w", path, err)
 	}
+	c.Settings = Defaults()
+	c.LLMModel = DefaultLLM
+	c.LLMReasoning = "none"
 	c.defaults()
 	if err := c.validate(); err != nil {
 		return c, fmt.Errorf("%s: %w", path, err)
 	}
 	return c, nil
+}
+
+// Env applies what .env sets, from environ ("KEY=value" pairs): LLM_MODEL,
+// LLM_REASONING (set but empty sends no reasoning_effort), NET_MIC_LISTEN
+// and a speech server per language, WHISPER_URL_DA=http://whisper-da:8081.
+func (c *Config) Env(environ []string) {
+	for _, kv := range environ {
+		k, v, _ := strings.Cut(kv, "=")
+		v = strings.TrimSpace(v)
+		switch {
+		case k == "LLM_MODEL" && v != "":
+			c.LLMModel = v
+		case k == "LLM_REASONING":
+			c.LLMReasoning = v
+		case k == "NET_MIC_LISTEN":
+			c.NetMicListen = v
+		case strings.HasPrefix(k, "WHISPER_URL_") && v != "":
+			if c.WhisperByLang == nil {
+				c.WhisperByLang = map[string]string{}
+			}
+			c.WhisperByLang[strings.ToLower(strings.TrimPrefix(k, "WHISPER_URL_"))] = v
+		}
+	}
 }
 
 func (c Config) validate() error {

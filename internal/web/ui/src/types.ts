@@ -89,6 +89,7 @@ export interface Status {
   saved: boolean;
   started: string;
   password: boolean;
+  env: { label: string; var: string; value: string }[] | null;
 }
 
 export interface Activity {

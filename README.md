@@ -42,10 +42,10 @@ An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pic
 4. **Paint it.** A new topic becomes a short image prompt, which is sent to an image API with your own key. This prompt is the only thing about your conversations that leaves your network. Or draw the pictures locally with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp), and nothing leaves at all.
 5. **Show it.** The picture joins the collage. Topics that keep coming up grow, one-offs fade. The page is dithered for a Spectra 6 e-ink panel and served over HTTP.
 
-Two modes: **Continuous** paints a topic as soon as it comes up, for when guests are over. **Diary** buys no pictures during the day. It collects the topics that came up at least twice, and once a day (`diary_at`, 07:00 by default) paints the top few, so you wake up to yesterday on the wall and the frame refreshes once a day. Diary is meant for a frame on the wall; `jetson.json` uses it. The Docker and laptop profiles use Continuous mode (`"mode": "party"` in the file) so you see results on the first run. Switch on the settings page.
+Two modes: **Continuous** paints a topic as soon as it comes up, for when guests are over. **Diary** buys no pictures during the day. It collects the topics that came up at least twice, and once a day (`diary_at`, 07:00 by default) paints the top few, so you wake up to yesterday on the wall and the frame refreshes once a day. Diary is meant for a frame on the wall. A new install starts in Continuous mode so you see results on the first run. Switch under Frame > Timing on the settings page.
 
 > [!TIP]
-> E-maki is a single Go binary. Speech-to-text and the LLM run as separate containers it talks to over HTTP, and differences between machines live in [config profiles](configs/). It runs on a laptop today, with integrated GPU support through Vulkan. The page is a plain PNG, so any browser can show it.
+> E-maki is a single Go binary. Speech-to-text and the LLM run as separate containers it talks to over HTTP, and how it reaches them lives in a small [config profile](configs/). It runs on a laptop today, with integrated GPU support through Vulkan. The page is a plain PNG, so any browser can show it.
 
 ## Privacy
 
@@ -54,10 +54,10 @@ E-maki is an always-on microphone, so:
 - Audio lives only in RAM and is never written to disk.
 - Transcripts live only in an in-memory rolling window. They are never written to disk or logged, and they stay on your network unless you switch on an external topic model (below). Logs show sound levels, languages and word counts, not words.
 - Speech-to-text and the topic LLM run on your own machine, on a Docker network with no route to the internet. Their models are downloaded by separate one-shot containers that never see audio or text.
-- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own key. Without a key nothing does. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Set `block_names` in the config profile to also refuse prompts that repeat a name it heard.
+- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own key. Without a key nothing does. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Switch on **Spoken names** under Listening > Privacy to also refuse prompts that repeat a name it heard.
 - Optional, off by default: an external topic model (OpenAI, Gemini, OpenRouter, Groq or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under Listening > Topics, which shows a warning while it is on.
-- Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, with `block_sensitive` in the config profile. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked in every shipped profile. The local LLM makes the call, so it will sometimes get it wrong.
-- The page itself shows what was talked about, and any device on your local network can open it. Set `PANEL_TOKEN` in `.env` to put it behind a secret address; see [Lock it down](docs/setup.md#lock-it-down).
+- Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, under Listening > Privacy. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked by default. The local LLM makes the call, so it will sometimes get it wrong.
+- The page itself shows what was talked about, and any device on your local network can open it. Set a password under System > Security; see [Lock it down](docs/setup.md#lock-it-down).
 
 Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists everything E-maki keeps, logs and sends.
 
@@ -94,9 +94,12 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
 
 ## Configure
 
-- **`.env`** (copy from [.env.example](.env.example)): image API keys, the Whisper and topic models, the GPU and other extras, the mic socket. See [Setup](docs/setup.md#2-settings-in-env).
-- **The settings page** (`http://<your-brain>:8090/`): what the frame shows, and the listening and topic settings. What you change there is saved separately and overrides the profile.
-- **`configs/*.json`**: one profile per setup (`docker.json`, `docker-gemma.json`, `laptop.json`, `jetson.json`). Every key is explained in **[Configs](configs/README.md)**.
+Every setting lives in one place, so the two never disagree:
+
+- **The settings page** (`http://<your-brain>:8090/`): everything about what the frame shows, listening, topics, privacy and which image provider draws. Hover the (i) next to a setting to see what it does.
+- **`.env`** (copy from [.env.example](.env.example)): API keys, the Whisper and topic models, the GPU and other extras, the mic socket. Change it, then run `docker compose up -d`. System > Services shows what it is set to. See [Setup](docs/setup.md#2-settings-in-env).
+
+How E-maki reaches its servers lives in a small profile in [configs/](configs/README.md). With docker you don't need to touch it.
 
 ## Run locally (for development)
 

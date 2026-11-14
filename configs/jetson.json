@@ -1,24 +1,11 @@
 {
   "profile": "jetson",
   "listen": ":8090",
-  "mode": "diary",
   "whisper_url": "http://localhost:8081",
   "whisper_by_lang": {
     "da": "http://localhost:8082",
     "no": "http://localhost:8083"
   },
   "llm_url": "http://localhost:11434",
-  "llm_model": "qwen3.5:4b",
-  "llm_reasoning": "none",
-  "segment_seconds": 30,
-  "min_speech_dbfs": -50,
-  "window_segments": 20,
-  "extract_every": 6,
-  "half_life_hours": 48,
-  "min_confidence": 0.6,
-  "block_sensitive": ["health", "money", "relationship", "confidential_work"],
-  "block_names": true,
-  "daily_image_cap": 10,
-  "panel_rotation": 0,
-  "panel_poll_minutes": 10
+  "segment_seconds": 30
 }
