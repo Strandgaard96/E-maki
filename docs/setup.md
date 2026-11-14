@@ -119,7 +119,7 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
   | FRAME_URL=http://<your-brain>:8090 bash
 ```
 
-The four buttons, top to bottom, do this out of the box. Change them under **Frame > Panel**:
+A new install has no buttons, since most frames never press one. For the Inky's four, set **Buttons** to 4 under **Frame > Panel**. Top to bottom they then do this, and you can change each one there:
 
 | Button | Does |
 | --- | --- |
@@ -132,7 +132,7 @@ The change shows at the frame's next refresh.
 
 For a 7.3", 5.7" or 4" Inky, pick the size under **Frame > Panel**. Rotate it there too, for portrait.
 
-**ESP32 battery frame and other screens:** see [fugleramme/clients](https://github.com/fugleramme/clients) and [Hardware](hardware.md#battery-frame-esp32).
+**ESP32 battery frame and other screens:** see [fugleramme/clients](https://github.com/fugleramme/clients) and [Hardware](hardware.md#battery-frame-esp32). For anything else that can fetch a picture, see [Any device](hardware.md#any-device).
 
 To pause listening from Home Assistant or a script, see the **[HTTP API](api.md)**.
 

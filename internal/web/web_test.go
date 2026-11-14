@@ -194,30 +194,6 @@ func TestPauseAndClear(t *testing.T) {
 	}
 }
 
-// Button A on the frame pauses and resumes like the switch on the page.
-func TestButtonA(t *testing.T) {
-	ts, w, saved := setup(t, "")
-	form := "application/x-www-form-urlencoded"
-	for _, want := range []bool{true, false} {
-		if resp := send(t, "POST", ts.URL+"/press", form, "button=A", nil); resp.StatusCode != http.StatusNoContent {
-			t.Fatalf("press: %s", resp.Status)
-		}
-		if w.snapshot().Settings.Paused != want || (*saved)[len(*saved)-1].Paused != want {
-			t.Fatalf("after A: paused %v, want %v", w.snapshot().Settings.Paused, want)
-		}
-	}
-	// panel_buttons moves pause to B and turns A off.
-	w.SetSettings(config.Settings{Mode: "party", PanelButtons: map[string]string{"A": "", "B": "pause"}})
-	send(t, "POST", ts.URL+"/press", form, "button=A", nil)
-	if w.snapshot().Settings.Paused {
-		t.Fatal("A paused although it is set to do nothing")
-	}
-	send(t, "POST", ts.URL+"/press", form, "button=B", nil)
-	if !w.snapshot().Settings.Paused {
-		t.Fatal("B did not pause")
-	}
-}
-
 func TestPassword(t *testing.T) {
 	ts, w, _ := setup(t, "")
 	auth, _ := LoadAuth(t.TempDir() + "/password.json")

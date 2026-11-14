@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"maps"
 	"net"
 	"net/url"
 	"os"
@@ -150,8 +149,8 @@ type Settings struct {
 	// what each does: "pause" (pause or resume listening), "remove" (take
 	// the last picture off), "pin" (pin it or let it fade again), "next"
 	// (put the next waiting picture up) or "" for nothing. Only the buttons
-	// listed exist; {} is a frame without buttons. Unset (null) is the four
-	// buttons of an Inky Impression (DefaultButtons).
+	// listed exist. Unset (null) or {} is a frame without buttons, the
+	// default: most frames only fetch the picture and never press.
 	PanelButtons map[string]string `json:"panel_buttons"`
 
 	// The panel's resolution as its maker gives it, landscape: 1600x1200
@@ -168,17 +167,13 @@ type Settings struct {
 // Buttons are the letters a frame's buttons can send, and ButtonActions what
 // they can do.
 var (
-	Buttons        = []string{"A", "B", "C", "D", "E", "F", "G", "H"}
-	ButtonActions  = []string{"pause", "remove", "pin", "next", ""}
-	DefaultButtons = map[string]string{"A": "pause", "B": "remove", "C": "pin", "D": "next"}
+	Buttons       = []string{"A", "B", "C", "D", "E", "F", "G", "H"}
+	ButtonActions = []string{"pause", "remove", "pin", "next", ""}
 )
 
 // Button is what a button does with these settings: "" for a button the
 // frame doesn't have.
 func (s Settings) Button(b string) string {
-	if s.PanelButtons == nil {
-		return DefaultButtons[b]
-	}
 	return s.PanelButtons[b]
 }
 
@@ -381,7 +376,7 @@ func (c *Config) defaults() {
 		c.TimelineRowPx = 220
 	}
 	if c.PanelButtons == nil {
-		c.PanelButtons = maps.Clone(DefaultButtons)
+		c.PanelButtons = map[string]string{}
 	}
 	if c.PanelWidth == 0 && c.PanelHeight == 0 {
 		c.PanelWidth, c.PanelHeight = 1600, 1200

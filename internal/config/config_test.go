@@ -143,7 +143,8 @@ func TestPanelButtons(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Button("A") != "pause" || c.Button("D") != "next" {
+	// No buttons unless the frame has some: most clients never press.
+	if len(c.PanelButtons) != 0 || c.Button("A") != "" {
 		t.Fatalf("defaults: %v", c.PanelButtons)
 	}
 	s := c.Settings
@@ -157,16 +158,18 @@ func TestPanelButtons(t *testing.T) {
 		t.Fatalf("no buttons: %v, %v", c3.PanelButtons, err)
 	}
 	// A settings file with fewer buttons replaces the profile's, not merges.
+	s.PanelButtons = map[string]string{"A": "pause", "B": "remove", "C": "pin", "D": "next"}
+	four, err := c.With(s)
+	if err != nil {
+		t.Fatal(err)
+	}
 	path := t.TempDir() + "/settings.json"
 	s.PanelButtons = map[string]string{"A": "next"}
 	if err := SaveSettings(path, s); err != nil {
 		t.Fatal(err)
 	}
-	if c4, err := LoadSettings(path, c); err != nil || len(c4.PanelButtons) != 1 || c4.Button("A") != "next" {
+	if c4, err := LoadSettings(path, four); err != nil || len(c4.PanelButtons) != 1 || c4.Button("A") != "next" {
 		t.Fatalf("loaded: %v, %v", c4.PanelButtons, err)
-	}
-	if DefaultButtons["A"] != "pause" {
-		t.Fatal("With changed the defaults")
 	}
 	for _, bad := range []map[string]string{{"I": "pause"}, {"A": "dance"}} {
 		s.PanelButtons = bad
