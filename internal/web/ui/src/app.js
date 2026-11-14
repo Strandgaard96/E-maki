@@ -1058,7 +1058,7 @@ function SectionTab({ id, sections, state, draft, set, paused, onState, onSigned
   return html`
     <main id=${"panel-" + id} role="tabpanel" aria-labelledby=${"tab-" + id}
       class="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start">
-      <nav ref=${nav} aria-label="Sections" class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
+      <nav ref=${nav} aria-label=${id[0].toUpperCase() + id.slice(1) + " sections"} class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
         ${sections.map(
           ([k, name]) => html`
           <button type="button" aria-current=${section === k ? "page" : undefined} onClick=${() => go(k)}
@@ -1610,7 +1610,6 @@ function Privacy({ draft, set }) {
         text='Any picture whose description repeats a name that was said out loud. It cannot tell people from places, so "Lofoten" goes too.' />
       <${NeverPaint} value=${draft.never_paint} onChange=${(v) => set({ never_paint: v })} />
       ${blocked.length === 0 && !draft.block_names && !(draft.never_paint || []).length && html`<${Note} tone="warn">Nothing is held back: every topic can become a picture.<//>`}
-    <//>
     <//>`;
 }
 
