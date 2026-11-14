@@ -5,6 +5,7 @@ package memory
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -43,6 +44,11 @@ type Settings struct {
 	Every time.Duration
 	// NewestBig puts the newest topic first (the big tile) without Newest.
 	NewestBig bool
+	// RotateEvery shows the pictures that do not fit in turn: when more
+	// topics could be on the wall than MaxTiles, the tiles that are not
+	// pinned are replaced by the next ones this often. 0 is off. The wall
+	// does not change in the quiet hours.
+	RotateEvery time.Duration
 	// Quiet hours, in minutes after midnight local time: no new tiles go
 	// up from QuietFrom until QuietTo. Equal values are off.
 	QuietFrom, QuietTo int
@@ -552,10 +558,34 @@ func (m *Memory) Wall(now time.Time) []*Topic {
 			out[0] = t
 		}
 	}
+	m.rotate(out, now)
 	if len(out) > m.s.MaxTiles {
 		out = out[:m.s.MaxTiles]
 	}
 	return out
+}
+
+// rotate turns the topics that are not pinned so that the next MaxTiles of
+// them come first, one page further every RotateEvery, counted in local time.
+func (m *Memory) rotate(out []*Topic, now time.Time) {
+	pinned := 0
+	for pinned < len(out) && out[pinned].Pinned {
+		pinned++
+	}
+	rest, free := out[pinned:], m.s.MaxTiles-pinned
+	if m.s.RotateEvery <= 0 || free <= 0 || len(rest) <= free {
+		return
+	}
+	if m.s.quiet(now) { // hold the page the quiet hours began with
+		since := (now.Hour()*60 + now.Minute() - m.s.QuietFrom + 24*60) % (24 * 60)
+		now = now.Truncate(time.Minute).Add(-time.Duration(since) * time.Minute)
+	}
+	_, off := now.Zone()
+	step := (now.Unix() + int64(off)) / int64(m.s.RotateEvery/time.Second)
+	k := int(step % int64(len(rest)) * int64(free) % int64(len(rest)))
+	slices.Reverse(rest[:k])
+	slices.Reverse(rest[k:])
+	slices.Reverse(rest)
 }
 
 // Clear takes every tile that is not pinned off the wall and forgets it,

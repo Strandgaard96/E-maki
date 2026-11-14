@@ -426,3 +426,28 @@ func TestRedraw(t *testing.T) {
 		t.Fatalf("unknown topic: %v", err)
 	}
 }
+
+// With rotation on, Tick redraws the frame when the next set of pictures is
+// due, without any new topic.
+func TestTickRotates(t *testing.T) {
+	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
+	p := &Pipeline{
+		Mem: memory.New(memory.Settings{HalfLife: time.Hour, MinConfidence: 0.5, MinMentions: 1,
+			DailyImageCap: 10, MaxTiles: 1, MinWeight: 0.1, Newest: true, RotateEvery: time.Hour}),
+		Images: imagegen.Placeholder{}, Panel: &panel.Server{},
+		WindowSegments: 1, ExtractEvery: 1, Now: func() time.Time { return now },
+	}
+	for _, label := range []string{"garden gnome theft", "rollerblading date"} {
+		p.Extractor = fixed{Topic: label, Confidence: 0.9, VisualPrompt: "a picture", Sensitive: "none"}
+		if err := feed(p, "synthetic talk"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p.Tick()
+	before, tag := p.Wall()[0].Label, p.Panel.ETag()
+	now = now.Add(time.Hour)
+	p.Tick()
+	if after := p.Wall()[0].Label; after == before || p.Panel.ETag() == tag {
+		t.Fatalf("an hour later the frame still shows %q (etag changed: %v)", after, p.Panel.ETag() != tag)
+	}
+}

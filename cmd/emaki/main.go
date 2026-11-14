@@ -137,7 +137,7 @@ func main() {
 		return memory.Settings{
 			HalfLife: c.HalfLife(), MinConfidence: c.MinConfidence, MinMentions: c.MinMentions(),
 			DailyImageCap: c.DailyImageCap, MaxTiles: tiles, MinWeight: 0.1, BlockFor: 7 * 24 * time.Hour,
-			Newest: c.Layout != "collage", Every: every,
+			Newest: c.Layout != "collage", Every: every, RotateEvery: time.Duration(c.RotateMinutes) * time.Minute,
 			NewestBig: c.NewestBig, QuietFrom: from, QuietTo: to,
 			Diary: c.Mode == "diary", DiaryAt: diaryAt,
 		}

@@ -49,6 +49,7 @@ a value out of range stops it with a message, instead of being ignored.
 | `image_provider` | Who draws the pictures: `local`, `gemini`, `openai`, `openrouter` or `placeholder`. Empty (default) takes the first one set up in `.env`, local first. Keys and addresses stay in `.env` |
 | `layout`, `tiles` | `collage` (default: most talked-about biggest, tiles fade), `single` (newest topic only; pin to keep it) or `rolling` (newest first, the oldest drops off). `tiles` is the most pictures, 1 to 9 (default 9) |
 | `new_every_minutes` | Least minutes between two new pictures; new topics wait in line. 0 (default) puts each up at once |
+| `rotate_minutes` | When more pictures are saved than fit, show the others in turn, a new set this often. The pinned ones stay, and nothing changes in the quiet hours. 0 (default) is off |
 | `quiet_from`, `quiet_to` | Quiet hours like `"22:00"` and `"07:00"`: no new pictures go up in between. Times follow `TZ` |
 | `newest_big`, `hide_captions` | Collage: the newest topic takes the big tile. Leave the topic names off the pictures |
 | `arrange` | `hero` (default: the first picture big, the rest on a grid), `even` (rows of pictures the same size) or `mosaic` (mixed sizes; a new mosaic with the first new page each day) |
