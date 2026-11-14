@@ -1,35 +1,55 @@
-# Builds the whisper and sd sidecar images, CPU and Vulkan, when their files
-# change. They compile whisper.cpp and stable-diffusion.cpp from source, which
-# takes a while, so this does not run on every pull request.
+# Builds the whisper and sd sidecar images, CPU and Vulkan. They compile
+# whisper.cpp and stable-diffusion.cpp from source (sd takes over 15 minutes),
+# so an image is only built when its own files change, or by hand from the
+# Actions tab. Layers are cached, so later pushes to the same PR are quick.
 name: Sidecars
 
 on:
-  push:
-    branches: [main]
-    paths: [docker/**, docker-compose*.yml, .github/workflows/sidecars.yml]
   pull_request:
-    paths: [docker/**, docker-compose*.yml, .github/workflows/sidecars.yml]
+    paths: [docker/whisper.Dockerfile, docker/whisper-entrypoint.sh, docker/sd.Dockerfile, docker/sd-entrypoint.sh, .github/workflows/sidecars.yml]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read # paths-filter lists the PR's files
 
 concurrency:
   group: sidecars-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ github.event_name == 'workflow_dispatch' && '["whisper","sd"]' || steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            whisper: ['docker/whisper*', .github/workflows/sidecars.yml]
+            sd: ['docker/sd*', .github/workflows/sidecars.yml]
+
   build:
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        image: [whisper, sd]
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
         gpu: ["", vulkan]
     name: ${{ matrix.image }} ${{ matrix.gpu || 'cpu' }}
     steps:
-      - uses: actions/checkout@v5
-      - name: build
-        run: |
-          arg=$([ "${{ matrix.image }}" = whisper ] && echo WHISPER_GPU || echo SD_GPU)
-          docker build -f docker/${{ matrix.image }}.Dockerfile --build-arg "$arg=${{ matrix.gpu }}" .
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/${{ matrix.image }}.Dockerfile
+          build-args: ${{ matrix.image == 'whisper' && 'WHISPER_GPU' || 'SD_GPU' }}=${{ matrix.gpu }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.gpu || 'cpu' }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.gpu || 'cpu' }}

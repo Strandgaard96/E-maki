@@ -16,7 +16,7 @@ WORKDIR /src
 # submodules.
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DSD_SERVER_BUILD_FRONTEND=OFF -DSD_WEBP=OFF -DSD_WEBM=OFF \
     $([ "$SD_GPU" = vulkan ] && echo -DSD_VULKAN=ON) \
- && cmake --build build -j --target sd-server
+ && cmake --build build -j"$(nproc)" --target sd-server
 
 FROM debian:trixie-slim
 ARG SD_GPU=

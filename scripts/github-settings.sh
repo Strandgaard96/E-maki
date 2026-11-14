@@ -23,10 +23,10 @@ TOPICS=(e-ink spectra6 picture-frame speech-to-text whisper ollama llm
 
 RULESET_NAME="main"
 # Status checks a PR must pass before it can merge, as they are named on a PR
-# (the CI job names, e.g. "go"). Leave empty until CI settles. Careful: CI
-# skips docs-only changes, and a required check that never runs blocks the
-# merge, so only list checks that run on every PR.
-REQUIRED_CHECKS=()
+# (the CI job names). Each reports on every PR: a job whose files didn't change
+# is skipped, which counts as passed. A check that never runs blocks the merge,
+# so don't add the Sidecars jobs.
+REQUIRED_CHECKS=(lint go ui docker)
 
 # ---- Arguments ------------------------------------------------------------
 

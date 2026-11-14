@@ -1,4 +1,5 @@
 # E-maki
+
 A picture frame that listens to the room and paints what you talk about. Speech-to-text and topic spotting run locally, each topic becomes a cartoon, and the cartoons fill a collage on a colour e-ink panel, a TV or any screen.
 
 <p align="center">
