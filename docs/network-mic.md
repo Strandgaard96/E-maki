@@ -24,7 +24,7 @@ One sender at a time. A new connection replaces the old one, so a sender that re
 arecord -q -f S16_LE -r 16000 -c 1 -t raw | nc <your-brain> 10700
 ```
 
-E-maki only hears a sender that first sends the page's token on its own line. That is your `PANEL_TOKEN`, or the one E-maki made (`docker compose exec emaki cat /data/token`):
+With a `PANEL_TOKEN`, send it first on its own line:
 
 ```bash
 (echo "$PANEL_TOKEN"; arecord -q -f S16_LE -r 16000 -c 1 -t raw) | nc <your-brain> 10700
@@ -36,4 +36,4 @@ Wrap it in a systemd service with `Restart=always` to keep it running.
 
 ## Privacy
 
-Audio crosses your local network unencrypted. E-maki still keeps it in memory only and never writes it to disk. Only senders that know the token are heard (unless you set `PANEL_OPEN=1`). Keep `NET_MIC_BIND` to your local network, and never forward the port to the internet.
+Audio crosses your local network unencrypted. E-maki still keeps it in memory only and never writes it to disk. Set `PANEL_TOKEN` so only senders that know it are heard, keep `NET_MIC_BIND` to your local network, and never forward the port to the internet.

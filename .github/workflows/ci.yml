@@ -103,6 +103,17 @@ jobs:
       - run: npm run build
       - name: built page is committed
         run: git diff --exit-code -- ../static || { echo "Run npm run build in internal/web/ui and commit the result."; exit 1; }
+      # Click through every tab and section of the real page (offline, with
+      # the synthetic script) and fail on a script error or an empty section.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: every tab and section opens
+        run: |
+          go build -o /tmp/emaki ../../../cmd/emaki
+          (cd ../../.. && PANEL_OPEN=1 /tmp/emaki -script testdata/party.txt > /tmp/emaki.log 2>&1 &)
+          for _ in $(seq 30); do curl -sf http://localhost:8090/ >/dev/null && break; sleep 1; done
+          node smoke.mjs http://localhost:8090/ || { cat /tmp/emaki.log; exit 1; }
 
   docker:
     needs: changes

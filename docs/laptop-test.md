@@ -20,7 +20,7 @@ docker compose up --build
 
 `.env` is git-ignored. Without a key the tiles are coloured placeholders and only the captions show what E-maki understood. With a key, each new topic costs one Gemini image (`gemini-3.1-flash-image`, set `GEMINI_IMAGE_MODEL` to change it), capped per day on the settings page (System > Image provider). Only the English image prompt is sent to Google; audio and transcripts stay on the laptop.
 
-The first start builds whisper-server and downloads the Whisper model (~550 MB) and the topic LLM (`qwen3.5:4b` by default, ~3.4 GB), so give it a while. Then open the settings page at the address E-maki prints (`docker compose logs emaki | grep "settings page address"`; put the laptop's IP in place of `localhost` to open it from a phone on the same network). It shows the frame and updates as you talk.
+The first start builds whisper-server and downloads the Whisper model (~550 MB) and the topic LLM (`qwen3.5:4b` by default, ~3.4 GB), so give it a while. Then open the settings page at <http://localhost:8090/> (or `http://<laptop-ip>:8090/` from a phone on the same network). It shows the frame and updates as you talk.
 
 The E-maki log shows one line per 15 s segment: its level, the detected language and the word count (never the words), and one line per topic decision.
 

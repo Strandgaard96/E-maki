@@ -1058,7 +1058,7 @@ function SectionTab({ id, sections, state, draft, set, paused, onState, onSigned
   return html`
     <main id=${"panel-" + id} role="tabpanel" aria-labelledby=${"tab-" + id}
       class="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start">
-      <nav ref=${nav} aria-label="Sections" class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
+      <nav ref=${nav} aria-label=${id[0].toUpperCase() + id.slice(1) + " sections"} class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
         ${sections.map(
           ([k, name]) => html`
           <button type="button" aria-current=${section === k ? "page" : undefined} onClick=${() => go(k)}
@@ -1432,8 +1432,8 @@ function Security({ state, onState, onSignedOut }) {
   };
   return html`
     <${Card} title="Page password"
-      intro="A password on top of the page's address. The frame's picture and buttons need no password, because e-ink frames can't sign in. The secret address guards those.">
-      <${Note} tone=${has || state.status.locked ? "ok" : "warn"}>${has ? "This page is locked with a password." : state.status.locked ? "No password: anyone who has this page's address can change the frame and pause listening." : "No password and no secret address: anyone on your network can change the frame and pause listening."}<//>
+      intro="Without a password, anyone on your network can open this page. The frame's picture and buttons stay open, because e-ink frames can't sign in. PANEL_TOKEN guards those.">
+      <${Note} tone=${has ? "ok" : "warn"}>${has ? "This page is locked with a password." : "No password yet: anyone on your network can change the frame and pause listening."}<//>
       <form class="grid gap-4" onSubmit=${(e) => {
         e.preventDefault();
         submit(next);
@@ -1457,7 +1457,7 @@ function Security({ state, onState, onSignedOut }) {
       ${
         state.status.locked
           ? html`<${Note} tone="ok">On. This page and the frame live under a secret address.<//>`
-          : html`<${Note} tone="warn">Off (PANEL_OPEN is set in .env, or E-maki runs without a settings file). Anything on your network can open this page and the frame.<//>`
+          : html`<p class="text-muted-foreground">Off. Set PANEL_TOKEN in .env to move this page and the frame under a secret address.</p>`
       }
     <//>`;
 }
@@ -1610,7 +1610,6 @@ function Privacy({ draft, set }) {
         text='Any picture whose description repeats a name that was said out loud. It cannot tell people from places, so "Lofoten" goes too.' />
       <${NeverPaint} value=${draft.never_paint} onChange=${(v) => set({ never_paint: v })} />
       ${blocked.length === 0 && !draft.block_names && !(draft.never_paint || []).length && html`<${Note} tone="warn">Nothing is held back: every topic can become a picture.<//>`}
-    <//>
     <//>`;
 }
 

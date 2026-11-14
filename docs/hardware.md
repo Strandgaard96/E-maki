@@ -68,7 +68,7 @@ Other pins work too: change `PIN_BCLK`, `PIN_WS` and `PIN_DIN` at the top of the
 
 1. Install the [Arduino IDE](https://www.arduino.cc/en/software) and the ESP32 board package (Espressif's, version 3.x) from the Boards Manager.
 2. Open `examples/esp32-mic/esp32-mic.ino`.
-3. Fill in `WIFI_SSID`, `WIFI_PASSWORD`, `EMAKI_HOST` (the brain's address) and `PANEL_TOKEN` (the page's token: yours from `.env`, or the one from `docker compose exec emaki cat /data/token`).
+3. Fill in `WIFI_SSID`, `WIFI_PASSWORD`, `EMAKI_HOST` (the brain's address) and `PANEL_TOKEN` if you set one.
 4. Pick your board and port, and upload.
 5. Open the serial monitor at 115200 baud. It prints its IP, then `streaming to E-maki` once it reaches the brain.
 
@@ -109,7 +109,7 @@ Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO
 
 ### No e-ink
 
-The page is a plain PNG, so a TV, an old tablet or any browser can show it. Open `http://<your-brain>:8090/<token>/frame.png`. Other devices people have made work with Fugleramme's protocol are in [fugleramme/clients](https://github.com/fugleramme/clients).
+The page is a plain PNG, so a TV, an old tablet or any browser can show it. Open `http://<your-brain>:8090/frame.png`. Other devices people have made work with Fugleramme's protocol are in [fugleramme/clients](https://github.com/fugleramme/clients).
 
 ### Any device
 
