@@ -69,6 +69,7 @@ function App() {
   const [signin, setSignin] = useState(false);
   const [hot, setHot] = useState(""); // the tile pointed at, in the list or in the picture
   const [redrawing, setRedrawing] = useState(""); // the picture being redrawn
+  const [jump, setJump] = useState(0); // remounts the E-maki tab on its hash section
 
   const load = useCallback(async () => {
     try {
@@ -104,6 +105,13 @@ function App() {
   const show = (t) => {
     setTab(t);
     history.replaceState(null, "", "#" + t);
+  };
+  // The status in the header leads to the servers that are not ready.
+  const openSystem = (e) => {
+    e.preventDefault();
+    history.replaceState(null, "", "#emaki/system");
+    setTab("emaki");
+    setJump((n) => n + 1);
   };
 
   const call = async (path, body, done) => {
@@ -169,9 +177,12 @@ function App() {
           </nav>
         </div>
         <div class="ms-auto flex items-center gap-3">
-          <span class="flex items-center gap-2 text-sm font-medium" role="status">
+          <span role="status">
+            <${waiting ? "a" : "span"} href=${waiting ? "#emaki/system" : undefined}
+              onClick=${waiting ? openSystem : undefined}
+              class=${"flex items-center gap-2 text-sm font-medium " + (waiting ? "underline-offset-4 hover:underline" : "")}>
             <span aria-hidden="true" class=${"size-2.5 rounded-full " + (paused || waiting ? "bg-ink-yellow" : "bg-ink-green ring-4 ring-ink-green/20")}></span>
-            ${paused ? "Paused" : waiting || "Listening"}</span>
+            ${paused ? "Paused" : waiting || "Listening"}<//></span>
           <button type="button" class="btn" data-variant="outline" onClick=${togglePause}>${paused ? "Resume" : "Pause"}</button>
         </div>
       </div>
@@ -206,7 +217,7 @@ function App() {
           : tab === "timeline"
             ? html`<${Timeline} onState=${setState} onSignedOut=${() => setSignin(true)} />`
             : tab === "emaki"
-              ? html`<${EmakiTab} state=${state} draft=${draft} set=${set} paused=${paused}
+              ? html`<${EmakiTab} key=${jump} state=${state} draft=${draft} set=${set} paused=${paused}
           onState=${setState} onSignedOut=${() => setSignin(true)} />`
               : html`<${Logs} />`
     }
@@ -326,7 +337,7 @@ function Frame({ page, draft, changed, wall }) {
               ? "What the frame will show once you save. Sample pictures fill the empty places."
               : "Sample pictures fill the places new topics will take. The Pictures tab lists what is on the frame."
         }</span>
-        <a class="underline underline-offset-4 hover:text-foreground" href="view" target="_blank" rel="noopener">Open full screen</a>
+        <a class="shrink-0 underline underline-offset-4 hover:text-foreground" href="view" target="_blank" rel="noopener">Open full screen</a>
       </figcaption>
       <button type="button" aria-label="Back to the frame picture" inert=${!away}
         onClick=${() => window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
@@ -452,7 +463,7 @@ function Wall({ state, hot, onHot, onTile, onClear, redrawing, onRedraw }) {
                       }}>Remove</button>
                       <button type="button" class="btn" data-size="sm" data-variant="ghost" ref=${focus} onClick=${() => setAsking("")}>Keep</button>
                     </div>`
-                    : html`<div class="flex gap-2">
+                    : html`<div class="flex flex-wrap gap-2">
                       <button type="button" class=${"btn " + (t.pinned ? "bg-ink-yellow text-neutral-900 hover:bg-ink-yellow/80" : "")} data-size="sm"
                         data-variant=${t.pinned ? undefined : "outline"} aria-pressed=${t.pinned}
                         onClick=${() => onTile(t.pinned ? "unpin" : "pin", t.label)}>
@@ -1034,10 +1045,16 @@ function EmakiTab({ state, draft, set, paused, onState, onSignedOut }) {
     setSection(k);
     history.replaceState(null, "", "#emaki/" + k);
   };
+  // On a phone the list is one scrolling row: keep the open section in view.
+  const nav = useRef(null);
+  useEffect(
+    () => nav.current?.querySelector("[aria-current]")?.scrollIntoView({ block: "nearest", inline: "nearest" }),
+    [section],
+  );
   return html`
     <main id="panel-emaki" role="tabpanel" aria-labelledby="tab-emaki"
       class="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start">
-      <nav aria-label="E-maki settings" class="flex flex-wrap gap-1 md:sticky md:top-20 md:flex-col md:flex-nowrap">
+      <nav ref=${nav} aria-label="E-maki settings" class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0">
         ${SECTIONS.map(
           ([k, name]) => html`
           <button type="button" aria-current=${section === k ? "page" : undefined} onClick=${() => go(k)}
@@ -1205,7 +1222,7 @@ function Microphone({ draft, set, paused }) {
           <//>`,
         )}
       </div>
-      <p class="text-muted-foreground">The bar is the level right now. The line is where talk starts.</p>
+      ${mic.live && mic.level != null && html`<p class="text-muted-foreground">The bar is the level right now. The line is where talk starts.</p>`}
     <//>`;
 }
 
@@ -1348,14 +1365,14 @@ function Pictures({ state, draft, set }) {
             : chosen?.local
               ? "Drawn on this machine. Nothing is sent."
               : "Only the English picture description is sent.",
-          missing.length > 0 &&
-            `Also possible: ${missing.map((p) => `${p.id === "local" ? "on this machine" : p.name} (${p.setup})`).join("; ")}.`,
+          missing.length > 0 && "Greyed-out ones work after that change and a restart.",
         ]
           .filter(Boolean)
           .join(" ")}>
-        <select class="select" value=${draft.image_provider} onChange=${(e) => set({ image_provider: e.target.value })}>
+        <select class="select w-full" value=${draft.image_provider} onChange=${(e) => set({ image_provider: e.target.value })}>
           <option value="">Automatic: ${auto?.name}</option>
           ${ready.map((p) => html`<option value=${p.id}>${p.name}</option>`)}
+          ${missing.map((p) => html`<option disabled>${p.id === "local" ? "On this machine" : p.name}: ${p.setup}</option>`)}
         </select><//>
       <${Field} label="New pictures per day, at most" help=${`${today} made today.${chosen?.local ? "" : " Each one is a paid call to your image API."}`}>
         <input class="input w-32" type="number" min="0" max="1000" value=${cap}
