@@ -326,7 +326,11 @@ func main() {
 			p.Edition(context.Background())
 		}
 	}()
-	log.Printf("profile %s, mode %s, serving the panel on %s", cfg.Profile, cfg.Mode, cfg.Listen)
+	mode := cfg.Mode
+	if mode == "party" {
+		mode = "continuous" // its name on the settings page
+	}
+	log.Printf("profile %s, mode %s, serving the panel on %s", cfg.Profile, mode, cfg.Listen)
 	log.Printf("settings page: %s", strings.TrimSuffix(p.FrameURL, "frame.png"))
 	if tokenFile != "" {
 		// To the terminal only, not the Logs tab: its lines get pasted into
@@ -439,6 +443,13 @@ func hear(ctx context.Context, minDBFS float64, langs []string, p *pipeline.Pipe
 	seg, err := r.In(ctx, pcm, langs)
 	if err != nil {
 		log.Printf("transcribe: %v", err)
+		return ""
+	}
+	if seg.Text == "" {
+		// Whisper's voice detection found no speech. Counted with the quiet
+		// segments; the language it reports then means nothing.
+		log.Printf("segment at %.0f dBFS: no speech found in %.1fs", level, time.Since(start).Seconds())
+		p.Heard(level, "", true)
 		return ""
 	}
 	log.Printf("segment at %.0f dBFS: %s, %d words, transcribed in %.1fs",

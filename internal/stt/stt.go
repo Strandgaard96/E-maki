@@ -49,6 +49,11 @@ func (w Whisper) Transcribe(ctx context.Context, pcm []int16, lang string) (Segm
 	mw.WriteField("language", lang)
 	mw.WriteField("response_format", "verbose_json")
 	mw.WriteField("temperature", "0")
+	// E-maki does not read the language probabilities. Asking for them costs
+	// a second language detection, and whisper-server v1.9.5 answers 500
+	// when voice detection found no speech (fixed upstream after 1.9.5,
+	// ggml-org/whisper.cpp#4158).
+	mw.WriteField("no_language_probabilities", "true")
 	mw.Close()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(w.URL, "/")+"/inference", &body)
@@ -147,7 +152,9 @@ func (r Router) In(ctx context.Context, pcm []int16, langs []string) (Segment, e
 		return r.forced(ctx, pcm, langs[0])
 	}
 	seg, err := r.Detect.Transcribe(ctx, pcm, "")
-	if err != nil {
+	if err != nil || seg.Text == "" {
+		// No words (whisper's voice detection found no speech): nothing to
+		// redo in another language or on another server.
 		return seg, err
 	}
 	if len(langs) > 1 && !slices.Contains(langs, seg.Lang) {

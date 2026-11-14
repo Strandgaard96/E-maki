@@ -19,7 +19,8 @@ services:
   # that into Vulkan. Debian's Mesa has no dzn, so it is borrowed from WSL:
   #   ls /usr/share/vulkan/icd.d/dzn_icd.json /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so
   # must exist (install mesa-vulkan-drivers in WSL if not). Ollama uses its
-  # Vulkan backend on the same driver.
+  # Vulkan backend on the same driver; it skips integrated GPUs unless
+  # OLLAMA_IGPU_ENABLE is set.
   vulkan-wsl:
     devices: ["/dev/dxg"]
     volumes:
@@ -29,6 +30,7 @@ services:
       - /usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:/usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:ro
     environment:
       OLLAMA_VULKAN: "1"
+      OLLAMA_IGPU_ENABLE: "1"
       LD_LIBRARY_PATH: /usr/lib/wsl/lib
       VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
 
