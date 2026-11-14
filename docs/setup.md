@@ -92,15 +92,13 @@ Changes apply at once and are kept in the `emaki-data` volume.
   - *Topics:* local or external model, minimum confidence, how much talk the topic model reads, its instructions.
   - *Privacy:* topics that are never painted, and the sensitive-topic filters.
 - **System:**
-  - *Status:* what E-maki has done since it started, and whether its servers answer.
+  - *Status:* what E-maki has done since it started, whether its servers answer, and what `.env` sets.
   - *Image provider:* which one, the daily limit, a test picture.
   - *Storage:* what is kept on disk.
   - *Security:* a password for the page. Forgot it? Delete `password.json` from the `emaki-data` volume and restart.
-  - *Logs:* E-maki's recent log lines.
-  - *System status:* whether whisper, the topic model and the image provider answer.
-- **Logs:** the last lines E-maki logged, kept in memory.
+  - *Logs:* E-maki's recent log lines, kept in memory.
 
-For settings the page doesn't have (sidecar addresses, segment length, per-language servers), edit the profile in [configs/](../configs/README.md) and run `docker compose restart emaki`.
+Each setting lives in one place. The page holds everything above and nothing else sets it. What `.env` sets is listed read-only under **System > Services**, with the variable to change. Running without docker, the server addresses and segment length are in a profile in [configs/](../configs/README.md).
 
 ## 5. Put it on a frame
 

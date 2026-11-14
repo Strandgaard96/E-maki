@@ -2226,11 +2226,11 @@ function Topics({ state, draft, set }: StateProps) {
                 ? "The local topic model is off (NO_LOCAL_TOPICS in .env), so no topics are found." +
                   (st.topic_api
                     ? " Pick the external one."
-                    : " Set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki.")
+                    : " Set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d.")
                 : "Runs on this machine. What was said stays here." +
                   (st.topic_api
                     ? ""
-                    : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env and restart E-maki.")
+                    : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d.")
           }
         >
           <select
@@ -2389,7 +2389,7 @@ function Pictures({ state, draft, set }: StateProps) {
               : chosen?.local
                 ? "Drawn on this machine. Nothing is sent."
                 : "Only the English picture description is sent.",
-            missing.length > 0 && "Greyed-out ones work after that change and a restart.",
+            missing.length > 0 && "Greyed-out ones work after that change in .env and docker compose up -d.",
           ]
             .filter(Boolean)
             .join(" ")}
@@ -3315,7 +3315,7 @@ function System({ state }: { state: State }) {
           ))}
         </div>
       </Card>
-      <Card title="Services" intro="These are set in the profile and .env, and need a restart to change.">
+      <Card title="Services">
         <div class="grid gap-3">
           <Service name="Speech to text" where={st.speech} s={h.speech} />
           <Service
@@ -3347,6 +3347,22 @@ function System({ state }: { state: State }) {
             ],
           ]}
         />
+      </Card>
+      <Card
+        title="Set in .env"
+        intro="These can't be changed here. Edit .env next to docker-compose.yml, then run docker compose up -d."
+      >
+        <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr_max-content]">
+          {(st.env || []).map((r) => (
+            <>
+              <dt class="text-muted-foreground">{r.label}</dt>
+              <dd class="break-words">{r.value}</dd>
+              <dd class="mb-2 sm:mb-0">
+                <code class="text-xs">{r.var}</code>
+              </dd>
+            </>
+          ))}
+        </dl>
       </Card>
     </>
   );

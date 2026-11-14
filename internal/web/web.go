@@ -58,6 +58,15 @@ type Status struct {
 	Saved         bool              `json:"saved"`           // changes are saved to a settings file
 	Started       time.Time         `json:"started"`
 	Password      bool              `json:"password"` // filled in per request
+	Env           []EnvRow          `json:"env"`      // what .env sets, shown read-only
+}
+
+// EnvRow is one thing .env sets, as the page shows it: never a key itself,
+// only whether it is set.
+type EnvRow struct {
+	Label string `json:"label"`
+	Var   string `json:"var"`
+	Value string `json:"value"`
 }
 
 // Mic is the microphone as the page shows it: names and a loudness, never

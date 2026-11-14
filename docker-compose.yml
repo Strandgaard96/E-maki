@@ -248,6 +248,8 @@ services:
       PULSE_SERVER: "unix:/pulse/native"
       GEMINI_IMAGE_MODEL: ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
       LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
+      # Unset is "none" (Qwen answers without thinking); set but empty sends none.
+      LLM_REASONING: ${LLM_REASONING-none}
       # Quiet hours and the times on the frame use this; containers run in UTC otherwise.
       TZ: ${TZ:-UTC}
       # Only set when the matching option in .env is on.
@@ -258,9 +260,10 @@ services:
       LOCAL_IMAGE_URL: ${LOCAL_IMAGES:+http://sd:1234}
       LOCAL_IMAGE_MODEL: ${LOCAL_IMAGE_MODEL:-FLUX.2 klein 4B}
       LOCAL_IMAGE_SIZE: ${LOCAL_IMAGE_SIZE:-}
-    # configs/ is mounted, so editing a config only needs a restart.
-    # /data keeps what the settings page changes (no topics, no transcripts).
-    command: ["-config", "/configs/${EMAKI_CONFIG:-docker.json}", "-settings", "/data/settings.json", "-mic"]
+    # configs/docker.json holds how these containers are wired; you don't
+    # need to touch it. /data keeps what the settings page changes (no
+    # topics, no transcripts).
+    command: ["-config", "/configs/docker.json", "-settings", "/data/settings.json", "-mic"]
     volumes:
       - ./configs:/configs:ro
       - emaki-data:/data

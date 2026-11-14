@@ -26,14 +26,9 @@ func TestLoadRejectsMistakes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, edit := range map[string][2]string{
-		"misspelt key":     {`"block_sensitive"`, `"block_sensitve"`},
-		"zero interval":    {`"extract_every": 4`, `"extract_every": 0`},
-		"unknown category": {`"health"`, `"medical"`},
-		"unknown mode":     {`"party"`, `"fiesta"`},
-		"unknown topics":   {`"mode"`, `"topic_provider": "cloud", "mode"`},
-		"language name":    {`"mode"`, `"languages": ["Danish"], "mode"`},
-		"unknown language": {`"mode"`, `"languages": ["xx"], "mode"`},
-		"language twice":   {`"mode"`, `"languages": ["da", "da"], "mode"`},
+		"misspelt key":  {`"whisper_url"`, `"whisper_ulr"`},
+		"zero segments": {`"segment_seconds": 15`, `"segment_seconds": 0`},
+		"no listen":     {`":8090"`, `""`},
 	} {
 		bad := strings.Replace(string(good), edit[0], edit[1], 1)
 		if bad == string(good) {
@@ -44,6 +39,54 @@ func TestLoadRejectsMistakes(t *testing.T) {
 		if _, err := Load(path); err == nil {
 			t.Errorf("%s: loaded", name)
 		}
+	}
+}
+
+// A profile never sets what the settings page or .env owns: an older
+// profile that does still starts, with those keys ignored.
+func TestProfileSkipsPageAndEnvKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "c.json")
+	os.WriteFile(path, []byte(`{"listen": ":8090", "whisper_url": "http://w:8081", "llm_url": "http://o:11434",
+		"segment_seconds": 15, "mode": "diary", "block_sensitive": [], "llm_model": "gemma4:e4b", "llm_reasoning": "",
+		"net_mic_listen": ":10700"}`), 0o600)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Mode != "party" || len(c.BlockSensitive) != len(Categories) {
+		t.Errorf("page keys read from the profile: mode %q, block_sensitive %v", c.Mode, c.BlockSensitive)
+	}
+	if c.LLMModel != DefaultLLM || c.LLMReasoning != "none" || c.NetMicListen != "" {
+		t.Errorf(".env keys read from the profile: %q %q %q", c.LLMModel, c.LLMReasoning, c.NetMicListen)
+	}
+	s := c.Settings
+	for name, edit := range map[string]func(*Settings){
+		"zero interval":    func(s *Settings) { s.ExtractEvery = 0 },
+		"unknown category": func(s *Settings) { s.BlockSensitive = []string{"medical"} },
+		"unknown mode":     func(s *Settings) { s.Mode = "fiesta" },
+		"unknown topics":   func(s *Settings) { s.TopicProvider = "cloud" },
+		"language name":    func(s *Settings) { s.Languages = []string{"Danish"} },
+		"language twice":   func(s *Settings) { s.Languages = []string{"da", "da"} },
+	} {
+		e := s
+		edit(&e)
+		if _, err := c.With(e); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+func TestEnv(t *testing.T) {
+	c, err := Load("../../configs/docker.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Env([]string{"LLM_MODEL=gemma4:e4b", "LLM_REASONING=", "NET_MIC_LISTEN=:10700", "WHISPER_URL_DA=http://whisper-da:8081", "WHISPER_URL_NO="})
+	if c.LLMModel != "gemma4:e4b" || c.LLMReasoning != "" || c.NetMicListen != ":10700" {
+		t.Errorf("got %q %q %q", c.LLMModel, c.LLMReasoning, c.NetMicListen)
+	}
+	if len(c.WhisperByLang) != 1 || c.WhisperByLang["da"] != "http://whisper-da:8081" {
+		t.Errorf("whisper_by_lang %v", c.WhisperByLang)
 	}
 }
 
