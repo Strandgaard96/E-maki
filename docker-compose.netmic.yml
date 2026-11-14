@@ -1,0 +1,11 @@
+# A microphone elsewhere on the network (see docs/network-mic.md):
+#   docker compose -f docker-compose.yml -f docker-compose.netmic.yml up -d
+# or add it to COMPOSE_FILE in .env. Then pick "Network microphone" on the
+# settings page. Audio crosses your local network unencrypted: set
+# PANEL_TOKEN so only senders that know it are heard, and never forward
+# this port to the internet.
+services:
+  emaki:
+    environment:
+      NET_MIC_LISTEN: ":10700"
+    ports: ["${NET_MIC_BIND:-0.0.0.0}:${NET_MIC_PORT:-10700}:10700"]

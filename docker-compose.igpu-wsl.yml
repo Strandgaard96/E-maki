@@ -1,0 +1,39 @@
+# Integrated graphics (AMD Radeon / Intel) for whisper and Ollama via Vulkan, on
+# Windows (WSL). On Linux use docker-compose.igpu.yml instead.
+#   docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml up -d --build
+# WSL exposes the Windows GPU as /dev/dxg plus the D3D12 libraries in
+# /usr/lib/wsl. Mesa's "dozen" (dzn) driver turns that into Vulkan. Debian's
+# Mesa does not ship dzn, so it is borrowed from WSL: check that
+#   ls /usr/share/vulkan/icd.d/dzn_icd.json /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so
+# exists (install mesa-vulkan-drivers in WSL if not).
+services:
+  # Same build as whisper (it only downloads the model).
+  whisper-model:
+    build:
+      args: { WHISPER_GPU: vulkan }
+
+  whisper:
+    build:
+      args: { WHISPER_GPU: vulkan }
+    devices: ["/dev/dxg"]
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:/usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:ro
+      - /usr/share/vulkan/icd.d/dzn_icd.json:/usr/share/vulkan/icd.d/dzn_icd.json:ro
+      - /usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:/usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:ro
+    environment:
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
+
+  # Ollama's Vulkan backend (OLLAMA_VULKAN=1) on the same borrowed driver.
+  ollama:
+    devices: ["/dev/dxg"]
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:/usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:ro
+      - /usr/share/vulkan/icd.d/dzn_icd.json:/usr/share/vulkan/icd.d/dzn_icd.json:ro
+      - /usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:/usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:ro
+    environment:
+      OLLAMA_VULKAN: "1"
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json

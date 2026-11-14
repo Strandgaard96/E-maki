@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in E-maki is not working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste real conversations.** Logs from E-maki don't contain
+        transcript text, but check anything you paste from elsewhere, and never
+        include your API key.
+
+        Problems in whisper.cpp, Ollama or the image API itself belong with
+        those projects.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: E-maki version
+      description: The commit, from `git rev-parse --short HEAD`.
+    validations:
+      required: true
+
+  - type: input
+    id: setup
+    attributes:
+      label: Machine and OS
+      placeholder: AMD laptop, Ubuntu 26.04, Docker Engine (or Windows 11 + WSL 2)
+    validations:
+      required: true
+
+  - type: input
+    id: profile
+    attributes:
+      label: Config profile and compose files
+      placeholder: docker.json, docker-compose.yml + docker-compose.igpu.yml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The relevant lines from `docker compose logs emaki` (and whisper or ollama if they look involved).
+      render: text

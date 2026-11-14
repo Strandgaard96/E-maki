@@ -1,0 +1,159 @@
+/* E-maki settings page: Tailwind + Basecoat (shadcn's look without React).
+   Run `npm run build` in internal/web/ui after changing this file or app.js. */
+@import "tailwindcss";
+@import "basecoat-css";
+@import "photoswipe/style.css";
+
+@source "./";
+@source "../../static/index.html";
+
+/* Graphite: neutral zinc greys with one indigo accent for choices and the
+   main action. Yellow means pinned or paused, red remove, green listening. */
+:root {
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.21 0.006 285);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.006 285);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.006 285);
+  --muted: oklch(0.967 0.001 286);
+  --muted-foreground: oklch(0.552 0.016 286);
+  --accent: oklch(0.967 0.001 286);
+  --accent-foreground: oklch(0.21 0.006 285);
+  --border: oklch(0.92 0.004 286);
+  --input: oklch(0.92 0.004 286);
+  --primary: oklch(0.51 0.23 277);
+  --primary-foreground: oklch(0.98 0 0);
+  --ring: oklch(0.51 0.23 277);
+  --radius: 0.75rem;
+  --destructive: oklch(0.52 0.16 25);
+  --ink-yellow: oklch(0.82 0.15 90);
+  --ink-green: oklch(0.47 0.09 160);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 286);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.18 0.006 286);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 286);
+  --popover-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.24 0.006 286);
+  --muted-foreground: oklch(0.705 0.015 286);
+  --accent: oklch(0.26 0.006 286);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --primary: oklch(0.68 0.16 277);
+  --primary-foreground: oklch(0.15 0.02 277);
+  --ring: oklch(0.68 0.16 277);
+  --destructive: oklch(0.65 0.17 25);
+  --ink-yellow: oklch(0.85 0.14 90);
+  --ink-green: oklch(0.72 0.12 160);
+}
+
+@theme inline {
+  --color-ink-yellow: var(--ink-yellow);
+  --color-ink-green: var(--ink-green);
+}
+
+/* The frame on the page: a dark bezel and a white mat, in the panel's 4:3. */
+@layer components {
+  .bezel {
+    @apply rounded-2xl bg-neutral-900 p-3 shadow-xl ring-1 ring-black/20 sm:p-4 dark:bg-neutral-800 dark:ring-white/25;
+  }
+  .bezel > div {
+    @apply aspect-4/3 overflow-hidden rounded-sm bg-[#fbfbf8];
+  }
+}
+
+/* Help text a step up from the browser's "smaller", and finger-sized buttons on touch screens. */
+@layer base {
+  small {
+    font-size: 0.8rem;
+  }
+}
+@media (pointer: coarse) {
+  .btn,
+  [role="tab"],
+  .tap {
+    min-height: 2.75rem;
+  }
+  .tap {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* No jumps: the scrollbar's room is kept when a page grows past the screen,
+   new pictures fade in over the old ones, and placeholders hold the shape. */
+html {
+  scrollbar-gutter: stable;
+}
+@layer components {
+  .skeleton {
+    @apply rounded-md bg-muted;
+  }
+  .loader {
+    @apply inline-block animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground;
+  }
+  .mini {
+    transition: opacity 150ms ease-out;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+.fade-in {
+  animation: fade-in 150ms ease-out;
+}
+.rise-in {
+  animation: rise-in 200ms ease-out;
+}
+/* Less motion: fades only, short, and no pulsing or spinning. */
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: fade-in 100ms ease-out;
+  }
+  .fade-in {
+    animation-duration: 100ms;
+  }
+  .skeleton,
+  .loader {
+    animation: none;
+  }
+  .mini {
+    transition-duration: 100ms;
+  }
+}
+
+/* Phone: the tabs sit in a bar at the bottom, so keep the page clear of it. */
+@media (width < 40rem) {
+  body {
+    padding-bottom: 4.5rem;
+  }
+}
+
+/* Timeline viewer: the picture's topic, description, style and time under it. */
+.pswp-info {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 1.5rem 1rem max(1rem, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.7));
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+}
+.pswp-info > * {
+  max-width: 48rem;
+  margin-inline: auto;
+}

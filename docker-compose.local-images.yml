@@ -1,0 +1,61 @@
+# Pictures made on this machine with stable-diffusion.cpp, so nothing at all
+# leaves the house. Add this file to the docker compose command:
+#   docker compose -f docker-compose.yml -f docker-compose.local-images.yml up -d --build
+# The first start downloads FLUX.2 klein 4B (about 5.3 GB). It wants about
+# 8 GB of free RAM on top of whisper and Ollama, and a CPU takes minutes per
+# picture. See docs/local-images.md.
+#
+# Like whisper and Ollama, the server sits on "local", with no route to the
+# internet; its files come from the one-shot sd-model service.
+
+x-sd-build: &sd-build
+  context: .
+  dockerfile: docker/sd.Dockerfile
+  args: { SD_GPU: "${SD_GPU:-}" }
+
+x-sd-models: &sd-models
+  SD_MODEL_URL: ${SD_MODEL_URL:-}
+  SD_TEXT_ENCODER_URL: ${SD_TEXT_ENCODER_URL:-}
+  SD_VAE_URL: ${SD_VAE_URL:-}
+
+services:
+  sd-model:
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    build: *sd-build
+    command: ["download"]
+    environment: *sd-models
+    volumes: [sd-models:/models]
+    restart: on-failure
+
+  sd:
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    build: *sd-build
+    depends_on:
+      sd-model: { condition: service_completed_successfully }
+    environment:
+      <<: *sd-models
+      SD_STEPS: ${SD_STEPS:-}
+      SD_THREADS: ${SD_THREADS:-}
+      SD_ARGS: ${SD_ARGS:-}
+    volumes: [sd-models:/models:ro]
+    networks: [local]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:1234/v1/models"]
+      interval: 10s
+      retries: 60
+      start_period: 60s
+
+  emaki:
+    environment:
+      LOCAL_IMAGE_URL: http://sd:1234
+      LOCAL_IMAGE_MODEL: ${LOCAL_IMAGE_MODEL:-FLUX.2 klein 4B}
+      LOCAL_IMAGE_SIZE: ${LOCAL_IMAGE_SIZE:-}
+
+volumes:
+  sd-models:

@@ -1,0 +1,24 @@
+# Local pictures on integrated graphics via Vulkan, on Windows (WSL). Use it
+# together with the local-images file:
+#   docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml \
+#     -f docker-compose.local-images.yml -f docker-compose.local-images-igpu-wsl.yml up -d --build
+# Same borrowed Mesa "dozen" driver as docker-compose.igpu-wsl.yml; what the
+# host needs is listed at the top of that file. On Linux use
+# docker-compose.local-images-igpu.yml instead.
+services:
+  sd-model:
+    build:
+      args: { SD_GPU: vulkan }
+
+  sd:
+    build:
+      args: { SD_GPU: vulkan }
+    devices: ["/dev/dxg"]
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:/usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:ro
+      - /usr/share/vulkan/icd.d/dzn_icd.json:/usr/share/vulkan/icd.d/dzn_icd.json:ro
+      - /usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:/usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:ro
+    environment:
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json

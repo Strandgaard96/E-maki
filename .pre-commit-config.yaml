@@ -1,0 +1,30 @@
+# Checks that run on every `git commit`. Set up once with:
+#   pipx install pre-commit   # or: pip install pre-commit
+#   pre-commit install
+# CI runs the same secret scan, so skipping the hook (--no-verify) only
+# moves the failure to the pull request.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks # secrets in the staged changes, e.g. a Gemini key
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files # stray recordings, models, gallery images
+        args: [--maxkb=1024]
+
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt -l -w
+        language: system
+        types: [go]
+      - id: go-vet
+        name: go vet
+        entry: go vet ./...
+        language: system
+        types: [go]
+        pass_filenames: false
