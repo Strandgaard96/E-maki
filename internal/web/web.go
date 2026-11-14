@@ -375,8 +375,8 @@ func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
 
 // draft answers with the frame's picture as unsaved layout settings would
 // make it: the settings in force with the query's layout, tiles, newest_big,
-// hide_captions, arrange, spacing, background, shape and half_life_hours
-// over them. It changes nothing.
+// hide_captions, arrange, spacing, background, shape, rotate_minutes and
+// half_life_hours over them. It changes nothing.
 func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
 	if s.Draft == nil {
 		http.Error(w, "no preview of unsaved settings", http.StatusNotImplemented)
@@ -407,7 +407,7 @@ func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
 			*dst = q.Get(k)
 		}
 	}
-	for k, dst := range map[string]*int{"panel_width": &set.PanelWidth, "panel_height": &set.PanelHeight, "panel_rotation": &set.PanelRotation} {
+	for k, dst := range map[string]*int{"rotate_minutes": &set.RotateMinutes, "panel_width": &set.PanelWidth, "panel_height": &set.PanelHeight, "panel_rotation": &set.PanelRotation} {
 		if v := q.Get(k); v != "" && err == nil {
 			*dst, err = strconv.Atoi(v)
 		}

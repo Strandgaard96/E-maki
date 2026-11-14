@@ -126,6 +126,9 @@ type Settings struct {
 	Tiles  int    `json:"tiles"` // most tiles for collage and rolling, 1 to 9; 0 is 9
 	// Least minutes between two new pictures going up; 0 puts each up at once.
 	NewEveryMinutes int `json:"new_every_minutes"`
+	// Show the pictures that do not fit in turn, a new set this often. 0
+	// is off.
+	RotateMinutes int `json:"rotate_minutes"`
 	// Collage only: the newest topic takes the big tile.
 	NewestBig bool `json:"newest_big"`
 	// Quiet hours "22:00" to "07:00": no new pictures go up in between, so
@@ -240,6 +243,7 @@ func (c Config) validate() error {
 		{c.Layout == "collage" || c.Layout == "single" || c.Layout == "rolling", `layout must be "collage", "single" or "rolling"`},
 		{c.Tiles >= 1 && c.Tiles <= 9, "tiles must be between 1 and 9"},
 		{c.NewEveryMinutes >= 0 && c.NewEveryMinutes <= 24*60, "new_every_minutes must be between 0 and 1440"},
+		{c.RotateMinutes >= 0 && c.RotateMinutes <= 7*24*60, "rotate_minutes must be between 0 and 10080"},
 		{(c.QuietFrom == "") == (c.QuietTo == ""), "set both quiet_from and quiet_to, or neither"},
 		{slices.Contains(collage.Arrangements, c.Arrange), "arrange must be one of " + strings.Join(collage.Arrangements, ", ")},
 		{slices.Contains(collage.Spacings, c.Spacing), "spacing must be one of " + strings.Join(collage.Spacings, ", ")},

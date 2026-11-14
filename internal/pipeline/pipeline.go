@@ -510,7 +510,10 @@ func (p *Pipeline) Tick() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := p.Now()
-	if !p.Mem.Reveal(now) {
+	revealed := p.Mem.Reveal(now)
+	// With rotation on, the wall also changes on its own.
+	turned := p.drawn && p.Mem.Settings().RotateEvery > 0 && !slices.Equal(p.order(now), p.shown)
+	if !revealed && !turned {
 		return
 	}
 	if err := p.redraw(now); err != nil {

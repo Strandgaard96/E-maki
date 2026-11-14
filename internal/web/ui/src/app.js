@@ -258,6 +258,7 @@ const PICTURE_KEYS = [
   "spacing",
   "background",
   "shape",
+  "rotate_minutes",
   "half_life_hours",
   "panel_width",
   "panel_height",
@@ -293,11 +294,14 @@ function summary(s, d) {
         ? `a new picture at most every ${d.new_every_minutes} min`
         : "new pictures straight away";
   const quiet = d.quiet_from ? `, none ${d.quiet_from} to ${d.quiet_to}` : "";
+  const turn = ROTATE.find(([v]) => v === d.rotate_minutes);
+  const rotate =
+    d.rotate_minutes > 0 ? `, rotating ${turn ? String(turn[1]).toLowerCase() : `every ${d.rotate_minutes} min`}` : "";
   const fade =
     d.layout === "collage"
       ? `. Tiles halve in ${d.half_life_hours >= 24 ? d.half_life_hours / 24 + " days" : d.half_life_hours + " hours"}`
       : "";
-  return `${layout}, ${when}${quiet}${fade}. ${s.wall.length} on the frame now.`;
+  return `${layout}, ${when}${quiet}${rotate}${fade}. ${s.wall.length} on the frame now.`;
 }
 
 // The six inks of the panel, the brand mark.
@@ -1556,6 +1560,15 @@ const EVERY = [
   [240, "4 hours"],
 ];
 
+const ROTATE = [
+  [0, "Off"],
+  [60, "Every hour"],
+  [180, "Every 3 hours"],
+  [360, "Every 6 hours"],
+  [720, "Every 12 hours"],
+  [1440, "Every day"],
+];
+
 function Timing({ state, draft, set }) {
   const modes = [
     ["diary", "Diary", "Collects the day's topics and paints the top ones once a day. For everyday life."],
@@ -1586,6 +1599,10 @@ function Timing({ state, draft, set }) {
           ${withCurrent(EVERY, draft.new_every_minutes, (v) => v + " minutes").map(([v, t]) => html`<option value=${v}>${t}</option>`)}
         </select><//>`
       }
+      <${Field} label="Rotate" help="When more pictures are saved than fit, show the others in turn. No new pictures are made.">
+        <select class="select w-full" value=${draft.rotate_minutes} onChange=${(e) => set({ rotate_minutes: +e.target.value })}>
+          ${withCurrent(ROTATE, draft.rotate_minutes, (v) => v + " minutes").map(([v, t]) => html`<option value=${v}>${t}</option>`)}
+        </select><//>
       <div class="grid gap-3">
         <${Toggle} checked=${quiet} title="Quiet hours"
           text="No new pictures go up in between. What was talked about appears when they end."

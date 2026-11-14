@@ -210,3 +210,55 @@ func TestRename(t *testing.T) {
 		t.Errorf("allowed topic: %s, want new", d)
 	}
 }
+
+// With rotation on, the pictures that do not fit take their turn, a page at
+// a time; pinned ones stay; and the page holds still in the quiet hours.
+func TestRotate(t *testing.T) {
+	s := settings()
+	s.Newest, s.MaxTiles, s.RotateEvery = true, 2, time.Hour
+	s.QuietFrom, s.QuietTo = 22*60, 7*60
+	m := New(s)
+	for i, l := range []string{"a", "b", "c", "d", "e"} {
+		at := t0.Add(time.Duration(i) * time.Second)
+		m.Observe(l, "", 0.9, at)
+		m.Reveal(at)
+	}
+	labels := func(now time.Time) string {
+		var out string
+		for _, t := range m.Wall(now) {
+			out += t.Label
+		}
+		return out
+	}
+	seen := map[string]bool{}
+	for h := range 5 {
+		w := labels(t0.Add(time.Duration(h) * time.Hour))
+		if len(w) != 2 {
+			t.Fatalf("hour %d: wall %q", h, w)
+		}
+		for _, c := range w {
+			seen[string(c)] = true
+		}
+	}
+	if len(seen) != 5 {
+		t.Errorf("in five hours only %v were shown", seen)
+	}
+	if a, b := labels(t0), labels(t0.Add(59*time.Minute)); a != b {
+		t.Errorf("the wall changed within the hour: %q then %q", a, b)
+	}
+	night := time.Date(2026, 11, 8, 22, 0, 0, 0, time.UTC)
+	if a, b := labels(night), labels(night.Add(5*time.Hour)); a != b {
+		t.Errorf("the wall changed in the quiet hours: %q then %q", a, b)
+	}
+	m.Pin("a", true)
+	for h := range 5 {
+		if w := m.Wall(t0.Add(time.Duration(h) * time.Hour)); w[0].Label != "a" {
+			t.Fatalf("hour %d: pinned a not first: %q", h, labels(t0.Add(time.Duration(h)*time.Hour)))
+		}
+	}
+	s.RotateEvery = 0
+	m.SetSettings(s)
+	if a, b := labels(t0), labels(t0.Add(3*time.Hour)); a != b || a != "ae" {
+		t.Errorf("rotation off: %q then %q, want ae", a, b)
+	}
+}
