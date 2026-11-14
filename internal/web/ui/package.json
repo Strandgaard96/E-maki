@@ -1,0 +1,22 @@
+{
+  "name": "ekiru-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:js && npm run build:css",
+    "build:js": "esbuild src/app.js --bundle --minify --format=esm --target=es2022 --outfile=../static/app.js",
+    "build:css": "tailwindcss -i src/app.css -o ../static/app.css --minify"
+  },
+  "dependencies": {
+    "htm": "^3.1.1",
+    "justified-layout": "^4.1.0",
+    "photoswipe": "^5.4.4",
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "basecoat-css": "^1.1.0",
+    "esbuild": "^0.28.2",
+    "tailwindcss": "^4.3.5"
+  }
+}

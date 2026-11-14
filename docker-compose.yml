@@ -1,0 +1,147 @@
+# E-kiru with its two sidecars: whisper-server (speech-to-text) and Ollama
+# (topic LLM), listening on this machine's microphone.
+#   cp .env.example .env && docker compose up -d --build
+# then open http://localhost:8090/frame.png (reload to see new topics).
+# Written for Linux. On Windows (WSL) set PULSE_SOCKET in .env, see
+# docs/wsl.md. Integrated graphics: add -f docker-compose.igpu.yml (Linux)
+# or -f docker-compose.igpu-wsl.yml (WSL).
+# The first start downloads the Whisper model and the topic LLM
+# (qwen3.5:4b by default, ~3.4 GB).
+#
+# Networks: whisper and ollama hear the audio and read the transcript, so
+# they sit on "local", which has no route to the internet. Their models are
+# fetched by two one-shot services (whisper-model, ollama-pull) that never
+# see audio or text. Only ekiru can reach the internet, for the image API.
+
+# Fixed project name, so volumes are ekiru_* whatever the folder is called.
+name: ekiru
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+# Both whisper services run the same image. A GPU override must set the
+# build args on both (see docker-compose.igpu.yml).
+x-whisper-build: &whisper-build
+  context: .
+  dockerfile: docker/whisper.Dockerfile
+
+services:
+  whisper-model:
+    <<: *hardening
+    build: *whisper-build
+    command: ["download"]
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3-turbo-q5_0}
+      WHISPER_MODEL_URL: ${WHISPER_MODEL_URL:-}
+      WHISPER_MODEL_SHA256: ${WHISPER_MODEL_SHA256:-}
+    volumes: [whisper-models:/models]
+    restart: on-failure
+
+  whisper:
+    <<: *hardening
+    build: *whisper-build
+    depends_on:
+      whisper-model: { condition: service_completed_successfully }
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3-turbo-q5_0}
+      WHISPER_THREADS: ${WHISPER_THREADS:-}
+    volumes: [whisper-models:/models:ro]
+    networks: [local]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/"]
+      interval: 10s
+      retries: 120
+      start_period: 30s
+
+  # Ollama only downloads through its own server, so this one-shot service
+  # starts a private server on the shared volume, pulls the model and exits.
+  # A model already in the volume is kept as it is: "ollama pull" would
+  # fetch it again whenever its tag is re-uploaded. LLM_MODEL_UPDATE=1 in
+  # .env (or on the command line) pulls the newest upload anyway.
+  ollama-pull:
+    <<: *hardening
+    image: ollama/ollama:0.40.15
+    environment:
+      OLLAMA_NO_CLOUD: "true"
+      LLM_MODEL: "${LLM_MODEL:-qwen3.5:4b}"
+      LLM_MODEL_UPDATE: "${LLM_MODEL_UPDATE:-}"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        ollama serve >/dev/null 2>&1 &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        if [ -z "$$LLM_MODEL_UPDATE" ] && ollama show "$$LLM_MODEL" >/dev/null 2>&1; then
+          echo "$$LLM_MODEL is already here"; exit 0
+        fi
+        exec ollama pull "$$LLM_MODEL"
+    volumes: [ollama:/root/.ollama]
+    restart: on-failure
+
+  ollama:
+    <<: *hardening
+    image: ollama/ollama:0.40.15
+    depends_on:
+      ollama-pull: { condition: service_completed_successfully }
+    # Belt and braces with the network: also turn off Ollama's cloud models.
+    # Keep the LLM loaded; otherwise it unloads after 5 idle minutes and
+    # every topic call waits ~10 s to load it again.
+    environment: { OLLAMA_NO_CLOUD: "true", OLLAMA_KEEP_ALIVE: "-1" }
+    volumes: [ollama:/root/.ollama]
+    networks: [local]
+    restart: unless-stopped
+
+  ekiru:
+    <<: *hardening
+    build: { context: ., dockerfile: docker/ekiru.Dockerfile }
+    # No depends_on: the settings page is up while the models download,
+    # and System status shows each one as not answering until it does.
+    # Runs as your own user, so PulseAudio/PipeWire accepts it. Set
+    # EKIRU_UID/EKIRU_GID in .env if `id -u` is not 1000.
+    user: "${EKIRU_UID:-1000}:${EKIRU_GID:-1000}"
+    read_only: true
+    tmpfs: [/tmp]
+    # The page is E-kiru's screen, so it is reachable from your local
+    # network. It shows what the room talked about: set PANEL_TOKEN in .env
+    # to keep other devices out, or PANEL_BIND=127.0.0.1 for this machine
+    # only. Never forward port 8090 to the internet.
+    ports: ["${PANEL_BIND:-0.0.0.0}:8090:8090"]
+    # The API keys and PANEL_TOKEN come straight from .env (git-ignored),
+    # so a stale value exported in the shell cannot override them.
+    env_file: [{ path: .env, required: false }]
+    environment:
+      HOME: /tmp
+      PULSE_SERVER: "unix:/pulse/native"
+      GEMINI_IMAGE_MODEL: ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+      LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
+      # Quiet hours and the times on the frame use this; containers run in UTC otherwise.
+      TZ: ${TZ:-UTC}
+    # configs/ is mounted, so editing a config only needs a restart.
+    # /data keeps what the settings page changes (no topics, no transcripts).
+    command: ["-config", "/configs/${EKIRU_CONFIG:-docker.json}", "-settings", "/data/settings.json", "-mic"]
+    volumes:
+      - ./configs:/configs:ro
+      - ekiru-data:/data
+      # The microphone: only the PulseAudio/PipeWire socket, nothing else
+      # from the desktop session. If the audio server restarts, restart
+      # ekiru too (the mounted socket goes stale).
+      - type: bind
+        source: ${PULSE_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native}
+        target: /pulse/native
+        bind: { create_host_path: false }
+    networks: [local, default]
+    restart: unless-stopped
+
+networks:
+  local:
+    internal: true
+
+volumes:
+  whisper-models:
+  ollama:
+  ekiru-data:

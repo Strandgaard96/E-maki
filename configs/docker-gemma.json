@@ -1,0 +1,19 @@
+{
+  "profile": "laptop-docker-gemma",
+  "listen": ":8090",
+  "mode": "party",
+  "whisper_url": "http://whisper:8081",
+  "whisper_by_lang": {},
+  "llm_url": "http://ollama:11434",
+  "llm_model": "gemma4:e4b",
+  "segment_seconds": 15,
+  "min_speech_dbfs": -50,
+  "window_segments": 8,
+  "extract_every": 4,
+  "half_life_hours": 48,
+  "min_confidence": 0.5,
+  "block_sensitive": ["health", "money", "relationship", "confidential_work"],
+  "daily_image_cap": 50,
+  "panel_rotation": 0,
+  "panel_poll_minutes": 5
+}

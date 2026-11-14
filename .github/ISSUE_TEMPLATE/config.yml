@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Idea, feature request or question
+    url: https://github.com/Strandgaard96/E-kiru/discussions
+    about: Anything that isn't a bug. Start a big feature here before building it.
+  - name: Security or privacy problem
+    url: https://github.com/Strandgaard96/E-kiru/security/advisories/new
+    about: Report it privately, not as a public issue.

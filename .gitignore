@@ -1,0 +1,6 @@
+/ekiru
+/bin/
+*.wav
+/gallery/
+.env
+node_modules/
