@@ -73,8 +73,8 @@ jobs:
       - run: docker compose config --quiet
       - run: GPU=vulkan docker compose config --quiet
       - run: GPU=vulkan-wsl docker compose config --quiet
-      - run: LOCAL_IMAGES=1 WHISPER_DA_NO=1 WHISPER_DA_MODEL_URL=https://example.invalid/edda.bin COMPOSE_PROFILES=local-images,da-no docker compose config --quiet
-      - run: GPU=vulkan-wsl LOCAL_IMAGES=1 COMPOSE_PROFILES=local-images docker compose config --quiet
+      - run: LOCAL_IMAGES=1 WHISPER_DA_NO=1 WHISPER_DA_MODEL_URL=https://example.invalid/edda.bin docker compose config --quiet
+      - run: GPU=vulkan-wsl LOCAL_IMAGES=1 docker compose config --quiet
       - run: sh -n docker/whisper-entrypoint.sh
       - run: sh -n docker/sd-entrypoint.sh
       - run: docker build -f docker/emaki.Dockerfile .

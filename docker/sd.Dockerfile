@@ -1,7 +1,7 @@
 # stable-diffusion.cpp's sd-server, built from source for this machine's CPU,
 # for pictures made on this machine (see docs/local-images.md).
 # SD_GPU=vulkan builds it for a Vulkan GPU instead, e.g. integrated AMD or
-# Intel graphics (GPU in .env, see docker/gpu.yml).
+# Intel graphics (GPU in .env, see docker/options.yml).
 FROM debian:trixie-slim AS build
 ARG SD_GPU=
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake git ca-certificates \

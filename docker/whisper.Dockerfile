@@ -1,6 +1,6 @@
 # whisper.cpp's whisper-server, built from source for this machine's CPU.
 # WHISPER_GPU=vulkan builds it for a Vulkan GPU instead, e.g. integrated
-# AMD or Intel graphics (GPU in .env, see docker/gpu.yml).
+# AMD or Intel graphics (GPU in .env, see docker/options.yml).
 FROM debian:trixie-slim AS build
 ARG WHISPER_GPU=
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake git ca-certificates \

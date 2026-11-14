@@ -33,7 +33,7 @@ GPU=vulkan       # Linux
 GPU=vulkan-wsl   # Windows (WSL)
 ```
 
-Then `docker compose up -d --build` again. What the host needs is in [docker/gpu.yml](../docker/gpu.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
+Then `docker compose up -d --build` again. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
 
 ### Coming from the old compose files
 
@@ -47,7 +47,7 @@ There used to be one compose file per extra (`docker-compose.igpu-wsl.yml` and s
 | `docker-compose.da-no.yml` | `WHISPER_DA_NO=1` |
 | `docker-compose.netmic.yml` | `NET_MIC_BIND=0.0.0.0` |
 
-Copy the `COMPOSE_PROFILES=...` line from [.env.example](../.env.example) too, or `LOCAL_IMAGES` and `WHISPER_DA_NO` do nothing. Volumes keep their names, so no model is downloaded again.
+Volumes keep their names, so no model is downloaded again.
 
 ## 2. Settings in `.env`
 

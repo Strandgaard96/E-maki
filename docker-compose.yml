@@ -13,12 +13,11 @@
 # see audio or text. Only emaki can reach the internet, for the image API.
 #
 # Everything else is switched on in .env, not with extra compose files:
-#   GPU=vulkan or vulkan-wsl      integrated graphics (docker/gpu.yml)
+#   GPU=vulkan or vulkan-wsl      integrated graphics
 #   LOCAL_IMAGES=1                pictures made on this machine (sd, sd-model)
 #   WHISPER_DA_NO=1               Danish and Norwegian models (whisper-da, whisper-no)
 #   NET_MIC_BIND=0.0.0.0          a microphone elsewhere on the network
-# The optional services are compose profiles, which the COMPOSE_PROFILES
-# line in .env turns on from LOCAL_IMAGES and WHISPER_DA_NO.
+# The services pull in what each option adds from docker/options.yml.
 
 # Fixed project name, so volumes are emaki_* whatever the folder is called.
 name: emaki
@@ -36,15 +35,15 @@ x-whisper-build: &whisper-build
   dockerfile: docker/whisper.Dockerfile
   args: { WHISPER_GPU: "${GPU:+vulkan}" }
 
-# The GPU device and drivers for GPU=..., see docker/gpu.yml.
+# The GPU device and drivers for GPU=..., see docker/options.yml.
 x-gpu: &gpu
-  file: docker/gpu.yml
+  file: docker/options.yml
   service: ${GPU:-cpu}
 
 # The Danish and Norwegian servers (WHISPER_DA_NO=1) run on the CPU.
 x-whisper-extra: &whisper-extra
   <<: *hardening
-  profiles: [da-no]
+  extends: { file: docker/options.yml, service: "optional${WHISPER_DA_NO:+-on}" }
   build: { context: ., dockerfile: docker/whisper.Dockerfile }
 
 x-whisper-health: &whisper-health
@@ -186,7 +185,7 @@ services:
   # docs/local-images.md.
   sd-model:
     <<: *hardening
-    profiles: [local-images]
+    extends: { file: docker/options.yml, service: "optional${LOCAL_IMAGES:+-on}" }
     build: *sd-build
     command: ["download"]
     environment: *sd-models
@@ -195,8 +194,7 @@ services:
 
   sd:
     <<: *hardening
-    extends: *gpu
-    profiles: [local-images]
+    extends: { file: docker/options.yml, service: "optional-gpu${LOCAL_IMAGES:+-on}" }
     build: *sd-build
     depends_on:
       sd-model: { condition: service_completed_successfully }

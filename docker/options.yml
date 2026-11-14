@@ -1,6 +1,7 @@
-# What the GPU-using services (whisper, ollama, sd) add for each GPU= value
-# in .env. docker-compose.yml picks one with extends; this file runs nothing
-# on its own.
+# Pieces that docker-compose.yml pulls in with extends, picked by the
+# options in .env. This file runs nothing on its own.
+#
+# What the GPU-using services (whisper, ollama, sd) add for each GPU= value.
 
 services:
   # GPU empty: everything on the CPU.
@@ -30,3 +31,15 @@ services:
       OLLAMA_VULKAN: "1"
       LD_LIBRARY_PATH: /usr/lib/wsl/lib
       VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
+
+# On or off for the optional services (LOCAL_IMAGES=1, WHISPER_DA_NO=1).
+# "Off" puts a service in a profile nothing turns on, so compose neither
+# builds nor starts it.
+  optional:
+    profiles: [off]
+  optional-on: {}
+  # The same for sd, which also takes the GPU.
+  optional-gpu:
+    profiles: [off]
+  optional-gpu-on:
+    extends: ${GPU:-cpu}
