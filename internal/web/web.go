@@ -177,7 +177,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	// The same lines as a file, for a bug report.
 	mux.HandleFunc("GET "+pre+"/api/logs.txt", s.private(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Header().Set("Content-Disposition", `attachment; filename="ekiru.log"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="emaki.log"`)
 		if s.Logs == nil {
 			return
 		}
