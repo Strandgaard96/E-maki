@@ -99,7 +99,7 @@ jobs:
           cache: npm
           cache-dependency-path: internal/web/ui/package-lock.json
       - run: npm ci
-      - run: npx tsc -p jsconfig.json
+      - run: npx tsc
       - run: npm run build
       - name: built page is committed
         run: git diff --exit-code -- ../static || { echo "Run npm run build in internal/web/ui and commit the result."; exit 1; }

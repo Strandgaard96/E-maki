@@ -67,7 +67,7 @@ repos:
       # Needs `npm ci` in internal/web/ui first.
       - id: ui-typecheck
         name: tsc (settings page)
-        entry: npm --prefix internal/web/ui exec -- tsc -p internal/web/ui/jsconfig.json
+        entry: npm --prefix internal/web/ui exec -- tsc -p internal/web/ui
         language: system
         files: ^internal/web/ui/
         pass_filenames: false

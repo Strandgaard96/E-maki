@@ -60,7 +60,7 @@ build) and `docker` (compose files and the E-maki image). The whisper and sd
 images take long to compile, so they only build when their own Dockerfile or
 entrypoint changes.
 
-The settings page lives in `internal/web/ui` (Preact, Tailwind and Basecoat).
+The settings page lives in `internal/web/ui` (Preact in TypeScript, Tailwind and Basecoat).
 The built files in `internal/web/static` are committed, so `go build` needs no
 Node. After changing the page, rebuild them with Node (current LTS):
 
