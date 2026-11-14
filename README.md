@@ -3,9 +3,9 @@ A picture frame that listens to the room and paints what you talk about. Speech-
 
 <p align="center">
   <img src="docs/collage-example.png" width="640"
-       alt="An E-maki page dithered to six e-ink colours: a big cartoon of a hot dog arguing with a sandwich and a taco, captioned 'Is a hot dog a sandwich?', surrounded by eight smaller cartoons for topics like a ski trip to Lofoten, a sourdough starter, an escaped cat, a heat pump and a midnight IKEA run">
+       alt="The settings page preview of an E-maki page, in its dark frame, dithered to six e-ink colours, drawn as black ink with red accents: a big picture of red fishing cabins under steep mountains, captioned 'Cabin trip to Lofoten', surrounded by eight smaller drawings for topics like an escaped cat, a sourdough starter, a heat pump, a hot dog, a robot vacuum and a ferry">
   <br>
-  <em>An example page, laid out and dithered by E-maki's own code for a 13.3" Spectra 6 panel. The topics are made up, and the cartoons come from an AI image model.</em>
+  <em>An example page as the settings page previews it, laid out and dithered by E-maki's own code for a 13.3" Spectra 6 panel. The topics are made up, and the pictures are hand-drawn stand-ins for the "Ink and red" style.</em>
 </p>
 
 <p align="center">
