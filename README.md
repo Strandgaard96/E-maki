@@ -120,7 +120,7 @@ The settings page is at <http://localhost:8090/>, the picture at <http://localho
 | `internal/collage` | The page at the panel's size: one big tile plus up to 8 smaller tiles with captions |
 | `internal/panel` | Fugleramme dithering and `.e6` (ported), `/frame.png`, `/frame.e6`, `/press` |
 | `internal/timeline` | the saved pictures behind Pictures > History |
-| `internal/web` | the settings page (Preact, Tailwind and Basecoat; source in `internal/web/ui`, built files embedded) |
+| `internal/web` | the settings page (Preact in TypeScript, Tailwind and Basecoat; source in `internal/web/ui`, built files embedded) |
 | `internal/pipeline` | wires it together |
 
 ## Contributing
@@ -145,7 +145,7 @@ E-maki is not affiliated with any of them.
 ## License
 
 - Code: MIT. See [`LICENSE`](LICENSE).
-- [Preact](https://preactjs.com) (MIT), [htm](https://github.com/developit/htm) (Apache 2.0), [Tailwind CSS](https://tailwindcss.com) (MIT) and [Basecoat](https://basecoatui.com) (MIT) for the settings page, and Flickr's [justified-layout](https://github.com/flickr/justified-layout) (MIT) and [PhotoSwipe](https://photoswipe.com) (MIT) for its Timeline.
+- [Preact](https://preactjs.com) (MIT), [Tailwind CSS](https://tailwindcss.com) (MIT) and [Basecoat](https://basecoatui.com) (MIT) for the settings page, and Flickr's [justified-layout](https://github.com/flickr/justified-layout) (MIT) and [PhotoSwipe](https://photoswipe.com) (MIT) for its Timeline.
 - Code ported from Fugleramme (`internal/panel`): MIT, Copyright (c) 2026 Arne Giacomo Munthe-Kaas. See [`third_party/fugleramme/LICENSE`](third_party/fugleramme/LICENSE).
 - Sidecars ([whisper.cpp](https://github.com/ggml-org/whisper.cpp), [Ollama](https://github.com/ollama/ollama), [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)): MIT. Built or pulled as containers, not bundled.
 - Models (Whisper and Qwen by default, plus Edda, NB-Whisper, Gemma or FLUX.2 klein if you pick them): downloaded on first start and covered by their own licences. Check each model card before you use one.

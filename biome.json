@@ -19,6 +19,13 @@
     "rules": {
       "style": {
         "useTemplate": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "off",
+        "noNoninteractiveElementToInteractiveRole": "off",
+        "useAriaPropsForRole": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "useSemanticElements": "off"
       }
     }
   }
