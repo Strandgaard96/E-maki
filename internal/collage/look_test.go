@@ -117,3 +117,17 @@ func TestShapesMaskTheCorners(t *testing.T) {
 		t.Error("a rectangle lost its corner")
 	}
 }
+
+// In a cascade each tile is smaller than the one before.
+func TestCascadeGetsSmaller(t *testing.T) {
+	for _, size := range []image.Point{DefaultSize, {1200, 1600}} {
+		for n := 2; n <= MaxTiles; n++ {
+			rs := Rects(n, size, Look{Arrange: "cascade"})
+			for i := 1; i < n; i++ {
+				if area(rs[i]) >= area(rs[i-1]) {
+					t.Errorf("%v n=%d: tile %d (%v) not smaller than tile %d (%v)", size, n, i, rs[i], i-1, rs[i-1])
+				}
+			}
+		}
+	}
+}

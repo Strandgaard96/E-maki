@@ -42,7 +42,8 @@ type Settings struct {
 	// Every is the least time between two new tiles going up; new topics
 	// wait their turn in a queue. 0 puts each up at once.
 	Every time.Duration
-	// NewestBig puts the newest topic first (the big tile) without Newest.
+	// NewestBig puts the newest topic first, the biggest tile, ahead of
+	// pinned ones too, and keeps it there when the wall rotates.
 	NewestBig bool
 	// RotateEvery shows the pictures that do not fit in turn: when more
 	// topics could be on the wall than MaxTiles, the tiles that are not
@@ -545,7 +546,7 @@ func (m *Memory) Wall(now time.Time) []*Topic {
 		}
 		return out[i].FirstSeen.Before(out[j].FirstSeen)
 	})
-	if m.s.NewestBig && !m.s.Newest {
+	if m.s.NewestBig {
 		newest := 0
 		for i, t := range out {
 			if t.Shown.After(out[newest].Shown) {
@@ -565,14 +566,18 @@ func (m *Memory) Wall(now time.Time) []*Topic {
 	return out
 }
 
-// rotate turns the topics that are not pinned so that the next MaxTiles of
-// them come first, one page further every RotateEvery, counted in local time.
+// rotate turns the topics that are not pinned (nor the newest, with
+// NewestBig) so that the next MaxTiles of them come first, one page further
+// every RotateEvery, counted in local time.
 func (m *Memory) rotate(out []*Topic, now time.Time) {
-	pinned := 0
-	for pinned < len(out) && out[pinned].Pinned {
-		pinned++
+	fixed := 0
+	if m.s.NewestBig && len(out) > 0 {
+		fixed = 1
 	}
-	rest, free := out[pinned:], m.s.MaxTiles-pinned
+	for fixed < len(out) && out[fixed].Pinned {
+		fixed++
+	}
+	rest, free := out[fixed:], m.s.MaxTiles-fixed
 	if m.s.RotateEvery <= 0 || free <= 0 || len(rest) <= free {
 		return
 	}

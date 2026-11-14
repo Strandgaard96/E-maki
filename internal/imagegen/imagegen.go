@@ -23,12 +23,13 @@ var inks = []color.RGBA{{36, 66, 140, 255}, {196, 62, 50, 255}, {232, 186, 52, 2
 
 func (Placeholder) Generate(_ context.Context, prompt string) (image.Image, error) {
 	bg, fg := PlaceholderInks(prompt)
-	img := image.NewRGBA(image.Rect(0, 0, 600, 600))
+	// 4:3 like the pictures asked of the image APIs, with a centred disc
+	// small enough to stay whole in a wide tile, a square or a tall one.
+	img := image.NewRGBA(image.Rect(0, 0, 800, 600))
 	draw.Draw(img, img.Bounds(), &image.Uniform{bg}, image.Point{}, draw.Src)
-	// a centred disc, so tiles read as pictures rather than flat colour
 	for y := 0; y < 600; y++ {
-		for x := 0; x < 600; x++ {
-			if dx, dy := x-300, y-300; dx*dx+dy*dy < 170*170 {
+		for x := 0; x < 800; x++ {
+			if dx, dy := x-400, y-300; dx*dx+dy*dy < 150*150 {
 				img.Set(x, y, fg)
 			}
 		}

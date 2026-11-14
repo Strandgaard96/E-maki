@@ -47,12 +47,12 @@ a value out of range stops it with a message, instead of being ignored.
 | `image_style` | Art style added to every image prompt: a preset's name (`Comic`, `Clear line`, `Picture book`, `Linocut`, `Paper cut-out`, `Stained glass`, `Screen print`, `Pop art`, `Ink and red`, `Pixel art`) or a style of your own. Empty is `Comic`. The presets are in `internal/imagegen/styles.go` |
 | `image_styles` | Your own presets for the settings page, like `[{"name": "Woodcut", "prompt": "..."}]`. One with a preset's name replaces it, so the first preset is the default. Needs a restart |
 | `image_provider` | Who draws the pictures: `local`, `gemini`, `openai`, `openrouter` or `placeholder`. Empty (default) takes the first one set up in `.env`, local first. Keys and addresses stay in `.env` |
-| `layout`, `tiles` | `collage` (default: most talked-about biggest, tiles fade), `single` (newest topic only; pin to keep it) or `rolling` (newest first, the oldest drops off). `tiles` is the most pictures, 1 to 9 (default 9) |
+| `layout`, `tiles` | `collage` (default: the topics talked about most, the newest biggest; tiles fade), `single` (newest topic only; pin to keep it) or `rolling` (newest first, the oldest drops off). `tiles` is the most pictures, 1 to 9 (default 9) |
 | `new_every_minutes` | Least minutes between two new pictures; new topics wait in line. 0 (default) puts each up at once |
 | `rotate_minutes` | When more pictures are saved than fit, show the others in turn, a new set this often. The pinned ones stay, and nothing changes in the quiet hours. 0 (default) is off |
 | `quiet_from`, `quiet_to` | Quiet hours like `"22:00"` and `"07:00"`: no new pictures go up in between. Times follow `TZ` |
-| `newest_big`, `hide_captions` | Collage: the newest topic takes the big tile. Leave the topic names off the pictures |
-| `arrange` | `hero` (default: the first picture big, the rest on a grid), `even` (rows of pictures the same size) or `mosaic` (mixed sizes; a new mosaic with the first new page each day) |
+| `hide_captions` | Leave the topic names off the pictures. (`newest_big` is no longer used and is ignored) |
+| `arrange` | The newest picture is always the biggest, unless all are the same size: `hero` (default: the newest big, the rest on a grid), `cascade` (each picture smaller than the one before, newest to oldest), `mosaic` (mixed sizes, the newest biggest; a new mosaic with the first new page each day) or `even` (rows of pictures the same size) |
 | `spacing` | Gaps between pictures and at the edge: `none`, `thin`, `normal` (default) or `wide` |
 | `shape` | `rectangle` (default), `rounded`, `circle` or `arch` (round top) |
 | `background` | `paper` (default), `white` or `black` |

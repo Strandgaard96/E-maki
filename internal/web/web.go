@@ -374,7 +374,7 @@ func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
 }
 
 // draft answers with the frame's picture as unsaved layout settings would
-// make it: the settings in force with the query's layout, tiles, newest_big,
+// make it: the settings in force with the query's layout, tiles,
 // hide_captions, arrange, spacing, background, shape, rotate_minutes and
 // half_life_hours over them. It changes nothing.
 func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
@@ -395,9 +395,6 @@ func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
 	}
 	if v := q.Get("half_life_hours"); v != "" && err == nil {
 		set.HalfLifeHours, err = strconv.ParseFloat(v, 64)
-	}
-	if v := q.Get("newest_big"); v != "" && err == nil {
-		set.NewestBig, err = strconv.ParseBool(v)
 	}
 	if v := q.Get("hide_captions"); v != "" && err == nil {
 		set.HideCaptions, err = strconv.ParseBool(v)

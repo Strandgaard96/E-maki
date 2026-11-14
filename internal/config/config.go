@@ -129,7 +129,8 @@ type Settings struct {
 	// Show the pictures that do not fit in turn, a new set this often. 0
 	// is off.
 	RotateMinutes int `json:"rotate_minutes"`
-	// Collage only: the newest topic takes the big tile.
+	// No longer used: the newest topic always takes the biggest tile,
+	// unless arrange is "even". Kept so older settings files still load.
 	NewestBig bool `json:"newest_big"`
 	// Quiet hours "22:00" to "07:00": no new pictures go up in between, so
 	// what was talked about appears at the end. Both empty is off.
