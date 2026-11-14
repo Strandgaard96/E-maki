@@ -463,7 +463,7 @@ function Wall({ state, hot, onHot, onTile, onClear, redrawing, onRedraw }) {
                       }}>Remove</button>
                       <button type="button" class="btn" data-size="sm" data-variant="ghost" ref=${focus} onClick=${() => setAsking("")}>Keep</button>
                     </div>`
-                    : html`<div class="flex gap-2">
+                    : html`<div class="flex flex-wrap gap-2">
                       <button type="button" class=${"btn " + (t.pinned ? "bg-ink-yellow text-neutral-900 hover:bg-ink-yellow/80" : "")} data-size="sm"
                         data-variant=${t.pinned ? undefined : "outline"} aria-pressed=${t.pinned}
                         onClick=${() => onTile(t.pinned ? "unpin" : "pin", t.label)}>

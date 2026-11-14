@@ -120,7 +120,7 @@ var Ei=Object.create;var $t=Object.defineProperty;var Ri=Object.getOwnPropertyDe
                       <span>Remove “${h.label}” and keep it off the frame for a week?</span>
                       <button type="button" class="btn" data-size="sm" data-variant="destructive" onClick=${()=>{l(""),i("remove",h.label)}}>Remove</button>
                       <button type="button" class="btn" data-size="sm" data-variant="ghost" ref=${ge} onClick=${()=>l("")}>Keep</button>
-                    </div>`:p`<div class="flex gap-2">
+                    </div>`:p`<div class="flex flex-wrap gap-2">
                       <button type="button" class=${"btn "+(h.pinned?"bg-ink-yellow text-neutral-900 hover:bg-ink-yellow/80":"")} data-size="sm"
                         data-variant=${h.pinned?void 0:"outline"} aria-pressed=${h.pinned}
                         onClick=${()=>i(h.pinned?"unpin":"pin",h.label)}>
