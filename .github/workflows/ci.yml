@@ -73,5 +73,9 @@ jobs:
       - run: docker compose config --quiet
       - run: docker compose -f docker-compose.yml -f docker-compose.igpu.yml config --quiet
       - run: docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml config --quiet
+      - run: docker compose -f docker-compose.yml -f docker-compose.local-images.yml config --quiet
+      - run: docker compose -f docker-compose.yml -f docker-compose.local-images.yml -f docker-compose.local-images-igpu.yml config --quiet
+      - run: docker compose -f docker-compose.yml -f docker-compose.igpu-wsl.yml -f docker-compose.local-images.yml -f docker-compose.local-images-igpu-wsl.yml config --quiet
       - run: sh -n docker/whisper-entrypoint.sh
+      - run: sh -n docker/sd-entrypoint.sh
       - run: docker build -f docker/emaki.Dockerfile .

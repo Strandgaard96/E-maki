@@ -179,10 +179,13 @@ function App() {
       : tab === "pictures"
       ? html`<main id="panel-pictures" role="tabpanel" aria-labelledby="tab-pictures"
           class="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-2 lg:items-start">
-          <${Wall} state=${state} hot=${hot} onHot=${setHot} onTile=${(a, label) => call("api/tiles/" + a, { label })}
+          <${Wall} state=${state} hot=${hot} onHot=${setHot} onTile=${(a, label, to) => call("api/tiles/" + a, { label, to })}
             onClear=${() => call("api/clear", {}, "Frame cleared.")} redrawing=${redrawing} onRedraw=${redraw} />
-          <${Queue} state=${state} onLine=${(a, label, done) => call("api/queue/" + a, { label }, done)}
-            redrawing=${redrawing} onRedraw=${redraw} />
+          <div class="grid gap-6">
+            <${Queue} state=${state} onLine=${(a, label, done) => call("api/queue/" + a, { label }, done)}
+              redrawing=${redrawing} onRedraw=${redraw} />
+            <${Removed} removed=${state.removed} onAllow=${(label) => call("api/removed/allow", { label }, "It can come back now.")} />
+          </div>
         </main>`
       : tab === "timeline"
       ? html`<${Timeline} onState=${setState} onSignedOut=${() => setSignin(true)} />`
@@ -335,6 +338,7 @@ const WALL_LEDE = {
 function Wall({ state, hot, onHot, onTile, onClear, redrawing, onRedraw }) {
   const { wall, max_tiles: max } = state;
   const [asking, setAsking] = useState("");
+  const [renaming, setRenaming] = useState("");
   return html`
     <${Card} title="On the frame now" intro=${WALL_LEDE[state.settings.layout]}>
       ${wall.length === 0
@@ -347,7 +351,14 @@ function Wall({ state, hot, onHot, onTile, onClear, redrawing, onRedraw }) {
                   aria-label=${i === 0 ? "Big tile" : "Tile " + (i + 1)}>${i + 1}</span>
                 <i class="h-12 w-16 shrink-0 rounded-sm bg-[#e9e1ca] ring-1 ring-black/15" aria-hidden="true" style=${thumb(t.rect, state.page)}></i>
                 <div class="min-w-0 flex-1 basis-40">
-                  <p class="text-lg font-semibold leading-snug tracking-tight break-words">${t.label}</p>
+                  ${renaming === t.label
+                    ? html`<form class="flex flex-wrap items-center gap-2" onSubmit=${(e) => { e.preventDefault(); setRenaming(""); onTile("rename", t.label, e.target.elements.to.value); }}
+                        onKeyDown=${(e) => e.key === "Escape" && setRenaming("")}>
+                        <input name="to" class="input min-w-0 flex-1" aria-label="New caption" value=${t.label} maxlength="120" required ref=${focus} />
+                        <button type="submit" class="btn" data-size="sm">Save</button>
+                        <button type="button" class="btn" data-size="sm" data-variant="ghost" onClick=${() => setRenaming("")}>Cancel</button>
+                      </form>`
+                    : html`<p class="text-lg font-semibold leading-snug tracking-tight break-words">${t.label}</p>`}
                   <p class="text-muted-foreground">${t.pinned ? "Pinned. " : ""}Came up ${t.mentions === 1 ? "once" : t.mentions + " times"}, last ${when(t.last_seen)}</p>
                   <${Origin} t=${t} />
                 </div>
@@ -363,6 +374,7 @@ function Wall({ state, hot, onHot, onTile, onClear, redrawing, onRedraw }) {
                         onClick=${() => onTile(t.pinned ? "unpin" : "pin", t.label)}>
                         <${PinIcon} /> ${t.pinned ? "Pinned" : "Pin"}</button>
                       <${Redraw} label=${t.label} redrawing=${redrawing} onRedraw=${onRedraw} />
+                      <button type="button" class="btn" data-size="sm" data-variant="ghost" onClick=${() => setRenaming(t.label)}>Rename</button>
                       <button type="button" class="btn" data-size="sm" data-variant="ghost" onClick=${() => setAsking(t.label)}>Remove</button>
                     </div>`}
               </li>`)}
@@ -627,12 +639,32 @@ function Scrubber({ count, box, width }) {
     </nav>`;
 }
 
+// Removed lists the topics taken off the frame that are kept away for a
+// while, so one removed by mistake can come back.
+function Removed({ removed, onAllow }) {
+  if (!removed?.length) return null;
+  return html`
+    <${Card} title="Removed topics" intro="These stay off the frame until the date shown, even when they come up again.">
+      <ul class="grid gap-2">
+        ${removed.map((r) => html`
+          <li key=${r.label} class="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+            <div class="min-w-0 flex-1 basis-40">
+              <p class="font-medium break-words">${r.label}</p>
+              <p class="text-sm text-muted-foreground">Kept away until ${new Date(r.until).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</p>
+            </div>
+            <button type="button" class="btn" data-size="sm" data-variant="outline" onClick=${() => onAllow(r.label)}>Allow again</button>
+          </li>`)}
+      </ul>
+    <//>`;
+}
+
 // Logs shows E-maki's own recent log, newest at the bottom, from memory.
 function Logs() {
   const [lines, setLines] = useState([]);
   const [filter, setFilter] = useState("");
   const [follow, setFollow] = useState(true);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
   const box = useRef(null);
   useEffect(() => {
     let on = true, last = 0;
@@ -663,6 +695,15 @@ function Logs() {
         <div class="flex flex-wrap items-center gap-3">
           <label class="flex items-center gap-2 text-sm font-medium">Filter<input class="input w-56" type="search" placeholder="topic, microphone" value=${filter} onInput=${(e) => setFilter(e.target.value)} /></label>
           <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" class="input" checked=${follow} onChange=${(e) => setFollow(e.target.checked)} />Follow new lines</label>
+          ${navigator.clipboard && html`<button type="button" class="btn" data-size="sm" data-variant="outline" disabled=${shown.length === 0}
+            onClick=${async () => {
+              try {
+                await navigator.clipboard.writeText(shown.map((l) => l.text).join("\n") + "\n");
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch (e) { setError("Can't copy: " + e.message); }
+            }}>${copied ? "Copied" : "Copy"}</button>`}
+          <a class="btn" data-size="sm" data-variant="outline" href="api/logs.txt" download>Download</a>
         </div>
       </div>
       ${error && html`<div class="alert" data-variant="destructive" role="alert"><section>${error}</section></div>`}
@@ -742,7 +783,7 @@ function Segments({ name, options, value, onChange, label, inline }) {
       ${!inline && html`<span class="font-medium">${label}</span>`}
       <div class="inline-flex w-fit rounded-lg bg-muted p-1">
         ${options.map(([v, text]) => html`
-          <label class="tap cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring">
+          <label class="tap cursor-pointer rounded-md px-3 py-1.5 text-sm sm:px-4 font-medium text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring">
             <input type="radio" name=${name} class="sr-only" checked=${value === v} onChange=${() => onChange(v)} />${text}</label>`)}
       </div>
     </div>`;
@@ -1106,7 +1147,7 @@ function Security({ state, onState, onSignedOut }) {
     <//>`;
 }
 
-const TILE_COUNTS = [2, 3, 4, 6, 9];
+const TILE_COUNTS = [2, 3, 4, 5, 6, 7, 8, 9];
 
 function Layout({ draft, set }) {
   const layouts = [

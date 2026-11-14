@@ -183,3 +183,30 @@ func TestQuietHoursNewestBigAndClear(t *testing.T) {
 		t.Fatalf("after clear %v, want only the pinned cat", w)
 	}
 }
+
+// A renamed topic keeps its picture and history, and the old label still
+// leads to it, so it does not get a second picture.
+func TestRename(t *testing.T) {
+	m := New(settings())
+	m.Observe("rollerblading date", "", 0.9, t0)
+	m.Observe("ski trip to Lofoten", "", 0.9, t0)
+	if m.Rename("rollerblading date", "ski trip to lofoten") {
+		t.Error("renamed onto another topic")
+	}
+	if !m.Rename("rollerblading date", "Kim's skate fiasco") {
+		t.Fatal("rename refused")
+	}
+	if d := m.Observe("rollerblading date", "", 0.9, t0); d != Bump {
+		t.Errorf("old label after rename: %s, want bump", d)
+	}
+	m.Remove("Kim's skate fiasco", t0)
+	if r := m.Removed(t0); len(r) != 1 || r[0].Label != "kim's skate fiasco" {
+		t.Fatalf("removed %+v", r)
+	}
+	if !m.Allow("Kim's skate fiasco") || len(m.Removed(t0)) != 0 {
+		t.Fatal("allow")
+	}
+	if d := m.Observe("Kim's skate fiasco", "", 0.9, t0); d != NewTopic {
+		t.Errorf("allowed topic: %s, want new", d)
+	}
+}

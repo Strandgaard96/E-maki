@@ -6,6 +6,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -132,11 +133,29 @@ func TestTiles(t *testing.T) {
 	if resp := send(t, "POST", ts.URL+"/api/tiles/pin", js, `{"label":"garden gnome theft"}`, nil); resp.StatusCode != 200 || !w.Pipeline.Wall()[0].Pinned {
 		t.Fatalf("pin: %s", resp.Status)
 	}
+	if resp := send(t, "POST", ts.URL+"/api/tiles/rename", js, `{"label":"garden gnome theft","to":"  "}`, nil); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("rename to nothing: %s", resp.Status)
+	}
+	if resp := send(t, "POST", ts.URL+"/api/tiles/rename", js, `{"label":"garden gnome theft","to":"gnome heist"}`, nil); resp.StatusCode != 200 || w.Pipeline.Wall()[0].Label != "gnome heist" || w.Pipeline.Picture("gnome heist") == nil {
+		t.Fatalf("rename: %s %+v", resp.Status, w.Pipeline.Wall())
+	}
+	if resp := send(t, "POST", ts.URL+"/api/tiles/rename", js, `{"label":"garden gnome theft","to":"x"}`, nil); resp.StatusCode != http.StatusConflict {
+		t.Errorf("rename of the old label: %s", resp.Status)
+	}
 	if resp := send(t, "POST", ts.URL+"/api/tiles/remove", js, `{"label":"no such topic"}`, nil); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("remove unknown: %s", resp.Status)
 	}
-	if resp := send(t, "POST", ts.URL+"/api/tiles/remove", js, `{"label":"garden gnome theft"}`, nil); resp.StatusCode != 200 || len(w.Pipeline.Wall()) != 0 {
+	if resp := send(t, "POST", ts.URL+"/api/tiles/remove", js, `{"label":"gnome heist"}`, nil); resp.StatusCode != 200 || len(w.Pipeline.Wall()) != 0 {
 		t.Fatalf("remove: %s", resp.Status)
+	}
+	if r := w.Pipeline.Removed(); len(r) != 1 || r[0].Label != "gnome heist" {
+		t.Fatalf("removed: %+v", r)
+	}
+	if resp := send(t, "POST", ts.URL+"/api/removed/allow", js, `{"label":"gnome heist"}`, nil); resp.StatusCode != 200 || len(w.Pipeline.Removed()) != 0 {
+		t.Fatalf("allow: %s", resp.Status)
+	}
+	if resp := send(t, "POST", ts.URL+"/api/removed/allow", js, `{"label":"gnome heist"}`, nil); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("allow twice: %s", resp.Status)
 	}
 	if resp := send(t, "POST", ts.URL+"/api/tiles/explode", js, `{"label":"x"}`, nil); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("unknown action: %s", resp.Status)
@@ -320,6 +339,15 @@ func TestQueueAndLogs(t *testing.T) {
 	r.Body.Close()
 	if len(lines) != 1 || lines[0].Text != "wall: 1 tiles" {
 		t.Fatalf("logs: %+v", lines)
+	}
+	r, err = http.Get(ts.URL + "/api/logs.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(r.Body)
+	r.Body.Close()
+	if !strings.HasSuffix(string(b), " wall: 1 tiles\n") || !strings.Contains(r.Header.Get("Content-Disposition"), "attachment") {
+		t.Fatalf("logs.txt: %q", b)
 	}
 	if r, _ := http.Get(ts.URL + "/api/picture.png?label=garden%20gnome%20theft"); r.StatusCode != 200 {
 		t.Fatalf("picture of a tile: %d", r.StatusCode)
