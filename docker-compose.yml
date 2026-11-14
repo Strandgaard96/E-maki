@@ -139,7 +139,8 @@ services:
     command: ["download"]
     environment:
       WHISPER_MODEL: ${WHISPER_DA_MODEL:-edda-v0.2}
-      WHISPER_MODEL_URL: ${WHISPER_DA_NO:+${WHISPER_DA_MODEL_URL:?set WHISPER_DA_MODEL_URL in .env to a ggml build of Edda v0.2, see docs/setup.md}}
+      # No default: the download stops with this text if it is not set.
+      WHISPER_MODEL_URL: ${WHISPER_DA_MODEL_URL:-WHISPER_DA_MODEL_URL is not set in .env, see docs/setup.md}
       WHISPER_MODEL_SHA256: ${WHISPER_DA_MODEL_SHA256:-}
     volumes: [whisper-models:/models]
     restart: on-failure
