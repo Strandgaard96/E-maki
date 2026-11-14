@@ -85,7 +85,7 @@ With more than one set up, choose under **System > Image provider**. Cap spendin
 
 Changes apply at once and are kept in the `emaki-data` volume.
 
-- **Frame:** the live picture, which stays in view while you change anything that shows in it: the layout (collage, one picture, or a rolling set of 2 to 9), captions, picture style, Diary or Continuous mode, how often a new picture may go up, quiet hours, and the panel (size, rotation, how often the frame checks for a new page, what its buttons do).
+- **Frame:** the live picture, which stays in view while you change anything that shows in it: which topics are up (most talked about, one picture, or the latest 2 to 9) and how they are arranged, captions, picture style, Diary or Continuous mode, how often a new picture may go up, quiet hours, and the panel (size, rotation, how often the frame checks for a new page, what its buttons do).
 - **Pictures:** *On the frame*: the pictures on the frame (pin, remove, redraw, clear) and the ones waiting to go up, each with the description it was made from. *History*: every picture E-maki made, day by day, with a full-screen viewer. Switch saving off or delete them all there.
 - **Listening:**
   - *Microphone:* which mic, the speech level meter, languages.
