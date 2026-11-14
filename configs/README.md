@@ -51,7 +51,7 @@ a value out of range stops it with a message, instead of being ignored.
 | `new_every_minutes` | Least minutes between two new pictures; new topics wait in line. 0 (default) puts each up at once |
 | `quiet_from`, `quiet_to` | Quiet hours like `"22:00"` and `"07:00"`: no new pictures go up in between. Times follow `TZ` |
 | `newest_big`, `hide_captions` | Collage: the newest topic takes the big tile. Leave the topic names off the pictures |
-| `timeline` | `false` stops saving new pictures for the Timeline tab (the tab has the same switch). Default on |
+| `timeline` | `false` stops saving new pictures for Pictures > History (it has the same switch). Default on |
 | `timeline_thumb_px`, `timeline_jpeg_quality`, `timeline_row_px` | Timeline: thumbnail size (longest side, default 480), JPEG quality of saved pictures (default 90), and row height on the tab (default 220; a phone gets about half). Need a restart |
 | `paused` | `true` ignores the microphone (the settings page sets this) |
 | `panel_buttons` | The frame's buttons, by the letter its client sends to `/press` (`A` to `H`), and what each does. Unset is an Inky Impression's four: `{"A": "pause", "B": "remove", "C": "pin", "D": "next"}`. `{}` is a frame without buttons. Actions: `pause` (pause or resume listening), `remove` (take the last picture off), `pin` (pin it, or let it fade again), `next` (put the next waiting picture up), `""` (nothing) |

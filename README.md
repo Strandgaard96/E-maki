@@ -55,7 +55,7 @@ E-maki is an always-on microphone, so:
 - Transcripts live only in an in-memory rolling window. They are never written to disk or logged, and they stay on your network unless you switch on an external topic model (below). Logs show sound levels, languages and word counts, not words.
 - Speech-to-text and the topic LLM run on your own machine, on a Docker network with no route to the internet. Their models are downloaded by separate one-shot containers that never see audio or text.
 - With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own key. Without a key nothing does. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Set `block_names` in the config profile to also refuse prompts that repeat a name it heard.
-- Optional, off by default: an external topic model (OpenAI, Gemini, OpenRouter, Groq or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under E-maki > Topic detection, which shows a warning while it is on.
+- Optional, off by default: an external topic model (OpenAI, Gemini, OpenRouter, Groq or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under Listening > Topics, which shows a warning while it is on.
 - Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, with `block_sensitive` in the config profile. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked in every shipped profile. The local LLM makes the call, so it will sometimes get it wrong.
 - The page itself shows what was talked about, so it lives at a private address that E-maki makes up on the first start and prints in its log. Only devices that have the address can open it; see [Lock it down](docs/setup.md#lock-it-down).
 
@@ -125,7 +125,7 @@ The settings page is at <http://localhost:8090/>, the picture at <http://localho
 | `internal/imagegen` | Image providers (Gemini, OpenAI-style APIs including the local sd-server, OpenRouter) and an offline placeholder |
 | `internal/collage` | The page at the panel's size: one big tile plus up to 8 smaller tiles with captions |
 | `internal/panel` | Fugleramme dithering and `.e6` (ported), `/frame.png`, `/frame.e6`, `/press` |
-| `internal/timeline` | the saved pictures behind the Timeline tab |
+| `internal/timeline` | the saved pictures behind Pictures > History |
 | `internal/web` | the settings page (Preact, Tailwind and Basecoat; source in `internal/web/ui`, built files embedded) |
 | `internal/pipeline` | wires it together |
 
