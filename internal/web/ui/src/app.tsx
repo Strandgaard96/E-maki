@@ -372,7 +372,6 @@ const TABS: [string, string][] = [
 const PICTURE_KEYS: (keyof Settings)[] = [
   "layout",
   "tiles",
-  "newest_big",
   "hide_captions",
   "arrange",
   "spacing",
@@ -596,7 +595,7 @@ function Loading({ error }: { error: string }) {
 }
 
 const WALL_LEDE: Record<string, string> = {
-  collage: "The most talked-about topic gets the big tile. Tiles fade as a topic stops coming up; pin one to keep it.",
+  collage: "The newest topic gets the big tile. Tiles fade as a topic stops coming up; pin one to keep it.",
   single: "Only the newest topic is on the frame. Pin it to keep it there for good.",
   rolling: "The newest topic comes first, and the oldest drops off when the frame is full. Pin one to keep it.",
 };
@@ -2462,7 +2461,7 @@ const TILE_COUNTS = [2, 3, 4, 5, 6, 7, 8, 9];
 
 function Layout({ draft, set }: DraftProps) {
   const layouts: [string, string, string][] = [
-    ["collage", "Collage", "Up to 9 pictures. The most talked-about is biggest; tiles fade over time."],
+    ["collage", "Collage", "Up to 9 pictures. The newest is biggest; tiles fade over time."],
     ["single", "One picture", "The newest topic fills the frame. Pin it to keep it."],
     ["rolling", "Rolling", "A set number of pictures. Each new one is added and the oldest drops off."],
   ];
@@ -2488,14 +2487,6 @@ function Layout({ draft, set }: DraftProps) {
           options={TILE_COUNTS.map((n): [number, string] => [n, String(n)])}
         />
       )}
-      {draft.layout === "collage" && (
-        <Toggle
-          checked={draft.newest_big}
-          onChange={(v) => set({ newest_big: v })}
-          title="Newest picture largest"
-          text="Instead of the most talked-about one."
-        />
-      )}
       {draft.layout !== "single" && (
         <Segments
           name="arrange"
@@ -2503,9 +2494,10 @@ function Layout({ draft, set }: DraftProps) {
           value={draft.arrange}
           onChange={(v) => set({ arrange: v })}
           options={[
-            ["hero", "One big"],
-            ["even", "Even"],
+            ["hero", "Newest big"],
+            ["cascade", "Cascade"],
             ["mosaic", "Mosaic"],
+            ["even", "Same size"],
           ]}
         />
       )}

@@ -262,3 +262,27 @@ func TestRotate(t *testing.T) {
 		t.Errorf("rotation off: %q then %q, want ae", a, b)
 	}
 }
+
+// With NewestBig the newest topic leads the wall, ahead of pinned ones and
+// in rolling too, and it stays first while the rest rotate.
+func TestNewestStaysBiggest(t *testing.T) {
+	s := settings()
+	s.Newest, s.NewestBig, s.MaxTiles, s.RotateEvery = true, true, 3, time.Hour
+	m := New(s)
+	for i, l := range []string{"a", "b", "c", "d", "e", "f"} {
+		at := t0.Add(time.Duration(i) * time.Second)
+		m.Observe(l, "", 0.9, at)
+		m.Reveal(at)
+	}
+	m.Pin("a", true)
+	for h := range 6 {
+		w := m.Wall(t0.Add(time.Duration(h) * time.Hour))
+		if len(w) != 3 || w[0].Label != "f" || w[1].Label != "a" {
+			var got []string
+			for _, t := range w {
+				got = append(got, t.Label)
+			}
+			t.Fatalf("hour %d: wall %v, want f, then the pinned a", h, got)
+		}
+	}
+}

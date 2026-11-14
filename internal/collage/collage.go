@@ -33,9 +33,10 @@ const (
 // Look is how the page is drawn. The zero Look is the default: hero
 // arrangement, normal spacing, paper background, rectangles.
 type Look struct {
-	// Arrange: "hero" (the first tile biggest, on a grid), "even" (all
-	// tiles about the same size, in rows) or "mosaic" (mixed sizes, from
-	// Seed). Empty is "hero".
+	// Arrange: "hero" (the first tile biggest, on a grid), "cascade"
+	// (each tile a little smaller than the one before), "mosaic" (mixed
+	// sizes, from Seed, the first biggest) or "even" (all tiles about the
+	// same size, in rows). Empty is "hero".
 	Arrange string
 	// Spacing between tiles and at the page's edge: "none", "thin",
 	// "normal" or "wide". Empty is "normal".
@@ -52,7 +53,7 @@ type Look struct {
 
 // Choices for each of Look's fields, the default first.
 var (
-	Arrangements = []string{"hero", "even", "mosaic"}
+	Arrangements = []string{"hero", "cascade", "mosaic", "even"}
 	Spacings     = []string{"normal", "none", "thin", "wide"}
 	Backgrounds  = []string{"paper", "white", "black"}
 	Shapes       = []string{"rectangle", "rounded", "circle", "arch"}
@@ -157,6 +158,8 @@ func Rects(n int, size image.Point, look Look) []image.Rectangle {
 		rs = even(n, inner, g)
 	case "mosaic":
 		rs = mosaic(n, inner, g, rand.New(rand.NewPCG(look.Seed, uint64(n))))
+	case "cascade":
+		rs = cascade(n, inner, g, 90*k)
 	default:
 		rs = hero(n, inner, g, size.Y > size.X)
 	}
@@ -164,7 +167,7 @@ func Rects(n int, size image.Point, look Look) []image.Rectangle {
 	for i, r := range rs {
 		out[i] = image.Rect(int(r.x0), int(r.y0), int(r.x1), int(r.y1))
 	}
-	if look.Arrange == "even" || look.Arrange == "mosaic" {
+	if look.Arrange == "even" || look.Arrange == "mosaic" || look.Arrange == "cascade" {
 		slices.SortStableFunc(out, func(a, b image.Rectangle) int { return b.Dx()*b.Dy() - a.Dx()*a.Dy() })
 	}
 	return out
@@ -239,6 +242,63 @@ func even(n int, in rect, g float64) []rect {
 			x0 := in.x0 + float64(j)*(w+g)
 			out = append(out, rect{x0, y0, x0 + w, y0 + h})
 		}
+	}
+	return out
+}
+
+// cascade puts the tiles in rows, few big ones at the top and more,
+// smaller ones in each row below, and each tile in a row a little narrower
+// than the one before: every tile is smaller than the one before it. Of
+// the ways to split n into rows that grow, it takes the one whose 4:3
+// pictures, with a caption of about cap under each, come closest to
+// filling the page.
+func cascade(n int, in rect, g, cap float64) []rect {
+	var best []int
+	worst := math.Inf(1)
+	var try func(rows []int, left, from int)
+	try = func(rows []int, left, from int) {
+		if left == 0 {
+			if len(rows) < 2 && n > 2 {
+				return // one row is not a cascade
+			}
+			h := float64(len(rows)-1) * g
+			for _, c := range rows {
+				h += (in.w()-float64(c-1)*g)/float64(c)*3/4 + cap
+			}
+			if bad := math.Abs(math.Log(h / in.h())); bad < worst {
+				best, worst = slices.Clone(rows), bad
+			}
+			return
+		}
+		for c := from; c <= left && c <= 5; c++ {
+			try(append(rows, c), left-c, c+1)
+		}
+	}
+	try(nil, n, 1)
+	// The pictures' heights in proportion to their widths, scaled to fill
+	// the page; the captions keep their height.
+	nat := make([]float64, len(best))
+	sum := 0.0
+	for i, c := range best {
+		nat[i] = (in.w() - float64(c-1)*g) / float64(c) * 3 / 4
+		sum += nat[i]
+	}
+	room := max(in.h()-float64(len(best)-1)*g-float64(len(best))*cap, 0)
+	var out []rect
+	y := in.y0
+	for i, c := range best {
+		h := room*nat[i]/sum + cap
+		wsum := 0.0
+		for j := range c {
+			wsum += 1 - 0.15*float64(j)/float64(max(c-1, 1))
+		}
+		x := in.x0
+		for j := range c {
+			w := (in.w() - float64(c-1)*g) * (1 - 0.15*float64(j)/float64(max(c-1, 1))) / wsum
+			out = append(out, rect{x, y, x + w, y + h})
+			x += w + g
+		}
+		y += h + g
 	}
 	return out
 }
