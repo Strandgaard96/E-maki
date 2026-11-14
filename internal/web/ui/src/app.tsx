@@ -479,11 +479,11 @@ function Frame({
     "api/preview.png?" + new URLSearchParams([...PICTURE_KEYS.map((k) => [k, String(draft[k])]), ["v", page]]);
   const pic = usePicture(src);
   const alt = empty
-    ? "Example pictures in the chosen layout"
+    ? "Preview pictures in the chosen layout"
     : changed
       ? "The frame as it would look with your unsaved changes"
       : "The layout with sample pictures in the empty places";
-  const badge = empty ? "Example, not on the frame" : changed ? "Not saved yet" : "";
+  const badge = empty ? "Preview" : changed ? "Not saved yet" : "";
   const [w, h] =
     draft.panel_rotation % 180 ? [draft.panel_height, draft.panel_width] : [draft.panel_width, draft.panel_height];
   // On a phone the picture is kept to a third of the screen's height, so the settings show under it.
