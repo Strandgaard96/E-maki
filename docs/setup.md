@@ -14,7 +14,13 @@ docker compose up -d --build
 
 The first start builds whisper-server and downloads the speech and language models (a few GB), so give it a while. Watch it with `docker compose logs -f`.
 
-Then open <http://localhost:8090/>, or `http://<your-brain>:8090/` from a phone or laptop on your network. That is the settings page. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
+E-maki prints the settings page's address when it starts:
+
+```bash
+docker compose logs emaki | grep "settings page address"
+```
+
+It looks like `http://localhost:8090/3f9c…/`. Open it, or put the brain's address in place of `localhost` to open it from a phone or laptop on your network. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
 
 Plain `docker compose up` runs everything on the CPU, uses the brain's own mic and makes placeholder pictures. The steps below change that.
 
@@ -50,7 +56,7 @@ Then `docker compose up -d --build` again. What the host needs is in [docker/opt
 | `WHISPER_DA_NO`, `WHISPER_DA_MODEL_URL` | Edda for Danish and NB-Whisper for Norwegian. See [Languages](#languages) |
 | `LLM_MODEL` | The local topic model, `qwen3.5:4b` by default |
 | `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` | An external topic model. See [External topic model](#external-topic-model) |
-| `PANEL_TOKEN` | Puts the page behind a secret address. See [Lock it down](#lock-it-down) |
+| `PANEL_TOKEN`, `PANEL_OPEN` | The page's secret address: your own, or none. Left empty, E-maki makes one up. See [Lock it down](#lock-it-down) |
 | `EMAKI_HOSTS` | Extra names the page answers to, for a reverse proxy or a VPN name. See [Lock it down](#lock-it-down) |
 | `PULSE_SOCKET`, `EMAKI_UID`, `EMAKI_GID` | Where the mic is |
 
@@ -127,7 +133,11 @@ To pause listening from Home Assistant or a script, see the **[HTTP API](api.md)
 
 ### Lock it down
 
-Anything on your local network can open the page, change the settings and press the buttons. To stop that, set `PANEL_TOKEN` in `.env` to a long random word (`openssl rand -hex 16`). The page, the picture and the buttons then live under `/<your-token>/` only, and the frame gets `FRAME_URL=http://<your-brain>:8090/<your-token>`. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet.
+The page, the picture and the buttons live under `/<token>/` only, so other devices on your network can't open the page, change the settings or press the buttons without the address. On the first start E-maki makes up a random token and keeps it in its data volume (`docker compose exec emaki cat /data/token`). To pick your own, set `PANEL_TOKEN` in `.env` to a long random word (`openssl rand -hex 16`).
+
+A frame gets `FRAME_URL=http://<your-brain>:8090/<token>`, and a network microphone sends the token first (see [network-mic.md](network-mic.md)).
+
+`PANEL_OPEN=1` in `.env` turns the token off: then anything on your network can open the page. `PANEL_BIND=127.0.0.1` limits the page to the brain itself. Keep port 8090 off the internet. The settings page can also have a password, under E-maki > Password.
 
 The page only answers when it is opened by IP address, as `localhost`, or under a local name (`brain`, `brain.local`). That stops a website on the internet from reaching it through your browser. If you open it under another name, such as a reverse proxy's domain or a VPN name, list that name in `EMAKI_HOSTS` in `.env`.
 

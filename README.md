@@ -57,7 +57,7 @@ E-maki is an always-on microphone, so:
 - With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own key. Without a key nothing does. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Set `block_names` in the config profile to also refuse prompts that repeat a name it heard.
 - Optional, off by default: an external topic model (OpenAI, Gemini, OpenRouter, Groq or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under E-maki > Topic detection, which shows a warning while it is on.
 - Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, with `block_sensitive` in the config profile. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked in every shipped profile. The local LLM makes the call, so it will sometimes get it wrong.
-- The page itself shows what was talked about, and any device on your local network can open it. Set `PANEL_TOKEN` in `.env` to put it behind a secret address; see [Lock it down](docs/setup.md#lock-it-down).
+- The page itself shows what was talked about, so it lives at a private address that E-maki makes up on the first start and prints in its log. Only devices that have the address can open it; see [Lock it down](docs/setup.md#lock-it-down).
 
 Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists everything E-maki keeps, logs and sends.
 
@@ -83,7 +83,13 @@ cp .env.example .env    # optional: add your own GEMINI_API_KEY
 docker compose up --build
 ```
 
-Then open <http://localhost:8090/> and talk for a minute.
+E-maki prints the settings page's address when it starts:
+
+```bash
+docker compose logs emaki | grep "settings page address"
+```
+
+Open it and talk for a minute.
 
 To show it on a Raspberry Pi with an Inky Impression, install Fugleramme's Inky client on the Pi:
 
@@ -95,7 +101,7 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
 ## Configure
 
 - **`.env`** (copy from [.env.example](.env.example)): image API keys, the Whisper and topic models, the GPU and other extras, the mic socket. See [Setup](docs/setup.md#2-settings-in-env).
-- **The settings page** (`http://<your-brain>:8090/`): what the frame shows, and the listening and topic settings. What you change there is saved separately and overrides the profile.
+- **The settings page** (`http://<your-brain>:8090/<token>/`, see above): what the frame shows, and the listening and topic settings. What you change there is saved separately and overrides the profile.
 - **`configs/*.json`**: one profile per setup (`docker.json`, `docker-gemma.json`, `laptop.json`, `jetson.json`). Every key is explained in **[Configs](configs/README.md)**.
 
 ## Run locally (for development)

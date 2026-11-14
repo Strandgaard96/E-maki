@@ -18,6 +18,6 @@ E-maki listens to a room, so anything that could leak audio or transcripts count
 
 The E-maki service, its Dockerfiles and compose files. Problems in whisper.cpp, Ollama or the image API belong with those projects.
 
-The panel page is served as plain HTTP. It is E-maki's screen, so the compose file makes it reachable from the local network. `PANEL_TOKEN` in `.env` puts it behind a secret path and `PANEL_BIND=127.0.0.1` limits it to the machine itself (see the README). Don't expose port 8090 to the internet; if you need it from somewhere less trusted, put it behind a reverse proxy with HTTPS and authentication.
+The panel page is served as plain HTTP. It is E-maki's screen, so the compose file makes it reachable from the local network. It lives behind a secret path: `PANEL_TOKEN` from `.env`, or a random one E-maki makes on the first start. `PANEL_BIND=127.0.0.1` limits it to the machine itself (see docs/setup.md). The path travels in clear text, so it keeps other devices out but not someone who can read your network traffic. Don't expose port 8090 to the internet; if you need it from somewhere less trusted, put it behind a reverse proxy with HTTPS and authentication.
 
 The image prompt is written by a local LLM from what it heard. Code checks limit what it can carry, but a spoken sentence can still influence it (prompt injection). That is a known limit, not a vulnerability, unless it gets audio or transcript text past the checks.

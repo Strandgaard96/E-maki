@@ -97,7 +97,13 @@ type Server struct {
 	// DefaultTestPrompt.
 	TestPrompt string
 
-	testing sync.Mutex // one test picture at a time
+	// TestPicturesPerDay is how many test pictures a provider that is not
+	// on this machine may make in a day; 0 is no limit.
+	TestPicturesPerDay int
+
+	testing  sync.Mutex // one test picture at a time
+	testDay  string     // the day testMade counts, guarded by testing
+	testMade int
 	// Timeline holds the saved pictures for the Timeline tab; nil without
 	// a settings file.
 	Timeline *timeline.Store
@@ -122,6 +128,10 @@ func (s *Server) Register(mux *http.ServeMux) {
 	if s.Token != "" {
 		pre = "/" + s.Token
 		mux.Handle("GET "+pre+"", http.RedirectHandler(pre+"/", http.StatusFound))
+		// The old address says where to look, not where the page is.
+		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "E-maki's page is at a private address. E-maki prints it when it starts:\n\n  docker compose logs emaki | grep \"settings page address\"\n\nIf you set PANEL_TOKEN in .env, it is /<PANEL_TOKEN>/ instead.", http.StatusNotFound)
+		})
 	}
 	files, _ := fs.Sub(static, "static")
 	page := func(name string) http.HandlerFunc {
@@ -689,7 +699,8 @@ const DefaultTestPrompt = "A cheerful cartoon teapot pouring tea into a cup on a
 
 // testPicture makes one picture with the provider and style the page has
 // picked, saved or not, and answers with it as the frame would show it. It
-// does not count against the daily cap and goes nowhere near the frame.
+// does not count against the daily cap (it has its own, TestPicturesPerDay)
+// and goes nowhere near the frame.
 func (s *Server) testPicture(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Provider string `json:"provider"`
@@ -708,8 +719,20 @@ func (s *Server) testPicture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer s.testing.Unlock()
-	slow(w)
 	c, _ := imagegen.Pick(s.Images, body.Provider)
+	// Test pictures cost money like any other, so they have a daily limit
+	// of their own. A provider on this machine costs nothing.
+	if !c.Local && s.TestPicturesPerDay > 0 {
+		if day := time.Now().Format(time.DateOnly); day != s.testDay {
+			s.testDay, s.testMade = day, 0
+		}
+		if s.testMade >= s.TestPicturesPerDay {
+			http.Error(w, fmt.Sprintf("Today's limit of %d test pictures is used up. It starts again tomorrow; test_pictures_per_day in the config profile changes it.", s.TestPicturesPerDay), http.StatusTooManyRequests)
+			return
+		}
+		s.testMade++
+	}
+	slow(w)
 	// Only a test of the provider in use counts for its status.
 	var tracker *health.Tracker
 	s.mu.Lock()
