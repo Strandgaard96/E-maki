@@ -2811,39 +2811,91 @@ function NeverPaint({ value, onChange }: { value: string[] | null; onChange: (v:
   );
 }
 
+// Picture style moods, in the order the grid shows them.
+const MOODS: [string, string][] = [
+  ["", "All"],
+  ["cool", "Cool"],
+  ["relaxed", "Relaxed"],
+  ["somber", "Somber"],
+];
+
 function Look({ draft, set, styles }: DraftProps & { styles: State["styles"] }) {
   // image_style holds a preset's name; older settings hold its prompt, and empty is the first preset.
   const style = draft.image_style || styles[0].name;
   const preset = styles.find((s) => s.name.toLowerCase() === style.toLowerCase() || s.prompt === style);
   const [custom, setCustom] = useState(!preset);
   const [full, setFull] = useState(false);
+  const [mood, setMood] = useState("");
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  // Presets in mood order; a profile's own styles, without a mood, last.
+  const order = (m?: string) => {
+    const i = MOODS.findIndex(([v]) => v && v === m);
+    return i < 0 ? MOODS.length : i;
+  };
+  const shown = styles
+    .filter((s) => (!mood || s.mood === mood) && (s.name + " " + s.prompt).toLowerCase().includes(q))
+    .sort((a, b) => order(a.mood) - order(b.mood));
+  const tile =
+    "tap grid cursor-pointer content-start gap-1 rounded-lg border p-1.5 text-sm font-medium transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary/5 has-checked:ring-1 has-checked:ring-primary has-focus-visible:ring-2 has-focus-visible:ring-ring";
   return (
     <Card title="Picture style" intro="Used for new pictures. Tiles already on the frame keep their look.">
-      <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Picture style">
-        {[
-          ...styles.map((s): [string, boolean, () => void] => [
-            s.name,
-            !custom && preset === s,
-            () => {
-              setCustom(false);
-              set({ image_style: s.name });
-            },
-          ]),
-          [
-            "Your own",
-            custom,
-            () => {
-              setCustom(true);
-              if (preset) set({ image_style: preset.prompt });
-            },
-          ] as [string, boolean, () => void],
-        ].map(([name, on, pick]) => (
-          <label class="tap cursor-pointer rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring">
-            <input type="radio" name="style" class="sr-only" checked={on} onChange={pick} />
-            {name}
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          class="input w-auto min-w-0 flex-1 basis-48"
+          placeholder="Search styles"
+          aria-label="Search styles"
+          value={query}
+          onInput={(e) => setQuery(e.currentTarget.value)}
+        />
+        <Segments name="mood" inline label="Mood" value={mood} onChange={setMood} options={MOODS} />
+      </div>
+      <div
+        class="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2"
+        role="radiogroup"
+        aria-label="Picture style"
+      >
+        {shown.map((s) => (
+          <label class={tile} key={s.name}>
+            <input
+              type="radio"
+              name="style"
+              class="sr-only"
+              checked={!custom && preset === s}
+              onChange={() => {
+                setCustom(false);
+                set({ image_style: s.name });
+              }}
+            />
+            <img
+              src={`ui/styles/${s.name.toLowerCase().replaceAll(" ", "-")}.png`}
+              alt=""
+              loading="lazy"
+              class="aspect-4/3 w-full rounded bg-muted object-cover [image-rendering:pixelated]"
+              onError={(e) => {
+                e.currentTarget.style.visibility = "hidden";
+              }}
+            />
+            <span class="truncate px-0.5">{s.name}</span>
           </label>
         ))}
+        <label class={tile}>
+          <input
+            type="radio"
+            name="style"
+            class="sr-only"
+            checked={custom}
+            onChange={() => {
+              setCustom(true);
+              if (preset) set({ image_style: preset.prompt });
+            }}
+          />
+          <span class="grid aspect-4/3 w-full place-items-center rounded bg-muted text-muted-foreground">Aa</span>
+          <span class="truncate px-0.5">Your own</span>
+        </label>
       </div>
+      {!shown.length && <p class="text-muted-foreground">No style matches "{query.trim()}".</p>}
       <div class="grid">
         {[
           ...styles.map((s): [string, boolean, JSX.Element] => [

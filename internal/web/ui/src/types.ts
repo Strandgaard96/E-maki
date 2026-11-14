@@ -57,6 +57,7 @@ export interface Tile {
 export interface Style {
   name: string;
   prompt: string;
+  mood?: string; // "cool", "relaxed" or "somber"; empty for a profile's own
 }
 
 export interface Provider {
