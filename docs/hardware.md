@@ -105,7 +105,7 @@ A Seeed Studio XIAO ESP32-S3 board drives the panel and runs from a battery, wit
 | Power | Single-cell 3.7 V lithium battery with a JST 2.0 connector |
 | Frame | IKEA RÖDALM 21x30 (A4) |
 
-Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". It doesn't use E-maki's button actions.
+Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". Its buttons work on the board itself and don't reach E-maki, so set Buttons to None on the settings page.
 
 ### No e-ink
 

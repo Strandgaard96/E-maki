@@ -16,7 +16,7 @@ import (
 //
 //	GET  /frame.png  the dithered 6-colour page, with ETag / 304
 //	GET  /frame.e6   the same page packed for the 13.3" glass
-//	POST /press      button=A|B|C|D from the panel's buttons
+//	POST /press      button=A to H from the panel's buttons (Inky: A to D)
 //
 // With a Token the three paths live under /<token>/, so a frame is set up
 // with FRAME_URL=http://brain:8090/<token> and nothing else on the network
@@ -96,8 +96,8 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST "+pre+"/press", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 1024)
 		b := r.FormValue("button")
-		if b != "A" && b != "B" && b != "C" && b != "D" {
-			http.Error(w, "button must be A, B, C or D", http.StatusBadRequest)
+		if len(b) != 1 || b < "A" || b > "H" {
+			http.Error(w, "button must be a letter from A to H", http.StatusBadRequest)
 			return
 		}
 		if s.OnPress != nil {

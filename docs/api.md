@@ -18,7 +18,7 @@ These are Fugleramme's panel protocol and need no password.
 | --- | --- |
 | `GET frame.png` | The page as a 6-colour PNG. Send `If-None-Match` with the last `ETag` to get `304` when nothing changed |
 | `GET frame.e6` | The same page packed for the panel |
-| `POST press` | A frame button, as a form field: `button=A` to `D`. B removes the newest tile; the others do nothing yet |
+| `POST press` | A frame button, as a form field: `button=A` to `H`. It does what `panel_buttons` sets for that letter, and nothing for a button the frame doesn't have |
 | `GET preview.png` | The page for a browser, also without a password |
 
 ## Settings page

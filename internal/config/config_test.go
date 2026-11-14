@@ -149,13 +149,26 @@ func TestPanelButtons(t *testing.T) {
 	s := c.Settings
 	s.PanelButtons = map[string]string{"A": "", "B": "pause"}
 	c2, err := c.With(s)
-	if err != nil || c2.Button("A") != "" || c2.Button("B") != "pause" || c2.Button("C") != "pin" {
+	if err != nil || c2.Button("A") != "" || c2.Button("B") != "pause" || c2.Button("C") != "" {
 		t.Fatalf("remapped: %v, %v", c2.PanelButtons, err)
+	}
+	s.PanelButtons = map[string]string{}
+	if c3, err := c.With(s); err != nil || len(c3.PanelButtons) != 0 || c3.Button("A") != "" {
+		t.Fatalf("no buttons: %v, %v", c3.PanelButtons, err)
+	}
+	// A settings file with fewer buttons replaces the profile's, not merges.
+	path := t.TempDir() + "/settings.json"
+	s.PanelButtons = map[string]string{"A": "next"}
+	if err := SaveSettings(path, s); err != nil {
+		t.Fatal(err)
+	}
+	if c4, err := LoadSettings(path, c); err != nil || len(c4.PanelButtons) != 1 || c4.Button("A") != "next" {
+		t.Fatalf("loaded: %v, %v", c4.PanelButtons, err)
 	}
 	if DefaultButtons["A"] != "pause" {
 		t.Fatal("With changed the defaults")
 	}
-	for _, bad := range []map[string]string{{"E": "pause"}, {"A": "dance"}} {
+	for _, bad := range []map[string]string{{"I": "pause"}, {"A": "dance"}} {
 		s.PanelButtons = bad
 		if _, err := c.With(s); err == nil {
 			t.Errorf("%v: no error", bad)
