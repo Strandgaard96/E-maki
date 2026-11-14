@@ -1,0 +1,25 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
+  "files": {
+    "includes": [
+      "internal/web/ui/src/**",
+      "internal/web/ui/*.json"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "lineWidth": 120
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "useTemplate": "off"
+      }
+    }
+  }
+}

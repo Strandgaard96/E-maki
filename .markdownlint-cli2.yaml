@@ -1,0 +1,8 @@
+config:
+  line-length: false
+  no-inline-html: false
+  table-column-style: false
+ignores:
+  - third_party/**
+  - .github/**
+  - "**/node_modules/**"

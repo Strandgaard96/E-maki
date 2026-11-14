@@ -17,6 +17,6 @@ It reads the current settings first and only changes what differs, so running it
 
 `--close-stale-dependabot` also closes open Dependabot PRs whose base commit is no longer on the default branch. Dependabot opens a new PR if the update is still needed.
 
-The values live at the top of the script. `REQUIRED_CHECKS` is empty for now. CI skips docs-only changes, and a required check that never runs blocks the PR, so only list checks that run on every PR.
+The values live at the top of the script. `REQUIRED_CHECKS` lists the CI jobs. Each one reports on every PR: a job whose files didn't change is skipped, and GitHub counts that as passed. Don't add the Sidecars jobs, which only run when the sidecar images change.
 
 GitHub's API can't change your account's email privacy, so the script only reminds you: turn on "Keep my email addresses private" at <https://github.com/settings/emails>.
