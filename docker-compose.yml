@@ -17,6 +17,7 @@
 #   GPU=vulkan or vulkan-wsl      integrated graphics
 #   LOCAL_IMAGES=1                pictures made on this machine (sd, sd-model)
 #   WHISPER_DA_NO=1               Danish and Norwegian models (whisper-da, whisper-no)
+#   NO_LOCAL_TOPICS=1             no Ollama, for an external topic model only
 #   NET_MIC_BIND=0.0.0.0          a microphone elsewhere on the network
 # The services pull in what each option adds from docker/options.yml.
 
@@ -96,6 +97,7 @@ services:
   # .env (or on the command line) pulls the newest upload anyway.
   ollama-pull:
     <<: *hardening
+    extends: { file: docker/options.yml, service: "local-topics${NO_LOCAL_TOPICS:+-off}" }
     image: ollama/ollama:0.40.15
     environment:
       OLLAMA_NO_CLOUD: "true"
@@ -116,7 +118,7 @@ services:
 
   ollama:
     <<: *hardening
-    extends: *gpu
+    extends: { file: docker/options.yml, service: "local-topics-gpu${NO_LOCAL_TOPICS:+-off}" }
     image: ollama/ollama:0.40.15
     depends_on:
       ollama-pull: { condition: service_completed_successfully }
@@ -252,6 +254,7 @@ services:
       TZ: ${TZ:-UTC}
       # Only set when the matching option in .env is on.
       NET_MIC_LISTEN: ${NET_MIC_BIND:+:10700}
+      NO_LOCAL_TOPICS: ${NO_LOCAL_TOPICS:-}
       WHISPER_URL_DA: ${WHISPER_DA_NO:+http://whisper-da:8081}
       WHISPER_URL_NO: ${WHISPER_DA_NO:+http://whisper-no:8081}
       LOCAL_IMAGE_URL: ${LOCAL_IMAGES:+http://sd:1234}

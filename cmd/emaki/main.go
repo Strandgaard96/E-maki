@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"cmp"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -77,10 +78,12 @@ func main() {
 	// The external topic model, if set up in .env. Only topic_provider
 	// "external" uses it.
 	ext := topic.ExternalFromEnv(os.Getenv)
+	// NO_LOCAL_TOPICS=1 leaves Ollama out of the compose setup.
+	local := strings.TrimSpace(os.Getenv("NO_LOCAL_TOPICS")) == ""
 	if cfg.TopicProvider == "external" && !ext.Ready() {
 		log.Printf("topics: the external topic model is not set up: %s. Using the local one until then", topic.ExternalSetup)
 	}
-	logTopics(cfg, ext)
+	logTopics(cfg, ext, local)
 	// Whether the sidecars and the image provider answer, for the page.
 	tracker := &health.Tracker{}
 	// Audio and transcripts go to the sidecars, so they must be local.
@@ -152,7 +155,7 @@ func main() {
 	}
 	p := &pipeline.Pipeline{
 		Mem:            memory.New(memSettings(cfg)),
-		Extractor:      extractor(cfg, ext, tracker),
+		Extractor:      extractor(cfg, ext, local, tracker),
 		Images:         images(cfg),
 		Panel:          srv,
 		WindowSegments: cfg.WindowSegments,
@@ -187,7 +190,7 @@ func main() {
 		return pics
 	}
 	options := func(c config.Config) pipeline.Options {
-		ex := extractor(c, ext, tracker)
+		ex := extractor(c, ext, local, tracker)
 		if *script != "" {
 			ex = topic.Fake{}
 		}
@@ -215,7 +218,7 @@ func main() {
 	page := &web.Server{
 		Token: token, Pipeline: p, Panel: srv, Logs: logs, Images: choices, Health: tracker, TestPrompt: cfg.TestPicturePrompt, TestPicturesPerDay: cfg.TestPicturesPerDay,
 		Timeline: pics, TimelineRow: cfg.TimelineRowPx,
-		Status: web.Status{Profile: cfg.Profile, Topics: cfg.LLMModel, LLMURL: cfg.LLMURL, TopicAPI: externalName(ext), Speech: cfg.WhisperURL,
+		Status: web.Status{Profile: cfg.Profile, Topics: cfg.LLMModel, NoLocalTopics: !local, LLMURL: cfg.LLMURL, TopicAPI: externalName(ext), Speech: cfg.WhisperURL,
 			ByLang: cfg.WhisperByLang, Segment: cfg.SegmentSeconds,
 			Locked: token != "", Saved: *settingsPath != "", Started: time.Now()},
 		Apply: func(s config.Settings) (config.Settings, error) {
@@ -233,6 +236,9 @@ func main() {
 			newTopics := c.TopicProvider != live.Load().TopicProvider
 			if newTopics && c.TopicProvider == "external" && !ext.Ready() {
 				return s, fmt.Errorf("the external topic model is not set up: %s", topic.ExternalSetup)
+			}
+			if newTopics && c.TopicProvider != "external" && !local {
+				return s, errNoLocalTopics
 			}
 			if err := srv.SetFrame(c.PanelRotation, c.PanelPoll); err != nil {
 				return s, err
@@ -252,7 +258,7 @@ func main() {
 			}
 			if newTopics {
 				tracker.Forget(health.Topics)
-				logTopics(c, ext)
+				logTopics(c, ext, local)
 			}
 			return c.Settings, p.Configure(options(c), memSettings(c))
 		},
@@ -313,7 +319,7 @@ func main() {
 	// until they answer. An external topic model is not probed.
 	go tracker.Watch(context.Background(), time.Duration(cfg.StatusCheckSeconds)*time.Second, func() map[string]string {
 		t := map[string]string{health.Speech: strings.TrimRight(cfg.WhisperURL, "/") + "/health"}
-		if c := live.Load(); c.TopicProvider != "external" || !ext.Ready() {
+		if c := live.Load(); local && (c.TopicProvider != "external" || !ext.Ready()) {
 			t[health.Topics] = strings.TrimRight(c.LLMURL, "/") + "/v1/models"
 		}
 		return t
@@ -395,19 +401,37 @@ func main() {
 	select {}
 }
 
-func extractor(c config.Config, ext topic.External, t *health.Tracker) topic.Extractor {
+func extractor(c config.Config, ext topic.External, local bool, t *health.Tracker) topic.Extractor {
 	if c.TopicProvider == "external" && ext.Ready() {
 		return health.Extractor{E: ext.Extractor(c.TopicPrompt, c.LLMTemperature), Tracker: t, Name: ext.Name()}
+	}
+	if !local {
+		return health.Extractor{E: noTopics{}, Tracker: t, Name: "none"}
 	}
 	return health.Extractor{E: topic.OpenAI{URL: c.LLMURL, Model: c.LLMModel, Prompt: c.TopicPrompt,
 		Temperature: c.LLMTemperature, Reasoning: c.LLMReasoning}, Tracker: t, Name: c.LLMModel + " at " + c.LLMURL}
 }
 
+// errNoLocalTopics is why no topics are found when the local topic model is
+// off and the external one is not picked. The external one is never picked
+// for the user.
+var errNoLocalTopics = errors.New("the local topic model is off (NO_LOCAL_TOPICS in .env); pick the external one on the settings page")
+
+type noTopics struct{}
+
+func (noTopics) Extract(context.Context, string, []string) (topic.Result, error) {
+	return topic.Result{}, errNoLocalTopics
+}
+
 // logTopics says which topic model is in use, with a warning when the
 // transcript leaves the house.
-func logTopics(c config.Config, ext topic.External) {
+func logTopics(c config.Config, ext topic.External, local bool) {
 	if c.TopicProvider == "external" && ext.Ready() {
 		log.Printf("topics: %s. WARNING: the transcript window is sent to this external service", ext.Name())
+		return
+	}
+	if !local {
+		log.Printf("topics: none. %v", errNoLocalTopics)
 		return
 	}
 	log.Printf("topics: %s at %s", c.LLMModel, c.LLMURL)
