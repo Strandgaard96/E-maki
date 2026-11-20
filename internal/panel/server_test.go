@@ -109,3 +109,45 @@ func TestPressFromAnotherSiteIsRefused(t *testing.T) {
 		t.Fatalf("pressed %d times, want 2", pressed)
 	}
 }
+
+// The page learns which frame fetched and what it pressed, from the
+// User-Agent of Fugleramme's clients; a browser leaves no trace.
+func TestSeen(t *testing.T) {
+	s := &Server{}
+	mux := http.NewServeMux()
+	s.Register(mux)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	if err := s.SetPage(load(t, "testdata/dither_input.png")); err != nil {
+		t.Fatal(err)
+	}
+	do := func(method, path, ua, body string) {
+		t.Helper()
+		req, _ := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+		req.Header.Set("User-Agent", ua)
+		if body != "" {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+	}
+	do("GET", "/frame.png", "Mozilla/5.0", "")
+	if got := s.Seen(); got.Client != "" || got.Fetched != nil {
+		t.Fatalf("after a browser: %+v", got)
+	}
+	do("GET", "/frame.e6?battery=3.91", "ESP32HTTPClient", "")
+	if got := s.Seen(); got.Client != "xiao" || got.Fetched == nil || got.Pressed != nil {
+		t.Fatalf("after the XIAO fetched: %+v", got)
+	}
+	do("POST", "/press", "ESP32HTTPClient", "button=C")
+	if got := s.Seen(); got.Button != "C" || got.Pressed == nil {
+		t.Fatalf("after the XIAO pressed C: %+v", got)
+	}
+	do("GET", "/frame.png", "Python-urllib/3.11", "")
+	if got := s.Seen(); got.Client != "inky" || got.Button != "C" {
+		t.Fatalf("after the Inky fetched: %+v", got)
+	}
+}

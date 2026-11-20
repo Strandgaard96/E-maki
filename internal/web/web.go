@@ -174,6 +174,9 @@ func (s *Server) Register(mux *http.ServeMux) {
 		}
 		s.reply(w, m)
 	}))
+	mux.HandleFunc("GET "+pre+"/api/frame", s.private(func(w http.ResponseWriter, r *http.Request) {
+		s.reply(w, s.Panel.Seen())
+	}))
 	mux.HandleFunc("PUT "+pre+"/api/settings", s.guard(s.private(s.putSettings)))
 	mux.HandleFunc("GET "+pre+"/api/preview.png", s.private(s.draft))
 	mux.HandleFunc("POST "+pre+"/api/tiles/{action}", s.guard(s.private(s.tile)))

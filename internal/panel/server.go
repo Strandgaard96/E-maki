@@ -9,7 +9,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
+	"time"
 )
 
 // Server serves the current page with Fugleramme's panel protocol, so its
@@ -17,7 +19,8 @@ import (
 //
 //	GET  /frame.png  the dithered 6-colour page, with ETag / 304
 //	GET  /frame.e6   the same page packed for the 13.3" glass
-//	POST /press      button=A to H from the panel's buttons (Inky: A to D)
+//	POST /press      button=A to H from the panel's buttons (Inky: A to D,
+//	                 Fugleramme's XIAO Arduino firmware: A to C)
 //
 // With a Token the three paths live under /<token>/, so a frame is set up
 // with FRAME_URL=http://brain:8090/<token> and nothing else on the network
@@ -29,10 +32,64 @@ type Server struct {
 	OnPress  func(button string) // may be nil
 
 	mu   sync.RWMutex
+	seen Seen
 	page *image.Paletted // dithered, upright
 	png  []byte
 	e6   []byte
 	etag string
+}
+
+// Seen is what the frame last did, kept in memory only, so the settings
+// page can show which frame is on the wall and that its buttons get through.
+type Seen struct {
+	Client  string     `json:"client"`            // see client; "" before any fetch
+	Fetched *time.Time `json:"fetched,omitempty"` // its last fetch of the page
+	Button  string     `json:"button,omitempty"`  // its last press
+	Pressed *time.Time `json:"pressed,omitempty"`
+}
+
+// client names the frame software behind a request by its User-Agent:
+// "xiao" is Fugleramme's XIAO Arduino firmware (sends A to C), "inky" its
+// Inky client on a Pi (A to D), "esp32" its MicroPython EE02 and EE04
+// clients, which send no User-Agent and no presses, and "other" anything
+// else. A browser is not a frame and gives "".
+func client(r *http.Request) string {
+	ua := r.UserAgent()
+	switch {
+	case strings.HasPrefix(ua, "ESP32HTTPClient"):
+		return "xiao"
+	case strings.HasPrefix(ua, "Python-urllib"):
+		return "inky"
+	case ua == "":
+		return "esp32"
+	case strings.HasPrefix(ua, "Mozilla/"):
+		return ""
+	}
+	return "other"
+}
+
+// Seen returns what the frame last did.
+func (s *Server) Seen() Seen {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.seen
+}
+
+// saw notes a fetch or, with a button, a press.
+func (s *Server) saw(r *http.Request, button string) {
+	c := client(r)
+	if c == "" {
+		return
+	}
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.seen.Client = c
+	if button == "" {
+		s.seen.Fetched = &now
+	} else {
+		s.seen.Button, s.seen.Pressed = button, &now
+	}
 }
 
 // SetPage dithers a full-colour page and makes it the current frame.
@@ -113,6 +170,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 			http.Error(w, "button must be a letter from A to H", http.StatusBadRequest)
 			return
 		}
+		s.saw(r, b)
 		if s.OnPress != nil {
 			s.OnPress(b)
 		}
@@ -121,6 +179,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 }
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request, ctype string, e6 bool) {
+	s.saw(r, "")
 	s.mu.RLock()
 	body, etag, drawn := s.png, s.etag, s.png != nil
 	if e6 {

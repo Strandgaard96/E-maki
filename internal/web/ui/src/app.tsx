@@ -42,6 +42,7 @@ import type {
   Mic,
   Picture,
   Provider,
+  Seen,
   Settings,
   State,
   Tile,
@@ -3167,6 +3168,10 @@ function withCurrent(options: [number, string][], value: number, label: (v: numb
 }
 
 function Hanging({ draft, set }: DraftProps) {
+  const seen = useSeen();
+  const frame = FRAMES[seen?.client ?? ""];
+  const count = Object.keys(draft.panel_buttons || {}).length;
+  const lit = seen?.pressed && Date.now() - Date.parse(seen.pressed) < 60_000 ? seen.button : "";
   return (
     <Card title="Panel" icon={Tablet}>
       <div class="grid gap-5">
@@ -3231,20 +3236,29 @@ function Hanging({ draft, set }: DraftProps) {
         <div class="grid gap-3">
           <Toggle
             title="Frame buttons"
-            text="Works with the Inky client on a Pi"
+            text={frame?.text ?? "Works with the Inky on a Pi and the XIAO EE02"}
             tip={TIPS.panel_buttons}
-            checked={Object.keys(draft.panel_buttons || {}).length > 0}
-            onChange={(on) => set({ panel_buttons: buttons(draft.panel_buttons, on ? 4 : 0) })}
+            checked={count > 0}
+            onChange={(on) =>
+              set({ panel_buttons: buttons(draft.panel_buttons, on ? frame?.buttons || 4 : 0, frame?.preset) })
+            }
           />
-          {Object.keys(draft.panel_buttons || {}).length > 0 && (
+          {count > 0 && (
             <div class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-lg bg-muted/50 p-3">
-              <ButtonsDrawing n={Object.keys(draft.panel_buttons || {}).length} />
+              <ButtonsDrawing n={count} lit={lit} />
               <div class="grid gap-2">
                 {Object.keys(draft.panel_buttons || {})
                   .sort()
                   .map((b) => (
                     <label class="flex items-center gap-2">
-                      <span class="grid size-6 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-background">
+                      <span
+                        class={
+                          "grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors " +
+                          (b === lit
+                            ? "bg-primary text-primary-foreground ring-2 ring-primary/40"
+                            : "bg-foreground text-background")
+                        }
+                      >
                         {b}
                       </span>
                       <span class="sr-only">Button {b}</span>
@@ -3254,15 +3268,18 @@ function Hanging({ draft, set }: DraftProps) {
                         onChange={(e) => set({ panel_buttons: { ...draft.panel_buttons, [b]: e.currentTarget.value } })}
                       >
                         {BUTTON_ACTIONS.map(([v, t]) => (
-                          <option value={v}>{t}</option>
+                          <option value={v}>{v === "" && seen?.client === "xiao" ? "Just wake the frame" : t}</option>
                         ))}
                       </select>
                     </label>
                   ))}
+                <small class="text-muted-foreground" aria-live="polite">
+                  {seen?.pressed ? `Last press: ${seen.button}, ${ago(seen.pressed)}` : "No press yet"}
+                </small>
                 <select
                   class="select w-full"
                   aria-label="How many buttons"
-                  value={Object.keys(draft.panel_buttons || {}).length}
+                  value={count}
                   onChange={(e) => set({ panel_buttons: buttons(draft.panel_buttons, +e.currentTarget.value) })}
                 >
                   {BUTTON_LETTERS.map((_, i) => (
@@ -3279,15 +3296,24 @@ function Hanging({ draft, set }: DraftProps) {
 }
 
 // ButtonsDrawing is a frame seen from the front with its buttons down the
-// left edge, A at the top, as on an Inky Impression.
-function ButtonsDrawing({ n }: { n: number }) {
+// left edge, A at the top, as on an Inky Impression. The lit one was just pressed.
+function ButtonsDrawing({ n, lit }: { n: number; lit?: string }) {
   const h = Math.max(48, n * 14 + 6);
   return (
     <svg width="64" height={h} viewBox={`0 0 64 ${h}`} aria-hidden="true" class="text-foreground">
       <rect x="10" y="1" width="52" height={h - 2} rx="4" fill="none" stroke="currentColor" stroke-width="2" />
       <rect x="16" y="7" width="40" height={h - 14} rx="1" fill="currentColor" opacity="0.15" />
       {BUTTON_LETTERS.slice(0, n).map((b, i) => (
-        <rect key={b} x="4" y={6 + i * 14} width="6" height="8" rx="1.5" fill="currentColor" />
+        <rect
+          key={b}
+          x="4"
+          y={6 + i * 14}
+          width="6"
+          height="8"
+          rx="1.5"
+          fill="currentColor"
+          class={b === lit ? "text-primary" : ""}
+        />
       ))}
     </svg>
   );
@@ -3300,8 +3326,43 @@ const hasE6 = (d: Settings) => ["800x480", "1600x1200"].includes(d.panel_width +
 // them with the actions they had, new ones as on an Inky.
 const BUTTON_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const INKY_BUTTONS: Record<string, string> = { A: "pause", B: "remove", C: "pin", D: "next" };
-function buttons(old: Settings["panel_buttons"], n: number) {
-  return Object.fromEntries(BUTTON_LETTERS.slice(0, n).map((b) => [b, old?.[b] ?? INKY_BUTTONS[b] ?? ""]));
+function buttons(old: Settings["panel_buttons"], n: number, preset = INKY_BUTTONS) {
+  return Object.fromEntries(BUTTON_LETTERS.slice(0, n).map((b) => [b, old?.[b] ?? preset[b] ?? ""]));
+}
+
+// The frames E-maki can tell apart (panel.Seen.Client), how many buttons
+// each sends, and what they do at first. Any press wakes a XIAO and redraws
+// it, so its A does nothing more.
+const FRAMES: Record<string, { text: string; buttons: number; preset?: Record<string, string> }> = {
+  inky: { text: "Inky found: 4 buttons", buttons: 4 },
+  xiao: { text: "XIAO EE02 found: 3 buttons", buttons: 3, preset: { A: "", B: "pause", C: "remove" } },
+  esp32: { text: "Your frame doesn't send presses", buttons: 0 },
+};
+
+// useSeen is what the frame last did, fresh every two seconds.
+function useSeen() {
+  const [seen, setSeen] = useState<Seen | null>(null);
+  useEffect(() => {
+    let on = true;
+    const get = () =>
+      api<Seen>("api/frame")
+        .then((f) => on && setSeen(f))
+        .catch(() => {});
+    get();
+    const t = setInterval(get, 2000);
+    return () => {
+      on = false;
+      clearInterval(t);
+    };
+  }, []);
+  return seen;
+}
+
+function ago(iso: string) {
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  return when(iso);
 }
 
 // What a frame button can do (panel_buttons).

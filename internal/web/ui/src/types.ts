@@ -75,6 +75,14 @@ export interface Service {
   took?: number;
 }
 
+// What the frame last did (GET api/frame).
+export interface Seen {
+  client: "" | "xiao" | "inky" | "esp32" | "other";
+  fetched?: string;
+  button?: string;
+  pressed?: string;
+}
+
 export interface Status {
   profile: string;
   topics: string;
