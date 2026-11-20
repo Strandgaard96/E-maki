@@ -139,9 +139,6 @@ Read the privacy rules in **[Contributing](CONTRIBUTING.md)** first.
 
 - [Fugleramme](https://github.com/arnegiacomo/fugleramme) by Arne Giacomo Munthe-Kaas: the bird frame E-maki grew out of. Its Spectra 6 dithering, `.e6` format and panel protocol are ported to Go in `internal/panel`.
 - [BirdNET-Go](https://github.com/tphakala/birdnet-go) by tphakala: the always-on local listener that classifies what it hears, and the idea of running on whatever hardware you have, integrated GPUs included.
-- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and [Ollama](https://github.com/ollama/ollama), which do the speech and language work, and [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) for local pictures.
-
-E-maki is not affiliated with any of them.
 
 ## License
 
