@@ -27,7 +27,7 @@ One compose file, at most four containers. Switches in `.env` pick which ones ru
 | `emaki` | The app: the mic, the settings page and the frame, on port 8090 | Always |
 | `whisper` | Speech to text | Always |
 | `ollama` | Topics | Unless `TOPIC_MODEL=external` |
-| `sd` | Pictures made on the brain | Only with `LOCAL_IMAGES=1` |
+| `imagegen` | Pictures made on the brain | Only with `LOCAL_IMAGES=1` |
 
 With an external topic model and a picture service such as Gemini, only `emaki` and `whisper` run. Speech to text always stays on the brain.
 
@@ -46,7 +46,7 @@ GPU=vulkan       # Linux
 GPU=vulkan-wsl   # Windows (WSL)
 ```
 
-Then `docker compose up -d --build` again: `GPU` decides whether `whisper` and `sd` are compiled for the CPU or for Vulkan, and hands them the GPU device. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
+Then `docker compose up -d --build` again: `GPU` decides whether `whisper` and `imagegen` are compiled for the CPU or for Vulkan, and hands them the GPU device. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
 
 ## 2. Settings in `.env`
 
