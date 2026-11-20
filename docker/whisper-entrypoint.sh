@@ -43,7 +43,7 @@ if [ ! -s "$VAD" ]; then
 fi
 
 # docker stop: stop the servers too.
-trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM INT
+trap 'jobs -p | xargs -r kill 2>/dev/null; exit 0' TERM INT
 if [ -n "$WHISPER_DA_NO" ]; then
   # Edda's makers publish no ggml file, so its URL has no default.
   if [ -z "$WHISPER_DA_MODEL_URL" ]; then
@@ -61,5 +61,5 @@ serve "$MODEL" 8081
 # If any server stops, stop the others and the container, so docker
 # restarts it.
 wait -n || true
-kill $(jobs -p) 2>/dev/null
+jobs -p | xargs -r kill 2>/dev/null
 exit 1
