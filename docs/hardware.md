@@ -13,9 +13,7 @@ The frame and the mic don't think. They can be small and sit anywhere on your ne
 
 ## Try it first: just a laptop
 
-You don't need to buy anything to see what it does. A Linux laptop (or Windows with WSL) runs the brain, its built-in mic does the listening, and a browser is the screen. See [Setup](setup.md).
-
-This is the only setup that has actually been run so far: an AMD laptop with an integrated GPU, in WSL.
+You don't need to buy anything to see what it does. A Linux laptop runs the brain, its built-in mic does the listening, and a browser is the screen. See [Setup](setup.md).
 
 ## The brain
 

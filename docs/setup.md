@@ -4,7 +4,7 @@ How to get E-maki running on the brain, set it up, and show it on a frame. For w
 
 ## 1. Install
 
-Needs Linux (or Windows with WSL 2) and Docker with compose v2. macOS is untested, and Docker on a Mac can't reach the mic.
+Needs Linux and Docker with compose v2.
 
 ```bash
 mkdir e-maki && cd e-maki
@@ -35,16 +35,14 @@ With an external topic model and a picture service such as Gemini, only `emaki` 
 ### The mic
 
 - **Linux:** works as is with PulseAudio or PipeWire, for the user with id 1000 (`id -u`). For another user id or audio socket, set `EMAKI_UID`, `EMAKI_GID` and `PULSE_SOCKET` in `.env`. Step by step: [Laptop test](laptop-test.md).
-- **Windows (WSL):** set `PULSE_SOCKET=/mnt/wslg/PulseServer` in `.env`. See [Windows (WSL)](wsl.md).
 - **A mic elsewhere** (a Pi, an ESP32): see [Network microphone](network-mic.md).
 
 ### Integrated GPU
 
-An AMD or Intel integrated GPU runs speech-to-text (and on WSL the topic model) through Vulkan. Set `GPU` in `.env`:
+An AMD or Intel integrated GPU runs speech-to-text through Vulkan. Set `GPU` in `.env`:
 
 ```bash
-GPU=vulkan       # Linux
-GPU=vulkan-wsl   # Windows (WSL)
+GPU=vulkan
 ```
 
 Then `docker compose up -d --build` again: `GPU` decides whether `whisper` and `imagegen` are compiled for the CPU or for Vulkan, and hands them the GPU device. What the host needs is at the end of [docker-compose.yml](../docker-compose.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
@@ -171,7 +169,7 @@ The new `docker-compose.yml` names the newest released E-maki image (`ghcr.io/st
 
 ## Troubleshooting
 
-- **No sound, or `miniaudio: Failed to open backend device`:** see the troubleshooting in [Laptop test](laptop-test.md#troubleshooting) or [Windows (WSL)](wsl.md#troubleshooting).
+- **No sound, or `miniaudio: Failed to open backend device`:** see the troubleshooting in [Laptop test](laptop-test.md#troubleshooting).
 - **Every segment is "quiet, skipped":** lower the speech level under **Listening > Microphone**. The meter there shows your mic's level.
 - **Topics lag behind or segments are dropped:** Whisper is too slow. Use `WHISPER_MODEL=small` or the GPU.
 - **Placeholder tiles instead of pictures:** no image provider is set up, or the key doesn't work. Check **System > Status** and make a test picture.

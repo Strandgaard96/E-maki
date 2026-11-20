@@ -84,7 +84,7 @@ CI checks that the committed files match the source.
   they apply to humans too.
 
 > [!NOTE]
-> I can only test the hardware I have (a laptop in WSL; Linux is the default setup). If a change touches
+> I can only test the hardware I have (a laptop). If a change touches
 > the mic, the GPU setup or the panel, say in the PR what you ran it on.
 
 Write the code yourself or with an LLM, as long as you understand it and can

@@ -1,6 +1,6 @@
 # E-maki
 
-A picture frame that listens to the room and paints what you talk about. Speech-to-text and topic spotting run locally, each topic becomes a cartoon, and the cartoons fill a collage on a colour e-ink panel, a TV or any screen.
+A picture frame that listens to the room and paints what you talk about, as a collage on a colour e-ink panel.
 
 <p align="center">
   <img src="docs/collage-example.png" width="640"
@@ -42,35 +42,29 @@ An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pic
 4. **Paint it.** A new topic becomes a short image prompt, which is sent to an image API. This could be a local image provider with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp), or a remote AI image provider.
 5. **Display.** The image is fetched by the E-ink driver and displayed. How images are displayed is customized in the E-maki webserver.
 
-> [!TIP]
-> E-maki is a single Go binary. Speech-to-text, the topic LLM and local pictures each run in their own container, four at most. Integrated GPUs work through Vulkan. The page is a plain PNG, so any browser can show it.
-
 ## Privacy
 
-E-maki is an always-on microphone, so:
+E-maki is an always-on microphone.
 
-- Audio lives only in RAM and is never written to disk.
-- Transcripts live only in an in-memory rolling window. They are never written to disk or logged, and they stay on your network unless you switch on an external topic model (below). Logs show sound levels, languages and word counts, not words.
-- Speech-to-text and the topic LLM run on your own machine. Their containers download their models on the first start, and send nothing about what they hear.
-- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own API key. A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Switch on **Spoken names** under Listening > Privacy to also refuse prompts that repeat a name it heard.
-- Optional, off by default: an external topic model (OpenAI, Gemini, or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under Listening > Topics, which shows a warning while it is on.
-- Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, under Listening > Privacy. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked by default. The local LLM makes the call, so it will sometimes get it wrong.
-- The page itself shows what was talked about, and any device on your local network can open it. Set a password under System > Security; see [Lock it down](docs/setup.md#lock-it-down).
+- Audio and transcripts stay in memory. They are never saved or logged.
+- Speech-to-text and the topic model run on your machine.
+- Only the short English image prompt leaves your network, and only if you use an image API.
+- Sensitive topics (health, money, relationships, work) are blocked by default.
+- An external topic model is off by default. Turned on, it sends the last few minutes of transcript to that service.
+- Anyone on your network can open the page. Set a password under System > Security.
 
-Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists everything E-maki keeps, logs and sends.
+Tell people in the room that it listens. Details in [PRIVACY.md](PRIVACY.md).
 
 ## Build one
 
-| Part | What works | Notes |
-| --- | --- | --- |
-| **Driver** | A Linux computer that runs Docker: a laptop, a mini PC, a homelab server.| An integrated GPU makes speech-to-text about 7x faster |
-| **Mic** | Hardware microphone |  |
-| **AI image provider** | Your own Gemini, OpenAI or OpenRouter key, or a local model | Optional: without one you get coloured placeholder tiles |
-| **Screen** | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board, in an IKEA RÖDALM frame | No panel yet? The settings page shows the same picture in your browser |
+| Part | What to use |
+| --- | --- |
+| Computer | Linux with Docker. An integrated GPU makes speech-to-text faster |
+| Mic | Any USB or built-in mic |
+| Pictures | A Gemini, OpenAI or OpenRouter key, or a local model. Without one you get placeholder tiles |
+| Screen | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board. Or just a browser |
 
-Parts, wiring and flashing in **[Hardware](docs/hardware.md)**.
-
-E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so the programs in [fugleramme/clients](https://github.com/fugleramme/clients) show it on an e-ink board, such as the [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino) for the 13.3" panel. For a Pi with an Inky Impression, see [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
+The frame runs [Fugleramme's clients](https://github.com/fugleramme/clients), for example [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino). Parts and wiring: [Hardware](docs/hardware.md). Pi setup: [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
 
 ## Install
 
@@ -81,72 +75,54 @@ curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.
 docker compose up -d
 ```
 
-Then open <http://localhost:8090/> and talk for a minute. Add your own `GEMINI_API_KEY` to `.env` for real pictures.
+Open <http://localhost:8090/> and talk for a minute. The first start downloads the models and takes a while.
 
-The prebuilt E-maki image comes from ghcr.io. Speech-to-text is compiled on your machine on the first start, and each container downloads its model, so the first start takes a while. Switches in `.env` pick what runs:
+For real pictures, add `GEMINI_API_KEY` to `.env`.
 
 | Container | Runs |
 | --- | --- |
-| `emaki` | Always. The app and its page, port 8090 |
-| `whisper` | Always. Speech to text |
+| `emaki` | Always |
+| `whisper` | Always |
 | `ollama` | Unless `TOPIC_MODEL=external` |
-| `imagegen` | Only with `LOCAL_IMAGES=1` |
-
-More on `.env`, the GPU, the mic and updating in **[Setup](docs/setup.md)**.
+| `imagegen` | With `LOCAL_IMAGES=1` |
 
 ## Configure
 
-Each setting lives in one place:
+- Settings page (port 8090): the frame, listening, topics, privacy and pictures.
+- `.env`: API keys, models, `GPU` and the mic. Run `docker compose up -d` after a change.
 
-- **The settings page** (`http://<your-brain>:8090/`): what the frame shows, listening, topics, privacy and which image provider draws. Hover the ? next to a setting for help.
-- **`.env`**: API keys, models, `GPU`, the mic socket. Change it, then run `docker compose up -d`. See [Setup](docs/setup.md#2-settings-in-env).
+More in [Setup](docs/setup.md).
 
-## Run locally (for development)
+## Development
 
-Needs Go (version in [go.mod](go.mod)) and a C compiler such as gcc, for the miniaudio library behind the mic capture.
+Needs Go (see [go.mod](go.mod)) and gcc.
 
 ```bash
-go run ./cmd/emaki -script testdata/party.txt                  # offline: fake LLM and images, synthetic transcript
-go run ./cmd/emaki -config configs/laptop.json -mic            # with whisper-server on :8081 and Ollama on :11434
-go run ./cmd/emaki -config configs/laptop.json -wav talk.wav   # the same, from a 16 kHz mono WAV
+go run ./cmd/emaki -script testdata/party.txt         # offline, fake models
+go run ./cmd/emaki -config configs/laptop.json -mic   # whisper on :8081, Ollama on :11434
 ```
 
-The settings page is at <http://localhost:8090/>, the picture at <http://localhost:8090/frame.png>. Add `-settings settings.json` to keep what the page changes. Set `EMAKI_BUILD=1` in `.env` and run `docker compose up -d --build` to run your checkout in docker. How E-maki reaches its servers lives in [configs/](configs/README.md).
-
-| Package | Role |
-|---|---|
-| `internal/audio` | microphone capture, network microphone, WAV files, level check |
-| `internal/stt` | whisper-server client, per-language routing |
-| `internal/topic` | topic LLM over an OpenAI-compatible API, privacy check, offline fake |
-| `internal/memory` | topic memory: decay, "seen twice", daily cap, pin and remove |
-| `internal/imagegen` | Image providers (Gemini, OpenAI-style APIs including the local sd-server, OpenRouter) and an offline placeholder |
-| `internal/collage` | The page at the panel's size: one big tile plus up to 8 smaller tiles with captions |
-| `internal/panel` | Fugleramme dithering and `.e6` (ported), `/frame.png`, `/frame.e6`, `/press` |
-| `internal/timeline` | the saved pictures behind Pictures > History |
-| `internal/web` | the settings page (Preact in TypeScript, Tailwind and Basecoat; source in `internal/web/ui`, built files embedded) |
-| `internal/pipeline` | wires it together |
+To run your checkout in Docker, set `EMAKI_BUILD=1` and run `docker compose up -d --build`.
 
 ## Contributing
 
-Issues and PRs are welcome.
+- Bugs: [open an issue](https://github.com/Strandgaard96/E-maki/issues/new/choose)
+- Questions and builds: [Discussions](https://github.com/Strandgaard96/E-maki/discussions)
+- Fixes: open a PR with a [conventional commit](https://www.conventionalcommits.org/) title
+- Security: see [SECURITY.md](SECURITY.md)
 
-- **Something is broken:** a [bug report](https://github.com/Strandgaard96/E-maki/issues/new/choose)
-- **A question, an idea, or a frame you have built:** [Discussions](https://github.com/Strandgaard96/E-maki/discussions)
-- **A fix or a doc change:** open a PR, no issue needed. Its title is a [conventional commit](https://www.conventionalcommits.org/) (`fix: ...`), which [release-please](docs/releases.md) turns into the next release
-- **A security or privacy problem:** see the [security policy](SECURITY.md), not a public issue
-
-Read the privacy rules in **[Contributing](CONTRIBUTING.md)** first.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Credits
 
-- [Fugleramme](https://github.com/arnegiacomo/fugleramme) by Arne Giacomo Munthe-Kaas: the bird frame E-maki grew out of. Its Spectra 6 dithering, `.e6` format and panel protocol are ported to Go in `internal/panel`.
-- [BirdNET-Go](https://github.com/tphakala/birdnet-go) by tphakala: the always-on local listener that classifies what it hears, and the idea of running on whatever hardware you have, integrated GPUs included.
+- [Fugleramme](https://github.com/arnegiacomo/fugleramme) by Arne Giacomo Munthe-Kaas. Its dithering, `.e6` format and panel protocol are ported to Go.
+- [BirdNET-Go](https://github.com/tphakala/birdnet-go) by tphakala.
 
 ## License
 
 - Code: MIT. See [`LICENSE`](LICENSE).
-- [Preact](https://preactjs.com) (MIT), [Tailwind CSS](https://tailwindcss.com) (MIT) and [Basecoat](https://basecoatui.com) (MIT) for the settings page, and Flickr's [justified-layout](https://github.com/flickr/justified-layout) (MIT) and [PhotoSwipe](https://photoswipe.com) (MIT) for its Timeline.
+- Settings page: [Preact](https://preactjs.com), [Tailwind CSS](https://tailwindcss.com), [Basecoat](https://basecoatui.com), [justified-layout](https://github.com/flickr/justified-layout), [PhotoSwipe](https://photoswipe.com). All MIT.
 - Code ported from Fugleramme (`internal/panel`): MIT, Copyright (c) 2026 Arne Giacomo Munthe-Kaas. See [`third_party/fugleramme/LICENSE`](third_party/fugleramme/LICENSE).
-- Sidecars ([whisper.cpp](https://github.com/ggml-org/whisper.cpp), [Ollama](https://github.com/ollama/ollama), [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)): MIT. Built or pulled as containers, not bundled.
-- Models (Whisper and Qwen by default, plus Edda, NB-Whisper, Gemma or FLUX.2 klein if you pick them): downloaded on first start and covered by their own licences. Check each model card before you use one.
-- Generated images: made with your own API key and covered by your image provider's terms, or made locally and covered by the model's licence.
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp), [Ollama](https://github.com/ollama/ollama), [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp): MIT, run as separate containers.
+- Models: downloaded on first start, under their own licences.
+- Generated images: under your image provider's terms or the model's licence.

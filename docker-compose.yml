@@ -8,8 +8,7 @@
 #   curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.env.example
 #   docker compose up -d
 # then open http://localhost:8090/frame.png (reload to see new topics).
-# Written for Linux. On Windows (WSL) set PULSE_SOCKET in .env, see
-# docs/wsl.md.
+# Written for Linux.
 # On the first start each container downloads its own model into a volume
 # (the topic LLM, qwen3.5:4b by default, is ~3.4 GB) and keeps it.
 #

@@ -1,6 +1,6 @@
 # Laptop test (Linux)
 
-Goal: talk near the laptop and watch topics appear on the page as pictures. On Windows, read [Windows (WSL)](wsl.md) first; the rest of this page then applies.
+Goal: talk near the laptop and watch topics appear on the page as pictures.
 
 ## Once
 
