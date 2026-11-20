@@ -160,6 +160,16 @@ else
 			"secret_scanning_push_protection": {"status": "enabled"}}}'
 fi
 
+# ---- Labels ---------------------------------------------------------------
+
+# "build" on a PR builds the E-maki image (docs/releases.md).
+if gh api "repos/$REPO/labels/build" --silent 2>/dev/null; then
+	ok "label \"build\""
+else
+	change "create label \"build\"" gh api -X POST "repos/$REPO/labels" \
+		-f name=build -f color=1d76db -f description="Build the E-maki image"
+fi
+
 # ---- Ruleset on the default branch ----------------------------------------
 
 # Changes reach the default branch only through a squash-merged PR that is up

@@ -1,14 +1,17 @@
 # Builds and publishes the E-maki image, ghcr.io/strandgaard96/emaki.
 #
-# Feature PRs don't build it (lint, go, ui and docker in ci.yml cover them),
-# unless they change a Dockerfile. The image is built where it counts:
+# The image is only built when you ask: put the "build" label on a PR. The
+# label comes off again once it has built.
 #   1. release-please keeps a release PR open on main (next version and
 #      CHANGELOG, from the conventional commit titles).
-#   2. That PR builds the image for amd64 and arm64 from its merge result and
-#      pushes it as :tree-<git tree hash>. The PR can't merge unless it built.
+#   2. Labelled "build", that PR builds the image for amd64 and arm64 from its
+#      merge result and pushes it as :tree-<git tree hash>. Its "build" check
+#      fails until an image of its current content exists, so it can't merge
+#      unbuilt; a new commit on it needs the label again.
 #   3. Merging it cuts the release, and the same image is tagged :X.Y.Z, :X.Y
 #      and :latest. Nothing is built twice: the squash commit has the same
 #      tree, because main requires the PR to be up to date.
+# On any other PR the label test-builds the image without pushing it.
 # The whisper and sd images are built on the user's machine, not published;
 # they are only test-built here when their own files change.
 # The "build" job sums up and is the required check, so it always reports.
@@ -16,6 +19,7 @@ name: Build
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
   workflow_dispatch:
@@ -74,10 +78,9 @@ jobs:
         if: github.event_name == 'pull_request'
         with:
           filters: |
-            emaki: [docker/emaki.Dockerfile, .github/workflows/build.yml]
             whisper: ['docker/whisper*', .github/workflows/build.yml]
             sd: ['docker/sd*', .github/workflows/build.yml]
-      - if: needs.release.outputs.created == 'true'
+      - if: needs.release.outputs.created == 'true' || startsWith(github.head_ref, 'release-please--')
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -87,15 +90,18 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           HEAD: ${{ github.head_ref }}
-          CHANGED: ${{ steps.filter.outputs.emaki }}
+          LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'build') }}
           CREATED: ${{ needs.release.outputs.created }}
           TREE: ${{ steps.tree.outputs.tree }}
         run: |
           case "$EVENT" in
             pull_request)
-              # push: release PR; test: a Dockerfile change, built but not pushed.
-              if [[ "$HEAD" == release-please--* ]]; then build=push
-              elif [ "$CHANGED" = true ]; then build=test
+              # push: the release PR; test: any other PR, built but not pushed.
+              release=; [[ "$HEAD" == release-please--* ]] && release=1
+              if [ "$LABEL" = true ]; then build=${release:+push}; build=${build:-test}
+              elif [ -n "$release" ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
+                echo "::error::The release image isn't built for this commit yet. Add the build label to this PR to build it."
+                exit 1
               fi ;;
             push)
               if [ "$CREATED" = true ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
@@ -186,6 +192,20 @@ jobs:
         run: |
           docker buildx imagetools create -t "$IMAGE:$VERSION" -t "$IMAGE:${VERSION%.*}" -t "$IMAGE:latest" "$IMAGE:tree-$TREE"
           docker buildx imagetools inspect "$IMAGE:$VERSION"
+
+  # The label is a one-off request: take it off once the build passed.
+  unlabel:
+    needs: [emaki, tag]
+    if: ${{ !cancelled() && needs.emaki.result == 'success' && needs.tag.result != 'failure' && contains(github.event.pull_request.labels.*.name, 'build') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      pull-requests: write
+    steps:
+      - run: gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
 
   sidecars:
     needs: plan
