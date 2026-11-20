@@ -90,7 +90,7 @@ The same frame as Fugleramme's "frame only" build: a Pi drives the panel and fet
 | Power | The official supply for the board |
 | Frame | IKEA RÖDALM 21x30 (A4) for the 13.3", 13x18 for the 7.3" |
 
-Software is Fugleramme's Inky client, one command on the Pi: see [Setup](setup.md#5-put-it-on-a-frame). Set Buttons to 4 under Frame > Panel and the Inky's four buttons pause listening, remove or pin the last picture, and put the next one up.
+Software is Fugleramme's Inky client, one command on the Pi: see [Setup](setup.md#5-put-it-on-a-frame). Turn on Frame buttons under Frame > Panel and the Inky's four buttons pause listening, remove or pin the last picture, and put the next one up.
 
 Fugleramme's [hardware guide](https://github.com/arnegiacomo/fugleramme/blob/main/docs/hardware.md) has more on the Pi and the panel, and its [mounting guide](https://github.com/arnegiacomo/fugleramme/blob/main/docs/mounting.md) covers fitting the panel in the frame, the passepartout, airflow and stand feet. It all applies here unchanged. The Pi only fetches a picture every few minutes, so it stays cool.
 
@@ -105,7 +105,7 @@ A Seeed Studio XIAO ESP32-S3 board drives the panel and runs from a battery, wit
 | Power | Single-cell 3.7 V lithium battery with a JST 2.0 connector |
 | Frame | IKEA RÖDALM 21x30 (A4) |
 
-Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". Its buttons work on the board itself and don't reach E-maki, so leave Buttons at None on the settings page.
+Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". Its buttons work on the board itself and don't reach E-maki, so leave Frame buttons off on the settings page.
 
 ### No e-ink
 
@@ -128,7 +128,7 @@ Buttons are optional. A device with buttons sends one request per press, with a 
 curl -X POST -d button=A http://<your-brain>:8090/press
 ```
 
-Then set Buttons under Frame > Panel to how many it has, and pick what each letter does. A letter that isn't set does nothing.
+Then turn on Frame buttons under Frame > Panel, set how many it has, and pick what each letter does. A letter that isn't set does nothing.
 
 Which clients send presses today:
 
