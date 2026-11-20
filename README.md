@@ -74,8 +74,6 @@ E-maki has no frame software of its own. It serves the picture the same way [Fug
 
 ## Install
 
-Needs Linux (or Windows with WSL 2) and Docker with compose v2. Download two files and start it. No clone needed:
-
 ```bash
 mkdir e-maki && cd e-maki
 curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
