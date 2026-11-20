@@ -6,3 +6,4 @@ ignores:
   - third_party/**
   - .github/**
   - "**/node_modules/**"
+  - CHANGELOG.md # written by release-please
