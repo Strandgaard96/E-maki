@@ -6,7 +6,7 @@ A picture frame that listens to the room and paints what you talk about. Speech-
   <img src="docs/collage-example.png" width="640"
        alt="The settings page preview of an E-maki page, in its dark frame, dithered to six e-ink colours, drawn as black ink with red accents: a big picture of red fishing cabins under steep mountains, captioned 'Cabin trip to Lofoten', surrounded by eight smaller drawings for topics like an escaped cat, a sourdough starter, a heat pump, a hot dog, a robot vacuum and a ferry">
   <br>
-  <em>An example page as the settings page previews it, laid out and dithered by E-maki's own code for a 13.3" Spectra 6 panel. The topics are made up, and the pictures are hand-drawn stand-ins for the "Ink and red" style.</em>
+  <em>An example page, laid out and dithered by E-maki for a 13.3" Spectra 6 panel. The topics are made up.</em>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@ A picture frame that listens to the room and paints what you talk about. Speech-
 </p>
 
 > [!WARNING]
-> Early and experimental. The whole pipeline runs end to end in Docker on a laptop, but no complete frame has been built yet. Expect rough edges and breaking changes.
+> Early and experimental. Expect rough edges and breaking changes.
 
 ## Built with Claude Code
 
@@ -28,11 +28,11 @@ Claude Code wrote most of the code. I steered the design and make architecture a
 
 ## Inspiration
 
-I was heavily inspired by the amazing [Fugleramme](https://github.com/arnegiacomo/fugleramme) project: an e-ink frame that shows a collage of the birds [BirdNET-Go](https://github.com/tphakala/birdnet-go) hears in the garden. I wanted the same idor conversation topics, a dynamic frame that slowly updates with generated images of conversation topics.
+I was heavily inspired by the amazing [Fugleramme](https://github.com/arnegiacomo/fugleramme) project: an e-ink frame that shows a collage of the birds [BirdNET-Go](https://github.com/tphakala/birdnet-go) hears in the garden. I wanted the same idea for conversation topics: a dynamic frame that slowly updates with generated images of conversation topics.
 
 ### The name
 
-An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pictures as you unroll it, and *e* (絵) in japanese can also mean picture. Thus, E-maki.
+An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pictures as you unroll it, and *e* (絵) in Japanese can also mean picture. Thus, E-maki.
 
 ## How it works
 
@@ -43,7 +43,7 @@ An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pic
 5. **Display.** The image is fetched by the E-ink driver and displayed. How images are displayed is customized in the E-maki webserver.
 
 > [!TIP]
-> E-maki is a single Go binary. Speech-to-text and the LLM run as separate containers it talks to over HTTP, and how it reaches them lives in a small [config profile](configs/). It runs on a laptop today, with integrated GPU support through Vulkan. The page is a plain PNG, so any browser can show it.
+> E-maki is a single Go binary. Speech-to-text, the topic LLM and local pictures each run in their own container, four at most. Integrated GPUs work through Vulkan. The page is a plain PNG, so any browser can show it.
 
 ## Privacy
 
@@ -52,7 +52,7 @@ E-maki is an always-on microphone, so:
 - Audio lives only in RAM and is never written to disk.
 - Transcripts live only in an in-memory rolling window. They are never written to disk or logged, and they stay on your network unless you switch on an external topic model (below). Logs show sound levels, languages and word counts, not words.
 - Speech-to-text and the topic LLM run on your own machine. Their containers download their models on the first start, and send nothing about what they hear.
-- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own API key. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Switch on **Spoken names** under Listening > Privacy to also refuse prompts that repeat a name it heard.
+- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own API key. A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Switch on **Spoken names** under Listening > Privacy to also refuse prompts that repeat a name it heard.
 - Optional, off by default: an external topic model (OpenAI, Gemini, or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under Listening > Topics, which shows a warning while it is on.
 - Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, under Listening > Privacy. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked by default. The local LLM makes the call, so it will sometimes get it wrong.
 - The page itself shows what was talked about, and any device on your local network can open it. Set a password under System > Security; see [Lock it down](docs/setup.md#lock-it-down).
@@ -60,8 +60,6 @@ E-maki is an always-on microphone, so:
 Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists everything E-maki keeps, logs and sends.
 
 ## Build one
-
-> [!NOTE]
 
 | Part | What works | Notes |
 | --- | --- | --- |
@@ -72,15 +70,25 @@ Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists
 
 Parts, wiring and flashing in **[Hardware](docs/hardware.md)**. Installing, `.env`, the settings page, the frame and logs in **[Setup](docs/setup.md)**.
 
-To try it on a laptop:
+To try it, download two files and start it. No clone needed:
 
 ```bash
-git clone https://github.com/Strandgaard96/E-maki && cd E-maki
-cp .env.example .env    # optional: add your own GEMINI_API_KEY
-docker compose up --build
+mkdir e-maki && cd e-maki
+curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.env.example
+docker compose up -d
 ```
 
-Then open <http://localhost:8090/> and talk for a minute.
+Then open <http://localhost:8090/> and talk for a minute. Add your own `GEMINI_API_KEY` to `.env` for real pictures.
+
+The prebuilt E-maki image comes from ghcr.io. Speech-to-text is compiled on your machine on the first start, and each container downloads its model, so the first start takes a while. Switches in `.env` pick what runs:
+
+| Container | Runs |
+| --- | --- |
+| `emaki` | Always. The app and its page, port 8090 |
+| `whisper` | Always. Speech to text |
+| `ollama` | Unless `TOPIC_MODEL=external` |
+| `imagegen` | Only with `LOCAL_IMAGES=1` |
 
 To show it on a Raspberry Pi with an Inky Impression, install Fugleramme's Inky client on the Pi:
 
@@ -91,12 +99,10 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
 
 ## Configure
 
-Every setting lives in one place, so the two never disagree:
+Each setting lives in one place:
 
-- **The settings page** (`http://<your-brain>:8090/`): everything about what the frame shows, listening, topics, privacy and which image provider draws. Hover the ? next to a setting to see what it does.
-- **`.env`** (copy from [.env.example](.env.example)): API keys, the Whisper and topic models, the GPU and other extras, the mic socket. Change it, then run `docker compose up -d`. System > Services shows what it is set to. See [Setup](docs/setup.md#2-settings-in-env).
-
-How E-maki reaches its servers lives in a small profile in [configs/](configs/README.md). With docker you don't need to touch it.
+- **The settings page** (`http://<your-brain>:8090/`): what the frame shows, listening, topics, privacy and which image provider draws. Hover the ? next to a setting for help.
+- **`.env`**: API keys, models, `GPU`, the mic socket. Change it, then run `docker compose up -d`. See [Setup](docs/setup.md#2-settings-in-env).
 
 ## Run locally (for development)
 
@@ -108,7 +114,7 @@ go run ./cmd/emaki -config configs/laptop.json -mic            # with whisper-se
 go run ./cmd/emaki -config configs/laptop.json -wav talk.wav   # the same, from a 16 kHz mono WAV
 ```
 
-The settings page is at <http://localhost:8090/>, the picture at <http://localhost:8090/frame.png>. Add `-settings settings.json` to keep what the page changes. The code is laid out like this:
+The settings page is at <http://localhost:8090/>, the picture at <http://localhost:8090/frame.png>. Add `-settings settings.json` to keep what the page changes. Set `EMAKI_BUILD=1` in `.env` and run `docker compose up -d --build` to run your checkout in docker. How E-maki reaches its servers lives in [configs/](configs/README.md).
 
 | Package | Role |
 |---|---|
@@ -129,7 +135,7 @@ Issues and PRs are welcome.
 
 - **Something is broken:** a [bug report](https://github.com/Strandgaard96/E-maki/issues/new/choose)
 - **A question, an idea, or a frame you have built:** [Discussions](https://github.com/Strandgaard96/E-maki/discussions)
-- **A fix or a doc change:** open a PR, no issue needed
+- **A fix or a doc change:** open a PR, no issue needed. Its title is a [conventional commit](https://www.conventionalcommits.org/) (`fix: ...`), which [release-please](docs/releases.md) turns into the next release
 - **A security or privacy problem:** see the [security policy](SECURITY.md), not a public issue
 
 Read the privacy rules in **[Contributing](CONTRIBUTING.md)** first.
