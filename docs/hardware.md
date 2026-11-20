@@ -105,7 +105,17 @@ A Seeed Studio XIAO ESP32-S3 board drives the panel and runs from a battery, wit
 | Power | Single-cell 3.7 V lithium battery with a JST 2.0 connector |
 | Frame | IKEA RÖDALM 21x30 (A4) |
 
-Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). The firmware is in [fugleramme/clients](https://github.com/fugleramme/clients): point it at the brain's address. It fetches `/frame.e6`, which E-maki serves for the 13.3". Its buttons work on the board itself and don't reach E-maki, so leave Frame buttons off on the settings page.
+Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-DIY-Kit-EE02-for-13-3-Spectratm-6-E-Ink.html). Use the Arduino firmware from [fugleramme/clients](https://github.com/fugleramme/clients/tree/main/xiao-arduino). It fetches `/frame.e6`, which E-maki serves for the 13.3", and sends its buttons to E-maki:
+
+1. Plug the board into a computer with USB-C. Hold the boot button, press reset, wait a second and let go of boot.
+2. Open the [web flasher](https://fugleramme.github.io/clients/) in Chrome or Edge, pick EE02, click Connect and choose the board's serial port.
+3. The board restarts and shows a QR code. Join its Wi-Fi, then set your Wi-Fi, the brain's address as host, `8090` as port, and leave the password empty.
+
+To change the settings later, hold KEY2 for 5 seconds. Holding KEY1 for 10 seconds wipes them.
+
+The three buttons send A (KEY3), B (KEY2) and C (KEY1). Any press wakes the board from sleep, and it fetches and redraws the picture 5 seconds later. Turn on Frame buttons under Frame > Panel: it finds the XIAO on its next check and offers three buttons, with A set to just wake the frame. The letter lights up there when a press arrives, so you can see each button get through.
+
+Fugleramme's MicroPython programs for the EE02 and EE04 don't send presses.
 
 ### No e-ink
 
@@ -128,14 +138,15 @@ Buttons are optional. A device with buttons sends one request per press, with a 
 curl -X POST -d button=A http://<your-brain>:8090/press
 ```
 
-Then turn on Frame buttons under Frame > Panel, set how many it has, and pick what each letter does. A letter that isn't set does nothing.
+Then turn on Frame buttons under Frame > Panel, set how many it has, and pick what each letter does. A letter that isn't set does nothing. The page shows the last press as it arrives.
 
 Which clients send presses today:
 
 | Client | Presses |
 | --- | --- |
 | Fugleramme's Inky client on a Pi | Yes, A to D |
-| Fugleramme's ESP32 firmware (EE02, EE04, XIAO) | No |
+| Fugleramme's Arduino firmware for the XIAO EE02 and EE04 | Yes, A to C |
+| Fugleramme's MicroPython programs for the EE02 and EE04 | No |
 | A browser, TV or tablet showing `frame.png` | No |
 
 ## A small, quiet build (the plan)
