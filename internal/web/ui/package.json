@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "justified-layout": "^4.1.0",
+    "lucide-preact": "^1.77.0",
     "photoswipe": "^5.4.4",
     "preact": "^11.2.0"
   },

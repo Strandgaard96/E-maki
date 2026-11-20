@@ -2,6 +2,36 @@
 // `npm run build` bundles it into ../static/app.js, which the Go binary embeds.
 
 import justifiedLayout from "justified-layout";
+import {
+  Activity,
+  Ban,
+  Brush,
+  CircleQuestionMark,
+  Clock,
+  Frame as FrameIcon,
+  HardDrive,
+  ImagePlus,
+  Images,
+  KeyRound,
+  Languages as LanguagesIcon,
+  LayoutGrid,
+  ListOrdered,
+  Lock,
+  type LucideIcon,
+  MessagesSquare,
+  Mic as MicIcon,
+  NotebookPen,
+  Palette,
+  Pencil,
+  ScrollText,
+  Server,
+  Settings as SettingsIcon,
+  ShieldCheck,
+  SlidersHorizontal,
+  Tablet,
+  Volume2,
+  Zap,
+} from "lucide-preact";
 import PhotoSwipe from "photoswipe";
 import type { ComponentChildren, JSX, RefObject, TargetedEvent } from "preact";
 import { render } from "preact";
@@ -53,12 +83,21 @@ async function api<T = State>(path: string, method = "GET", body?: unknown): Pro
   if (r.status === 401 && path !== "api/login") {
     throw Object.assign(new Error("Sign in first."), { signin: true });
   }
-  if (!r.ok) throw new Error((await r.text()).trim() || r.statusText);
+  if (!r.ok) {
+    const text = (await r.text()).trim() || r.statusText;
+    if (r.status < 500 || r.status === 501) throw new Error(text);
+    // A fault on E-maki's side or a provider's: say what failed in plain words
+    // and keep the technical part in detail.
+    const head = text.indexOf(": ");
+    const message = head > 0 ? text.slice(0, head) + "." : "Something went wrong. Try again.";
+    throw Object.assign(new Error(message), { detail: text });
+  }
   return r.status === 204 ? (null as T) : r.json();
 }
 
-// ApiError is what api throws; signin is set when the page needs a password.
-type ApiError = Error & { signin?: boolean };
+// ApiError is what api throws: signin is set when the page needs a password,
+// detail holds the technical text behind a short message.
+type ApiError = Error & { signin?: boolean; detail?: string };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 // focus moves to an element once, when it appears (a stable ref callback).
@@ -103,7 +142,7 @@ function App() {
       setError("");
     } catch (e) {
       if (e.signin) setSignin(true);
-      else setError("Can't reach E-maki. Is it still running? " + e.message);
+      else setError(e instanceof TypeError ? "Can't reach E-maki. Is it still running?" : e.message);
     }
   }, []);
 
@@ -199,17 +238,19 @@ function App() {
                 document.getElementById("tab-" + other)?.focus();
               }}
             >
-              {TABS.map(([k, name]) => (
+              {TABS.map(([k, name, Icon]) => (
                 <button
                   type="button"
                   role="tab"
                   id={"tab-" + k}
+                  data-area={k}
                   aria-selected={tab === k}
                   aria-controls={"panel-" + k}
                   tabindex={tab === k ? 0 : -1}
-                  class="relative"
+                  class="relative flex-col gap-0.5 text-xs sm:flex-row sm:gap-1.5 sm:text-sm"
                   onClick={() => show(k)}
                 >
+                  <Icon class="size-5 text-area sm:size-4" aria-hidden="true" />
                   {name}
                   <span
                     class={
@@ -261,6 +302,7 @@ function App() {
           // @ts-expect-error: ARIA in HTML allows <main> no role but "main"; kept as it was.
           role="tabpanel"
           aria-labelledby="tab-frame"
+          data-area="frame"
           class="mx-auto grid max-w-6xl gap-6 px-4 pb-6 md:grid-cols-2 md:items-start md:pt-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
         >
           <section
@@ -296,6 +338,7 @@ function App() {
               // @ts-expect-error: ARIA in HTML allows <main> no role but "main"; kept as it was.
               role="tabpanel"
               aria-labelledby="tab-pictures"
+              data-area="pictures"
               class="mx-auto grid max-w-6xl gap-6 px-4 pt-4 pb-6 lg:grid-cols-2 lg:items-start"
             >
               <Wall
@@ -364,11 +407,11 @@ type Set = (patch: Partial<Settings>) => void;
 type DraftProps = { draft: Settings; set: Set };
 type StateProps = DraftProps & { state: State };
 
-const TABS: [string, string][] = [
-  ["frame", "Frame"],
-  ["pictures", "Pictures"],
-  ["listening", "Listening"],
-  ["system", "System"],
+const TABS: [string, string, LucideIcon][] = [
+  ["frame", "Frame", FrameIcon],
+  ["pictures", "Pictures", Images],
+  ["listening", "Listening", MicIcon],
+  ["system", "System", SettingsIcon],
 ];
 
 // Settings that change the picture itself, which the frame can show before saving.
@@ -607,11 +650,14 @@ function Loading({ error }: { error: string }) {
   );
 }
 
-const WALL_LEDE: Record<string, string> = {
-  collage:
-    "The topics talked about most, the newest biggest. A topic that stops coming up fades and leaves; pin one to keep it.",
-  single: "Only the newest topic is on the frame. Pin it to keep it there for good.",
-  rolling: "The newest topics, the newest biggest. The oldest drops off when a new one comes in; pin one to keep it.",
+const WALL_LEDE: Record<string, TipText> = {
+  collage: {
+    text: "The topics talked about most, the newest biggest. A topic that stops coming up fades and leaves; pin one to keep it.",
+  },
+  single: { text: "Only the newest topic is on the frame. Pin it to keep it there for good." },
+  rolling: {
+    text: "The newest topics, the newest biggest. The oldest drops off when a new one comes in; pin one to keep it.",
+  },
 };
 
 function Wall({
@@ -635,7 +681,7 @@ function Wall({
   const [asking, setAsking] = useState("");
   const [renaming, setRenaming] = useState("");
   return (
-    <Card title="On the frame" intro={WALL_LEDE[state.settings.layout]}>
+    <Card title="On the frame" icon={FrameIcon} tip={WALL_LEDE[state.settings.layout]}>
       {wall.length === 0 ? (
         <p class="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
           No tiles yet. Topics show up here as soon as they are on the frame.
@@ -894,7 +940,7 @@ function Queue({
       ? "Quiet hours hold them back."
       : `One goes up at most every ${settings.new_every_minutes >= 60 ? settings.new_every_minutes / 60 + " h" : settings.new_every_minutes + " min"}${settings.quiet_from ? ", never in quiet hours" : ""}.`;
   return (
-    <Card title="Queue" intro={`${why} Next one ${when(nextAt ?? "")}.`}>
+    <Card title="Queue" icon={ListOrdered} intro={`${why} Next one ${when(nextAt ?? "")}.`}>
       <ol class="grid gap-2">
         {queue.map((t, i) => (
           <li key={t.label} class="flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3">
@@ -1368,7 +1414,7 @@ function Scrubber({ count, box, width }: { count: number; box: RefObject<HTMLDiv
 function Removed({ removed, onAllow }: { removed: State["removed"]; onAllow: (label: string) => void }) {
   if (!removed?.length) return null;
   return (
-    <Card title="Removed topics" intro="These stay off the frame until the date shown, even when they come up again.">
+    <Card title="Removed topics" icon={Ban} tip={TIPS.removed}>
       <ul class="grid gap-2">
         {removed.map((r) => (
           <li key={r.label} class="flex flex-wrap items-center gap-3 rounded-lg border p-3">
@@ -1535,7 +1581,7 @@ function PinIcon() {
   );
 }
 
-// Tip is the small "i" after a setting's name: what the setting does and
+// Tip is the small "?" after a setting's name: what the setting does and
 // where else it is set. It opens on hover, on keyboard focus and on a tap,
 // and Escape or a tap elsewhere closes it. It sits inside the setting's
 // <label>, so it is a focusable span rather than a button (a button would
@@ -1609,11 +1655,7 @@ function Tip({ tip, name }: { tip: TipText; name: string }) {
           }
         }}
       >
-        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-          <circle cx="8" cy="8" r="6.75" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M8 7v4.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          <circle cx="8" cy="4.75" r="0.95" fill="currentColor" />
-        </svg>
+        <CircleQuestionMark class="size-[15px]" aria-hidden="true" />
       </span>
       <span
         id={id}
@@ -1631,23 +1673,34 @@ function Tip({ tip, name }: { tip: TipText; name: string }) {
   );
 }
 
+// Card is a group of settings under a title with an icon in its tab's
+// colour. The intro line is for what is true right now; help goes in tip.
 function Card({
   title,
+  icon: Icon,
   intro,
   tip,
   children,
 }: {
   title: string;
-  intro?: string;
+  icon?: LucideIcon;
+  intro?: ComponentChildren;
   tip?: TipText;
   children: ComponentChildren;
 }) {
   return (
     <section class="card">
       <header>
-        <h2 class="text-lg font-semibold tracking-tight">
-          {title}
-          {tip && <Tip tip={tip} name={title} />}
+        <h2 class="flex items-center gap-2.5 text-lg font-semibold tracking-tight">
+          {Icon && (
+            <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-area/12 text-area">
+              <Icon class="size-[18px]" aria-hidden="true" />
+            </span>
+          )}
+          <span>
+            {title}
+            {tip && <Tip tip={tip} name={title} />}
+          </span>
         </h2>
         {intro && <p>{intro}</p>}
       </header>
@@ -1820,17 +1873,27 @@ function Note({ tone, children }: { tone?: string; children: ComponentChildren }
   );
 }
 
-const LISTENING: [string, string][] = [
-  ["listening", "Microphone"],
-  ["topics", "Topics"],
-  ["privacy", "Privacy"],
+// Stays marks a choice that keeps everything on this machine.
+function Stays() {
+  return (
+    <span class="flex items-center gap-1.5 text-ink-green">
+      <ShieldCheck class="size-3.5 shrink-0" aria-hidden="true" />
+      Stays on this machine
+    </span>
+  );
+}
+
+const LISTENING: [string, string, LucideIcon][] = [
+  ["listening", "Microphone", MicIcon],
+  ["topics", "Topics", MessagesSquare],
+  ["privacy", "Privacy", ShieldCheck],
 ];
-const SYSTEM: [string, string][] = [
-  ["status", "Status"],
-  ["pictures", "Image provider"],
-  ["storage", "Storage"],
-  ["security", "Security"],
-  ["logs", "Logs"],
+const SYSTEM: [string, string, LucideIcon][] = [
+  ["status", "Status", Activity],
+  ["pictures", "Image provider", ImagePlus],
+  ["storage", "Storage", HardDrive],
+  ["security", "Security", KeyRound],
+  ["logs", "Logs", ScrollText],
 ];
 
 function PicturesSwitch({ view, setView }: { view: string; setView: (v: string) => void }) {
@@ -1864,7 +1927,7 @@ function SectionTab({
   onSignedOut,
 }: StateProps & {
   id: string;
-  sections: [string, string][];
+  sections: [string, string, LucideIcon][];
   paused: boolean;
   onState: (s: State) => void;
   onSignedOut: () => void;
@@ -1888,6 +1951,7 @@ function SectionTab({
       // @ts-expect-error: ARIA in HTML allows <main> no role but "main"; kept as it was.
       role="tabpanel"
       aria-labelledby={"tab-" + id}
+      data-area={id}
       class="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start"
     >
       <nav
@@ -1895,17 +1959,17 @@ function SectionTab({
         aria-label={id[0].toUpperCase() + id.slice(1) + " sections"}
         class="-mx-4 flex gap-1 overflow-x-auto px-4 md:sticky md:top-20 md:mx-0 md:flex-col md:overflow-visible md:px-0"
       >
-        {sections.map(([k, name]) => (
+        {sections.map(([k, name, Icon]) => (
           <button
             type="button"
             aria-current={section === k ? "page" : undefined}
             onClick={() => go(k)}
             class={
-              "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent " +
-              (section === k ? "bg-accent" : "")
+              "flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors " +
+              (section === k ? "bg-area/12" : "hover:bg-accent")
             }
           >
-            {section === k && <i class="size-[7px] shrink-0 rounded-full bg-primary" aria-hidden="true" />}
+            <Icon class="size-4 shrink-0 text-area" aria-hidden="true" />
             {name}
             {unsaved(k) && (
               <span class="size-1.5 shrink-0 rounded-full bg-ink-yellow" role="img" aria-label="has unsaved changes" />
@@ -1990,20 +2054,16 @@ function Listening({ state, draft, set, paused }: StateProps & { paused: boolean
   return (
     <>
       <Microphone draft={draft} set={set} paused={paused} />
-      <Card
-        title="Speech threshold"
-        intro="Sound quieter than the threshold is skipped without being transcribed, because Whisper tends to invent words in silence."
-      >
+      <Card title="Speech threshold" icon={Volume2} tip={TIPS.speech_threshold}>
         <LevelMeter level={level} threshold={draft.min_speech_dbfs} />
         <Field
           label="Threshold"
           tip={TIPS.min_speech_dbfs}
           value={draft.min_speech_dbfs + " dB"}
           help={
-            (level === null
-              ? "Nothing heard yet."
-              : `Last heard: ${Math.round(level)} dB, ${when(a.last_at)}${a.last_lang ? `, in ${langName(a.last_lang)}` : ""}.`) +
-            " 0 dB is the loudest the microphone can record, -80 dB is silence. Set the threshold a little above a quiet room."
+            level === null
+              ? "Nothing heard yet"
+              : `Last heard: ${Math.round(level)} dB, ${when(a.last_at)}${a.last_lang ? `, in ${langName(a.last_lang)}` : ""}`
           }
         >
           <Range
@@ -2014,12 +2074,6 @@ function Listening({ state, draft, set, paused }: StateProps & { paused: boolean
             onInput={(e) => set({ min_speech_dbfs: +e.currentTarget.value })}
           />
         </Field>
-        <p class="text-muted-foreground">
-          {"Each segment is "}
-          {state.status.segment}
-          {" seconds of audio. That is set in the profile ("}
-          <code>segment_seconds</code>) and needs a restart.
-        </p>
       </Card>
       <Languages state={state} draft={draft} set={set} />
     </>
@@ -2042,11 +2096,7 @@ function Languages({ state, draft, set }: StateProps) {
     .filter((c) => !rows.includes(c))
     .sort((x, y) => name(x).localeCompare(name(y)));
   return (
-    <Card
-      title="Languages"
-      intro="The languages spoken here. With none, Whisper guesses from all it knows."
-      tip={TIPS.languages}
-    >
+    <Card title="Languages" icon={LanguagesIcon} tip={TIPS.languages}>
       {rows.map((l) => (
         <Toggle
           checked={on.includes(l)}
@@ -2066,12 +2116,6 @@ function Languages({ state, draft, set }: StateProps) {
           <option value={c}>{name(c)}</option>
         ))}
       </select>
-      {on.length > 1 && (
-        <p class="text-muted-foreground">
-          {"A guess outside these is redone in "}
-          {name(on[0])}, the first one.
-        </p>
-      )}
     </Card>
   );
 }
@@ -2094,10 +2138,9 @@ function Microphone({ draft, set, paused }: DraftProps & { paused: boolean }) {
       clearInterval(t);
     };
   }, []);
-  const intro = "Plug in another mic and it shows up here within a few seconds.";
   if (!mic) {
     return (
-      <Card title="Microphone" intro={intro} tip={TIPS.mic_device}>
+      <Card title="Microphone" icon={MicIcon} tip={TIPS.mic_device}>
         <div class="grid gap-2" aria-busy="true" aria-label="Looking for inputs">
           <span class="skeleton h-16" />
           <span class="skeleton h-16" />
@@ -2124,13 +2167,8 @@ function Microphone({ draft, set, paused }: DraftProps & { paused: boolean }) {
     (v === mic.active || (v === "" && pick === "" && !mic.devices.some((d) => d.name === mic.active)));
   const pos = (db: number) => Math.max(0, Math.min(100, ((db + 80) / 80) * 100));
   return (
-    <Card title="Microphone" intro={intro} tip={TIPS.mic_device}>
-      {!mic.live && (
-        <Note>
-          This run is not listening on a microphone (it plays a recording or a script). Your choice is used the next
-          time E-maki starts with one.
-        </Note>
-      )}
+    <Card title="Microphone" icon={MicIcon} tip={TIPS.mic_device}>
+      {!mic.live && <Note>Playing a recording, not a mic. Your pick is used next time.</Note>}
       {mic.error && <Note tone="warn">{mic.error}</Note>}
       {mic.devices.length === 0 && !mic.error && (
         <Note tone="warn">No inputs found. In docker, check that the sound server is passed into the container.</Note>
@@ -2170,9 +2208,6 @@ function Microphone({ draft, set, paused }: DraftProps & { paused: boolean }) {
           </Choice>
         ))}
       </div>
-      {mic.live && mic.level != null && (
-        <p class="text-muted-foreground">The bar is the level right now. The line is where talk starts.</p>
-      )}
     </Card>
   );
 }
@@ -2214,11 +2249,9 @@ function LevelMeter({ level, threshold }: { level: number | null; threshold: num
 
 // diaryNote says what diary mode has collected so far, and when it paints.
 function diaryNote(s: State) {
-  const base =
-    "Topics talked about at least twice wait for this time. The heaviest get pictures, within the daily limit.";
-  if (!s.diary_next) return base;
+  if (!s.diary_next) return "";
   const n = s.collected === 1 ? "1 topic" : `${s.collected} topics`;
-  return `${base} ${n} so far, painted ${when(s.diary_next)}.`;
+  return `${n} so far, painted ${when(s.diary_next)}`;
 }
 
 function Topics({ state, draft, set }: StateProps) {
@@ -2232,22 +2265,18 @@ function Topics({ state, draft, set }: StateProps) {
   const external = draft.topic_provider === "external";
   return (
     <>
-      <Card title="Topic model">
+      <Card title="Topic model" icon={MessagesSquare}>
         <Field
           label="Provider"
           tip={TIPS.topic_provider}
           help={
-            external
-              ? ""
-              : st.no_local_topics
-                ? "The local topic model is off (NO_LOCAL_TOPICS in .env), so no topics are found." +
-                  (st.topic_api
-                    ? " Pick the external one."
-                    : " Set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d.")
-                : "Runs on this machine. What was said stays here." +
-                  (st.topic_api
-                    ? ""
-                    : " To use an external service instead, set TOPIC_API_KEY and TOPIC_API_MODEL in .env, then run docker compose up -d.")
+            external ? (
+              ""
+            ) : st.no_local_topics ? (
+              "The local topic model is off, so no topics are found." + (st.topic_api ? " Pick the external one." : "")
+            ) : (
+              <Stays />
+            )
           }
         >
           <select
@@ -2281,12 +2310,11 @@ function Topics({ state, draft, set }: StateProps) {
           </Note>
         )}
       </Card>
-      <Card title="Topics">
+      <Card title="Topics" icon={SlidersHorizontal}>
         <Field
           label="Minimum confidence"
           tip={TIPS.min_confidence}
           value={Math.round(draft.min_confidence * 100) + "%"}
-          help="Higher means fewer, clearer topics. Lower catches more of the conversation."
         >
           <Range
             min="0"
@@ -2297,12 +2325,11 @@ function Topics({ state, draft, set }: StateProps) {
           />
         </Field>
       </Card>
-      <Card title="Transcript window">
+      <Card title="Transcript window" icon={ScrollText}>
         <Field
           label="Window length"
           tip={TIPS.window_segments}
           value={`${draft.window_segments} segments, ${minutes(draft.window_segments)}`}
-          help="Longer gives the model more context; shorter follows the conversation faster."
         >
           <Range
             min="1"
@@ -2316,7 +2343,6 @@ function Topics({ state, draft, set }: StateProps) {
           label="Topic check interval"
           tip={TIPS.extract_every}
           value={`${draft.extract_every} segments, ${minutes(draft.extract_every)}`}
-          help="More often reacts faster but keeps the topic model busier."
         >
           <Range
             min="1"
@@ -2327,15 +2353,10 @@ function Topics({ state, draft, set }: StateProps) {
           />
         </Field>
       </Card>
-      <Card
-        title="Topic prompt"
-        tip={TIPS.topic_prompt}
-        intro="What the topic model is told a good topic and picture description look like. The privacy rules and answer format are always added."
-      >
+      <Card title="Topic prompt" icon={Pencil} tip={TIPS.topic_prompt}>
         <details open={!!draft.topic_prompt}>
           <summary class="cursor-pointer font-medium">
-            {draft.topic_prompt ? "Custom prompt in use" : "Built-in prompt in use"}
-            <span class="ms-1 font-normal text-muted-foreground">(show and edit)</span>
+            {draft.topic_prompt ? "Custom prompt" : "Built-in prompt"}
           </summary>
           <textarea
             class="textarea mt-3 font-mono text-xs"
@@ -2361,12 +2382,7 @@ function Topics({ state, draft, set }: StateProps) {
             </button>
           </div>
         )}
-        <Field
-          label="Temperature"
-          tip={TIPS.llm_temperature}
-          value={temp.toFixed(1)}
-          help="0 gives the most predictable topics; higher gives more surprising ones."
-        >
+        <Field label="Temperature" tip={TIPS.llm_temperature} value={temp.toFixed(1)}>
           <Range
             min="0"
             max="1.5"
@@ -2396,20 +2412,11 @@ function Pictures({ state, draft, set }: StateProps) {
   const missing = providers.filter((p) => !p.ready);
   return (
     <>
-      <Card title="Image provider">
+      <Card title="Image provider" icon={ImagePlus}>
         <Field
           label="Provider"
           tip={TIPS.image_provider}
-          help={[
-            chosen?.id === "placeholder"
-              ? "Coloured tiles, no pictures. Nothing is sent."
-              : chosen?.local
-                ? "Drawn on this machine. Nothing is sent."
-                : "Only the English picture description is sent.",
-            missing.length > 0 && "Greyed-out ones work after that change in .env and docker compose up -d.",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          help={chosen?.id === "placeholder" || chosen?.local ? <Stays /> : "Sends only the picture description"}
         >
           <select
             class="select w-full"
@@ -2432,11 +2439,7 @@ function Pictures({ state, draft, set }: StateProps) {
             ))}
           </select>
         </Field>
-        <Field
-          label="Daily limit"
-          tip={TIPS.daily_image_cap}
-          help={`${today} made today.${chosen?.local ? "" : " Each one is a paid call to your image API."}`}
-        >
+        <Field label="Daily limit" tip={TIPS.daily_image_cap} help={`${today} made today`}>
           <input
             class="input w-32"
             type="number"
@@ -2451,7 +2454,6 @@ function Pictures({ state, draft, set }: StateProps) {
             <span style={{ width: Math.min(100, (today / cap) * 100) + "%" }} />
           </div>
         )}
-        <p class="text-muted-foreground">The picture style is on the Frame tab.</p>
       </Card>
       <TestPicture provider={draft.image_provider} style={draft.image_style} name={chosen?.name} />
     </>
@@ -2461,7 +2463,7 @@ function Pictures({ state, draft, set }: StateProps) {
 // TestPicture makes one picture from a fixed description with the provider
 // picked above, saved or not. It goes nowhere near the frame and does not
 // count towards the daily limit.
-type Test = { busy?: boolean; image?: string; took?: number; prompt?: string; error?: string };
+type Test = { busy?: boolean; image?: string; took?: number; prompt?: string; error?: string; detail?: string };
 
 function TestPicture({ provider, style, name }: { provider: string; style: string; name?: string }) {
   const [test, setTest] = useState<Test | null>(null); // { busy } | { image, took } | { error }
@@ -2471,14 +2473,11 @@ function TestPicture({ provider, style, name }: { provider: string; style: strin
       const r = await api<Test>("api/test-picture", "POST", { provider, style });
       setTest({ image: r.image, took: r.took, prompt: r.prompt });
     } catch (e) {
-      setTest({ error: e.message });
+      setTest({ error: e.message, detail: e.detail });
     }
   };
   return (
-    <Card
-      title="Test picture"
-      intro="Draws one picture with the provider above and the current style. Not shown on the frame, not counted."
-    >
+    <Card title="Test picture" icon={Brush} tip={TIPS.test_picture}>
       <div>
         <button type="button" class="btn" data-variant="outline" disabled={test?.busy} onClick={run}>
           {test?.busy && <span class="loader size-4" aria-hidden="true" />}
@@ -2504,7 +2503,15 @@ function TestPicture({ provider, style, name }: { provider: string; style: strin
         )}
         {test?.error && (
           <div class="alert" data-variant="destructive" role="alert">
-            <section>{test.error}</section>
+            <section>
+              {test.error}
+              {test.detail && (
+                <details class="mt-1 text-sm">
+                  <summary class="cursor-pointer">Details</summary>
+                  <code class="block break-words text-xs">{test.detail}</code>
+                </details>
+              )}
+            </section>
           </div>
         )}
       </div>
@@ -2547,14 +2554,11 @@ function Security({
   };
   return (
     <>
-      <Card
-        title="Page password"
-        intro="Without a password, anyone on your network can open this page. The frame's picture and buttons stay open, because e-ink frames can't sign in. PANEL_TOKEN guards those."
-      >
+      <Card title="Page password" icon={KeyRound} tip={TIPS.password}>
         <Note tone={has ? "ok" : "warn"}>
           {has
             ? "This page is locked with a password."
-            : "No password yet: anyone on your network can change the frame and pause listening."}
+            : "No password yet. Anyone on your network can change the frame."}
         </Note>
         <form
           class="grid gap-4"
@@ -2574,7 +2578,7 @@ function Security({
               />
             </Field>
           )}
-          <Field label={has ? "New password" : "Password"} help="At least 8 characters. A few random words work well.">
+          <Field label={has ? "New password" : "Password"} tip={TIPS.new_password}>
             <input
               class="input"
               type="password"
@@ -2602,14 +2606,14 @@ function Security({
           </div>
         </form>
       </Card>
-      <Card title="Panel token">
-        {state.status.locked ? (
-          <Note tone="ok">On. This page and the frame live under a secret address.</Note>
-        ) : (
-          <p class="text-muted-foreground">
-            Off. Set PANEL_TOKEN in .env to move this page and the frame under a secret address.
-          </p>
-        )}
+      <Card title="Panel token" icon={Lock} tip={TIPS.panel_token}>
+        <p class="flex items-center gap-2 font-medium">
+          <i
+            class={"size-2.5 rounded-full " + (state.status.locked ? "bg-ink-green" : "bg-muted-foreground/40")}
+            aria-hidden="true"
+          />
+          {state.status.locked ? "On" : "Off"}
+        </p>
       </Card>
     </>
   );
@@ -2618,20 +2622,19 @@ function Security({
 const TILE_COUNTS = [2, 3, 4, 5, 6, 7, 8, 9];
 
 function Layout({ draft, set }: DraftProps) {
-  const layouts: [string, string, string][] = [
-    ["collage", "Most talked about", "Topics that come up a lot stay. One that goes quiet fades and leaves."],
-    ["single", "One picture", "The newest topic fills the frame. Pin it to keep it."],
-    ["rolling", "Latest", "Always the newest topics. Each new one pushes the oldest off."],
+  const layouts: [string, string][] = [
+    ["collage", "Most talked about"],
+    ["single", "One picture"],
+    ["rolling", "Latest"],
   ];
   return (
-    <Card title="Layout" tip={TIPS.layout}>
-      <div class="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Layout">
-        {layouts.map(([v, name, text]) => (
+    <Card title="Layout" icon={LayoutGrid} tip={TIPS.layout}>
+      <div class="grid grid-cols-3 gap-2 sm:gap-3" role="radiogroup" aria-label="Layout">
+        {layouts.map(([v, name]) => (
           <Choice name="layout" checked={draft.layout === v} onChange={() => set({ layout: v })}>
             <span class="grid gap-2">
               <LayoutIcon kind={v} on={draft.layout === v} />
-              <span class="font-medium">{name}</span>
-              <small class="text-muted-foreground">{text}</small>
+              <span class="text-sm font-medium sm:text-base">{name}</span>
             </span>
           </Choice>
         ))}
@@ -2704,7 +2707,6 @@ function Layout({ draft, set }: DraftProps) {
         onChange={(v) => set({ hide_captions: !v })}
         title="Captions"
         tip={TIPS.hide_captions}
-        text="Topic names under the pictures."
       />
     </Card>
   );
@@ -2761,19 +2763,22 @@ const ROTATE: [number, string][] = [
 ];
 
 function Timing({ state, draft, set }: StateProps) {
-  const modes: [string, string, string][] = [
-    ["diary", "Diary", "Collects the day's topics and paints the top ones once a day. For everyday life."],
-    ["party", "Continuous", "Turns each new topic into a picture straight away."],
+  const modes: [string, string, LucideIcon][] = [
+    ["diary", "Diary", NotebookPen],
+    ["party", "Continuous", Zap],
   ];
   const quiet = draft.quiet_from !== "";
   return (
-    <Card title="Timing" tip={TIPS.mode}>
-      <div class="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Mode">
-        {modes.map(([v, name, text]) => (
+    <Card title="Timing" icon={Clock} tip={TIPS.mode}>
+      <div class="grid grid-cols-2 gap-2 sm:gap-3" role="radiogroup" aria-label="Mode">
+        {modes.map(([v, name, Icon]) => (
           <Choice name="mode" checked={draft.mode === v} onChange={() => set({ mode: v })}>
-            <span class="grid gap-1">
-              <span class="font-medium">{name}</span>
-              <small class="text-muted-foreground">{text}</small>
+            <span class="flex items-center gap-2 font-medium">
+              <Icon
+                class={"size-5 " + (draft.mode === v ? "text-primary" : "text-muted-foreground")}
+                aria-hidden="true"
+              />
+              {name}
             </span>
           </Choice>
         ))}
@@ -2791,11 +2796,7 @@ function Timing({ state, draft, set }: StateProps) {
       {draft.mode === "diary" ? (
         ""
       ) : (
-        <Field
-          label="Picture interval"
-          help="New topics wait in line and go up one at a time."
-          tip={TIPS.new_every_minutes}
-        >
+        <Field label="Picture interval" tip={TIPS.new_every_minutes}>
           <select
             class="select w-full"
             value={draft.new_every_minutes}
@@ -2807,11 +2808,7 @@ function Timing({ state, draft, set }: StateProps) {
           </select>
         </Field>
       )}
-      <Field
-        label="Rotate"
-        tip={TIPS.rotate_minutes}
-        help="When more pictures are saved than fit, show the others in turn. No new pictures are made."
-      >
+      <Field label="Rotate" tip={TIPS.rotate_minutes}>
         <select
           class="select w-full"
           value={draft.rotate_minutes}
@@ -2827,7 +2824,6 @@ function Timing({ state, draft, set }: StateProps) {
           checked={quiet}
           title="Quiet hours"
           tip={TIPS.quiet_hours}
-          text="No new pictures go up in between. What was talked about appears when they end."
           onChange={(v) => set(v ? { quiet_from: "22:00", quiet_to: "07:00" } : { quiet_from: "", quiet_to: "" })}
         />
         {quiet && (
@@ -2854,11 +2850,7 @@ function Timing({ state, draft, set }: StateProps) {
         )}
       </div>
       {draft.layout === "collage" && (
-        <Field
-          label="Fade time"
-          tip={TIPS.half_life_hours}
-          help="A topic heard once leaves after about three times this. Talking about it again keeps it."
-        >
+        <Field label="Fade time" tip={TIPS.half_life_hours}>
           <select
             class="select w-full"
             value={draft.half_life_hours}
@@ -2875,20 +2867,11 @@ function Timing({ state, draft, set }: StateProps) {
 }
 
 function Privacy({ draft, set }: DraftProps) {
-  const external = draft.topic_provider === "external";
   const blocked = draft.block_sensitive;
   const toggle = (c: string) =>
     set({ block_sensitive: blocked.includes(c) ? blocked.filter((x) => x !== c) : [...blocked, c] });
   return (
-    <Card
-      title="Blocked topics"
-      tip={TIPS.block_sensitive}
-      intro={
-        external
-          ? "Topics like these never get a picture."
-          : "Topics like these never get a picture, and nothing about them leaves the house."
-      }
-    >
+    <Card title="Blocked topics" icon={ShieldCheck} tip={TIPS.block_sensitive}>
       {Object.entries(CATEGORIES).map(([c, [name, text]]) => (
         <Toggle checked={blocked.includes(c)} onChange={() => toggle(c)} title={name} text={text} />
       ))}
@@ -2897,9 +2880,6 @@ function Privacy({ draft, set }: DraftProps) {
         onChange={(v) => set({ block_names: v })}
         title="Spoken names"
         tip={TIPS.block_names}
-        text={
-          'Any picture whose description repeats a name that was said out loud. It cannot tell people from places, so "Lofoten" goes too.'
-        }
       />
       <NeverPaint value={draft.never_paint} onChange={(v) => set({ never_paint: v })} />
       {blocked.length === 0 && !draft.block_names && !(draft.never_paint || []).length && (
@@ -2912,33 +2892,26 @@ function Privacy({ draft, set }: DraftProps) {
 function Storage({ draft, set, saved, topicAPI }: DraftProps & { saved: boolean; topicAPI: string }) {
   const external = draft.topic_provider === "external";
   return (
-    <Card title="Storage">
-      <p>
-        <strong class="font-semibold">Nothing is recorded.</strong>
-        {
-          " Audio is never written to disk. What was said lives only in a short rolling window in memory and is gone when E-maki stops or you pause listening."
-        }
-      </p>
+    <Card title="Storage" icon={HardDrive} tip={TIPS.storage}>
+      <Note tone="ok">
+        <span class="flex items-center gap-2">
+          <ShieldCheck class="size-4 shrink-0 text-ink-green" aria-hidden="true" />
+          Nothing is recorded
+        </span>
+      </Note>
       {external && (
         <Note tone="warn">
           {"The external topic model is on: that window is also sent to "}
           {topicAPI}. Switch back under Listening, Topics.
         </Note>
       )}
-      <p class="text-muted-foreground">
-        The settings and password files hold no audio and no words. See PRIVACY.md in the repository for the full list.
-      </p>
       <Toggle
         checked={draft.keep_pictures !== false}
         onChange={(v) => set({ keep_pictures: v })}
         disabled={!saved}
         title="Keep pictures over a restart"
         tip={TIPS.keep_pictures}
-        text={
-          saved
-            ? "Saves the pictures and their descriptions next to the settings. Turning it off deletes them."
-            : "Needs a settings file: start E-maki with -settings."
-        }
+        text={saved ? "" : "Needs a settings file: start E-maki with -settings."}
       />
     </Card>
   );
@@ -2957,12 +2930,7 @@ function NeverPaint({ value, onChange }: { value: string[] | null; onChange: (v:
     if (!same(list(text), value || [])) setText((value || []).join("\n"));
   }, [value]);
   return (
-    <Field
-      stack
-      label="Never paint"
-      tip={TIPS.never_paint}
-      help="One word or phrase a line. A topic or picture description that contains one never becomes a picture. Not case sensitive."
-    >
+    <Field stack label="Never paint" tip={TIPS.never_paint}>
       <textarea
         class="textarea"
         rows={4}
@@ -3007,7 +2975,7 @@ function Look({ draft, set, styles }: DraftProps & { styles: State["styles"] }) 
   const tile =
     "tap grid cursor-pointer content-start gap-1 rounded-lg border p-1.5 text-sm font-medium transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary/5 has-checked:ring-1 has-checked:ring-primary has-focus-visible:ring-2 has-focus-visible:ring-ring";
   return (
-    <Card title="Picture style" intro="Used for new pictures. Tiles already on the frame keep their look.">
+    <Card title="Picture style" icon={Palette} tip={TIPS.image_style}>
       <div class="flex flex-wrap items-center gap-2">
         <input
           type="search"
@@ -3084,11 +3052,7 @@ function Look({ draft, set, styles }: DraftProps & { styles: State["styles"] }) 
           [
             "",
             custom,
-            <Field
-              stack
-              label="Custom style"
-              help="Flat colours in black, white, yellow, red, blue and green look best on the e-ink panel."
-            >
+            <Field stack label="Custom style" tip={TIPS.custom_style}>
               <textarea
                 class="textarea"
                 rows={4}
@@ -3128,18 +3092,14 @@ function withCurrent(options: [number, string][], value: number, label: (v: numb
 
 function Hanging({ draft, set }: DraftProps) {
   return (
-    <Card title="Panel">
+    <Card title="Panel" icon={Tablet}>
       <details class="group">
         <summary class="flex cursor-pointer items-center justify-between gap-3 text-muted-foreground">
           <span>{panelSummary(draft)}</span>
           <span class="shrink-0 text-sm font-medium text-foreground group-open:hidden">Change</span>
         </summary>
         <div class="grid gap-5 pt-5">
-          <Field
-            label="Size"
-            help="The size of your e-ink screen. The picture is drawn at its resolution."
-            tip={TIPS.panel_size}
-          >
+          <Field label="Size" tip={TIPS.panel_size}>
             <select
               class="select w-full"
               value={draft.panel_width + "x" + draft.panel_height}
@@ -3179,16 +3139,9 @@ function Hanging({ draft, set }: DraftProps) {
                 </label>
               ))}
             </div>
-            <small class="text-muted-foreground">
-              Pick another if the picture shows sideways or upside down on your frame.
-            </small>
           </div>
           {hasE6(draft) && (
-            <Field
-              label="Refresh interval"
-              tip={TIPS.panel_poll_minutes}
-              help="How long a battery frame (like the EE02) sleeps between checks for a new picture. Less often saves battery. Frames on mains power check on their own."
-            >
+            <Field label="Refresh interval" tip={TIPS.panel_poll_minutes}>
               <select
                 class="select w-full"
                 value={draft.panel_poll_minutes}
@@ -3209,19 +3162,14 @@ function Hanging({ draft, set }: DraftProps) {
               label="Buttons"
               tip={TIPS.panel_buttons}
               help={
-                <>
-                  {
-                    "Buttons only work if your frame's software tells E-maki when one is pressed. The Inky client on a Pi does (four buttons, A to D from the top). ESP32 frames and screens that only show the picture don't, so leave this at None for them. "
-                  }
-                  <a
-                    class="underline underline-offset-4 hover:text-foreground"
-                    href="https://github.com/Strandgaard96/E-maki/blob/main/docs/hardware.md#any-device"
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    How a frame sends a press
-                  </a>
-                </>
+                <a
+                  class="underline underline-offset-4 hover:text-foreground"
+                  href="https://github.com/Strandgaard96/E-maki/blob/main/docs/hardware.md#any-device"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  How a frame sends a press
+                </a>
               }
             >
               <select
@@ -3309,7 +3257,7 @@ function System({ state }: { state: State }) {
   const h = state.health;
   return (
     <>
-      <Card title="Since start">
+      <Card title="Since start" icon={Activity}>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             [a.heard, "segments transcribed"],
@@ -3325,7 +3273,7 @@ function System({ state }: { state: State }) {
           ))}
         </div>
       </Card>
-      <Card title="Services">
+      <Card title="Services" icon={Server}>
         <div class="grid gap-3">
           <Service name="Speech to text" where={st.speech} s={h.speech} />
           <Service
@@ -3339,12 +3287,7 @@ function System({ state }: { state: State }) {
                   : `${st.topics} at ${st.llm_url}`
             }
           />
-          <Service
-            name="Image provider"
-            where={st.images}
-            s={h.images}
-            idle="No picture made since E-maki started. Make a test picture under Image provider."
-          />
+          <Service name="Image provider" where={st.images} s={h.images} idle="No picture made yet" />
         </div>
         <Facts
           rows={[
@@ -3358,10 +3301,7 @@ function System({ state }: { state: State }) {
           ]}
         />
       </Card>
-      <Card
-        title="Set in .env"
-        intro="These can't be changed here. Edit .env next to docker-compose.yml, then run docker compose up -d."
-      >
+      <Card title="Set in .env" icon={SettingsIcon} tip={TIPS.env}>
         <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr_max-content]">
           {(st.env || []).map((r) => (
             <>
@@ -3423,7 +3363,12 @@ function Service({ name, where, s, idle }: { name: string; where: string; s: Hea
       </div>
       {where && <small class="break-words text-muted-foreground">{where}</small>}
       {(last || detail) && <small class="text-muted-foreground">{[last, detail].filter(Boolean).join(". ")}</small>}
-      {s.error && <small class="break-words text-destructive">{s.error}</small>}
+      {s.error && (
+        <details class="text-sm">
+          <summary class="cursor-pointer text-muted-foreground">Details</summary>
+          <code class="mt-1 block break-words text-xs text-destructive">{s.error}</code>
+        </details>
+      )}
     </div>
   );
 }
