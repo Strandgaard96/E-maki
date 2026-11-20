@@ -15,7 +15,7 @@ docker compose up -d
 
 The first start builds whisper-server and downloads a few GB of models. Follow it with `docker compose logs -f`.
 
-Then open `http://<your-brain>:8090/`.
+Then open `http://<your-server>:8090/`.
 
 | Container | Does | Runs |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ Pick the languages you speak under Listening > Microphone.
 
 ### External topic model
 
-For a brain too slow for a local model. It sends the last few minutes of transcript to the service. Set `TOPIC_API_URL`, `TOPIC_API_KEY` and `TOPIC_API_MODEL`, then pick it under Listening > Topics. Add `TOPIC_MODEL=external` to leave Ollama out. See [PRIVACY.md](../PRIVACY.md).
+For a server too slow for a local model. It sends the last few minutes of transcript to the service. Set `TOPIC_API_URL`, `TOPIC_API_KEY` and `TOPIC_API_MODEL`, then pick it under Listening > Topics. Add `TOPIC_MODEL=external` to leave Ollama out. See [PRIVACY.md](../PRIVACY.md).
 
 ## 3. Pictures
 
@@ -75,7 +75,7 @@ On a Raspberry Pi with an Inky Impression:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/examples/inky/install.sh \
-  | FRAME_URL=http://<your-brain>:8090 bash
+  | FRAME_URL=http://<your-server>:8090 bash
 ```
 
 Set the panel size, rotation and buttons under Frame > Panel. With 4 buttons, the defaults are:
@@ -92,8 +92,8 @@ Other boards: [Hardware](hardware.md#the-frame). Scripts and Home Assistant: [HT
 ### Lock it down
 
 - Set a password under System > Security. It covers the page, not the frame's picture.
-- `PANEL_TOKEN` (for example `openssl rand -hex 16`) moves everything under `/<token>/`. The frame then uses `FRAME_URL=http://<your-brain>:8090/<token>`.
-- `PANEL_BIND=127.0.0.1` limits the page to the brain.
+- `PANEL_TOKEN` (for example `openssl rand -hex 16`) moves everything under `/<token>/`. The frame then uses `FRAME_URL=http://<your-server>:8090/<token>`.
+- `PANEL_BIND=127.0.0.1` limits the page to the server.
 - Behind a reverse proxy or VPN name, list the name in `EMAKI_HOSTS`.
 - Don't expose port 8090 to the internet.
 

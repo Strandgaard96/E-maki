@@ -1,6 +1,6 @@
 # HTTP API
 
-The JSON API behind the settings page. Paths are under `http://<your-brain>:8090/`, or `/<token>/` with `PANEL_TOKEN` set.
+The JSON API behind the settings page. Paths are under `http://<your-server>:8090/`, or `/<token>/` with `PANEL_TOKEN` set.
 
 ## Rules
 
@@ -45,12 +45,12 @@ Pause and resume, without a password set. In `configuration.yaml`:
 ```yaml
 rest_command:
   emaki_pause:
-    url: http://<your-brain>:8090/api/pause
+    url: http://<your-server>:8090/api/pause
     method: post
     content_type: application/json
     payload: '{"paused": true}'
   emaki_resume:
-    url: http://<your-brain>:8090/api/pause
+    url: http://<your-server>:8090/api/pause
     method: post
     content_type: application/json
     payload: '{"paused": false}'

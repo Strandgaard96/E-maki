@@ -1,6 +1,6 @@
 # Local pictures
 
-The `imagegen` container draws pictures on the brain with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Nothing leaves the house.
+The `imagegen` container draws pictures on the server with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). Nothing leaves the house.
 
 ## Turn it on
 

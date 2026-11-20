@@ -19,7 +19,7 @@ const NetDevice = "Network microphone"
 // network: a TCP connection that streams raw 16 kHz mono 16-bit
 // little-endian PCM, the format of
 //
-//	arecord -q -f S16_LE -r 16000 -c 1 -t raw | nc brain 10700
+//	arecord -q -f S16_LE -r 16000 -c 1 -t raw | nc server 10700
 //
 // or the ESP32 sketch in examples/esp32-mic. With a token, the sender first
 // sends the token and a newline; anything else is hung up on. One sender at

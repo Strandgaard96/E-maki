@@ -377,8 +377,8 @@ func TestForeignHostIsRefused(t *testing.T) {
 		"192.168.1.20:8090":      http.StatusOK,
 		"[fe80::1]:8090":         http.StatusOK,
 		"localhost:8090":         http.StatusOK,
-		"brain:8090":             http.StatusOK,
-		"brain.local":            http.StatusOK,
+		"server:8090":            http.StatusOK,
+		"server.local":           http.StatusOK,
 		"FRAME.example.com:8090": http.StatusOK, // listed in EMAKI_HOSTS
 	} {
 		for _, path := range []string{"/api/state", "/frame.png", "/"} {
