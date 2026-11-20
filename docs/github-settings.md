@@ -9,12 +9,12 @@ scripts/github-settings.sh             # apply it
 
 It reads the current settings first and only changes what differs, so running it again is safe. It sets:
 
-- the About description and topics (and the homepage, if `HOMEPAGE` is set)
+- the topics (and the homepage, if `HOMEPAGE` is set). It never changes the About description.
 - Discussions on
 - squash merging only, auto-merge allowed, branches deleted after merge
 - the `build` label, which builds the E-maki image on a PR ([Releases](releases.md))
 - Dependabot alerts and security updates, private vulnerability reporting, secret scanning and push protection
-- a ruleset named `main` on the default branch: changes only arrive through a squash-merged PR that is up to date with the branch and passes the checks in `REQUIRED_CHECKS`; force pushes and deletion are blocked
+- two rulesets on the default branch. `main` blocks force pushes and deletion for everyone. `main-prs` lets changes in only through a squash-merged PR that is up to date with the branch and passes the checks in `REQUIRED_CHECKS`; repo admins (you) can still push directly
 
 `--close-stale-dependabot` also closes open Dependabot PRs whose base commit is no longer on the default branch. Dependabot opens a new PR if the update is still needed.
 
