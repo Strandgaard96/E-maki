@@ -1,7 +1,7 @@
 # Builds and publishes the E-maki image, ghcr.io/strandgaard96/emaki.
 #
-# The image is only built when you ask: put the "build" label on a PR. The
-# label comes off again once it has built.
+# Only the release PR builds the image, and only when you ask: put the
+# "build" label on it. The label comes off again once it has built.
 #   1. release-please keeps a release PR open on main (next version and
 #      CHANGELOG, from the conventional commit titles).
 #   2. Labelled "build", that PR builds the image for amd64 and arm64 from its
@@ -11,9 +11,8 @@
 #   3. Merging it cuts the release, and the same image is tagged :X.Y.Z, :X.Y
 #      and :latest. Nothing is built twice: the squash commit has the same
 #      tree, because main requires the PR to be up to date.
-# On any other PR the label test-builds the image without pushing it.
-# The whisper and imagegen (sd.Dockerfile) images are built on the user's machine, not published;
-# they are only test-built here when their own files change.
+# The whisper and imagegen (sd.Dockerfile) images are built on the user's
+# machine, not published; run this workflow by hand to test-build them.
 # The "build" job sums up and is the required check, so it always reports.
 name: Build
 
@@ -22,13 +21,22 @@ on:
     types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
+  # By hand from the Actions tab. With a release tag (v0.1.0) it publishes
+  # that release's image, building it only if it is missing; empty builds
+  # all images as a test.
   workflow_dispatch:
+    inputs:
+      release:
+        description: Release tag to publish the image for, like v0.1.0
+        required: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  # PRs by number: a label event on a merged PR has main as its ref, and must
+  # not cancel the release run on main.
+  group: build-${{ github.event.pull_request.number || github.ref }}
   # Never cancel a run on main: it may be publishing a release.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -64,23 +72,18 @@ jobs:
     permissions:
       contents: read
       packages: read # is the release PR's image there?
-      pull-requests: read # paths-filter lists the PR's files
     outputs:
       tree: ${{ steps.tree.outputs.tree }}
       emaki: ${{ steps.emaki.outputs.build }}
-      sidecars: ${{ github.event_name == 'workflow_dispatch' && '["whisper","sd"]' || steps.filter.outputs.changes || '[]' }}
+      version: ${{ steps.emaki.outputs.version }}
+      sidecars: ${{ github.event_name == 'workflow_dispatch' && !inputs.release && '["whisper","sd"]' || '[]' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release }}
       - id: tree
         run: echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
-      - uses: dorny/paths-filter@v4
-        id: filter
-        if: github.event_name == 'pull_request'
-        with:
-          filters: |
-            whisper: ['docker/whisper*', .github/workflows/build.yml]
-            sd: ['docker/sd*', .github/workflows/build.yml]
-      - if: needs.release.outputs.created == 'true' || startsWith(github.head_ref, 'release-please--')
+      - if: needs.release.outputs.created == 'true' || startsWith(github.head_ref, 'release-please--') || inputs.release
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -92,25 +95,30 @@ jobs:
           HEAD: ${{ github.head_ref }}
           LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'build') }}
           CREATED: ${{ needs.release.outputs.created }}
+          RELEASED: ${{ needs.release.outputs.version }}
+          INPUT: ${{ inputs.release }}
           TREE: ${{ steps.tree.outputs.tree }}
         run: |
+          has_image() { docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; }
           case "$EVENT" in
             pull_request)
-              # push: the release PR; test: any other PR, built but not pushed.
-              release=; [[ "$HEAD" == release-please--* ]] && release=1
-              if [ "$LABEL" = true ]; then build="${release:+push}"; build="${build:-test}"
-              elif [ -n "$release" ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
+              # Only the release PR builds, and only with the build label.
+              if [[ "$HEAD" != release-please--* ]]; then :
+              elif [ "$LABEL" = true ]; then build="push"
+              elif ! has_image; then
                 echo "::error::The release image isn't built for this commit yet. Add the build label to this PR to build it."
                 exit 1
               fi ;;
-            push)
-              if [ "$CREATED" = true ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
-                echo "::warning::No image for this tree from the release PR, building it now."
-                build="push"
-              fi ;;
-            workflow_dispatch) build="push" ;;
+            push) [ "$CREATED" = true ] && version="$RELEASED" ;;
+            workflow_dispatch)
+              if [ -n "$INPUT" ]; then version="${INPUT#v}"; else build="push"; fi ;;
           esac
+          if [ -n "${version:-}" ] && ! has_image; then
+            echo "::warning::No image for this release from the release PR, building it now."
+            build="push"
+          fi
           echo "build=${build:-}" >> "$GITHUB_OUTPUT"
+          echo "version=${version:-}" >> "$GITHUB_OUTPUT"
 
   emaki:
     needs: plan
@@ -164,15 +172,14 @@ jobs:
   # One multi-arch tag for the tree, and the version tags on a release.
   tag:
     needs: [release, plan, emaki]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.plan.outputs.emaki == 'push' || needs.release.outputs.created == 'true') }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.plan.outputs.emaki == 'push' || needs.plan.outputs.version != '') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       packages: write
     env:
       TREE: ${{ needs.plan.outputs.tree }}
-      CREATED: ${{ needs.release.outputs.created }}
-      VERSION: ${{ needs.release.outputs.version }}
+      VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - if: needs.plan.outputs.emaki == 'push'
         uses: actions/download-artifact@v8
@@ -191,7 +198,7 @@ jobs:
           refs=()
           for d in digests/*; do refs+=("$IMAGE@sha256:${d#digests/}"); done
           docker buildx imagetools create -t "$IMAGE:tree-$TREE" "${refs[@]}"
-      - if: env.CREATED == 'true'
+      - if: env.VERSION != ''
         run: |
           docker buildx imagetools create -t "$IMAGE:$VERSION" -t "$IMAGE:${VERSION%.*}" -t "$IMAGE:latest" "$IMAGE:tree-$TREE"
           docker buildx imagetools inspect "$IMAGE:$VERSION"

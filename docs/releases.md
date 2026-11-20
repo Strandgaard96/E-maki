@@ -9,7 +9,7 @@ E-maki is published as one image, `ghcr.io/strandgaard96/emaki`, for amd64 and a
 3. When you want to release, add the **build** label to the release PR. It builds the E-maki image for both architectures and takes the label off again. Until an image of the PR's current content exists, its `build` check fails, so it can't merge unbuilt. If a new commit lands on it, add the label again.
 4. Merging it tags `vX.Y.Z`, writes the GitHub release, and tags the image it already built as `X.Y.Z`, `X.Y` and `latest`. Nothing is built twice.
 
-Other PRs never build the image on their own (`go test` already compiles the code). The **build** label on one test-builds it without publishing.
+No other PR builds an image (`go test` already compiles the code). To test-build the whisper and imagegen images, run the Build workflow by hand from the Actions tab.
 
 ## One-time setup
 
