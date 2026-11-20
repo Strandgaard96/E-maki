@@ -135,7 +135,7 @@ export const TIPS = {
     text: "How long a battery frame (like the EE02) sleeps between checks for a new picture. Longer saves battery. Frames on mains power check on their own.",
   },
   panel_buttons: {
-    text: "How many buttons your frame has. Only frames whose software reports a press can use them, like the Inky client on a Pi (A to D from the top). Leave it at None for ESP32 frames.",
+    text: "What the buttons on your frame do. Only frames whose software sends a press to E-maki can use them: today that is the Inky client on a Pi (A to D from the top). ESP32 frames like the XIAO EE02 keep their buttons to themselves, so leave this off there.",
   },
   panel_button: { text: "What this button does when pressed." },
 } satisfies Record<string, TipText>;

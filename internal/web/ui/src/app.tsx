@@ -439,9 +439,9 @@ const FRAME_SECTIONS: [string, string, LucideIcon][] = [
   ["panel", "Panel", Tablet],
 ];
 
-// FrameTab is the frame as large as fits, with its settings in a side panel
-// of tabs beside it. The page itself does not scroll on a wide screen; only
-// the panel does. On a phone the frame sticks on top and the panel follows.
+// FrameTab is the frame with its settings in a side panel of tabs beside it.
+// On a wide screen both stay in view and only the panel scrolls; on a phone
+// the frame sticks on top and the panel follows.
 function FrameTab({ state, draft, pending, set }: StateProps & { pending: Settings }) {
   const initial = FRAME_SECTIONS.find(([k]) => location.hash === "#frame/" + k)?.[0] ?? "layout";
   const [section, setSection] = useState(initial);
@@ -457,11 +457,11 @@ function FrameTab({ state, draft, pending, set }: StateProps & { pending: Settin
       role="tabpanel"
       aria-labelledby="tab-frame"
       data-area="frame"
-      class="grid pb-24 md:h-[calc(100dvh-var(--header-h,4rem))] md:grid-cols-[minmax(0,1fr)_24rem] md:grid-rows-[minmax(0,1fr)] md:pb-0 lg:grid-cols-[minmax(0,1fr)_28rem]"
+      class="mx-auto grid max-w-6xl pb-24 md:grid-cols-[minmax(0,1fr)_24rem] lg:grid-cols-[minmax(0,1fr)_26rem] md:items-start md:gap-8 md:px-4 md:pt-6"
     >
       <section
         aria-label="The frame"
-        class="sticky top-(--header-h,4rem) z-[5] border-b bg-background px-4 py-3 md:static md:grid md:place-items-center md:border-0 md:bg-muted/40 md:p-8"
+        class="sticky top-(--header-h,4rem) z-[5] border-b bg-background px-4 py-3 md:top-[calc(var(--header-h,4rem)+1.5rem)] md:border-0 md:p-0"
       >
         <Frame
           page={state.page}
@@ -471,7 +471,10 @@ function FrameTab({ state, draft, pending, set }: StateProps & { pending: Settin
           changed={PICTURE_KEYS.some((k) => !same(pending[k], state.settings[k]))}
         />
       </section>
-      <aside aria-label="Frame settings" class="flex min-h-0 flex-col bg-background md:border-l">
+      <aside
+        aria-label="Frame settings"
+        class="flex min-h-0 flex-col bg-background text-sm md:sticky md:top-[calc(var(--header-h,4rem)+1.5rem)] md:max-h-[calc(100dvh-var(--header-h,4rem)-3rem)] md:rounded-xl md:border"
+      >
         <nav aria-label="Frame sections" class="flex border-b px-2">
           {FRAME_SECTIONS.map(([k, name, Icon]) => (
             <button
@@ -479,7 +482,7 @@ function FrameTab({ state, draft, pending, set }: StateProps & { pending: Settin
               aria-current={section === k ? "page" : undefined}
               onClick={() => go(k)}
               class={
-                "-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-3 text-sm font-medium transition-colors " +
+                "-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-2.5 font-medium transition-colors " +
                 (section === k
                   ? "border-area text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground")
@@ -497,7 +500,7 @@ function FrameTab({ state, draft, pending, set }: StateProps & { pending: Settin
             </button>
           ))}
         </nav>
-        <div class="relative min-h-0 flex-1 overflow-y-auto p-4 md:p-5 md:pb-24">
+        <div class="relative min-h-0 flex-1 overflow-y-auto p-4">
           <Bare.Provider value={true}>
             {section === "layout" && <Layout draft={draft} set={set} />}
             {section === "style" && <Look draft={draft} set={set} styles={state.styles} />}
@@ -587,11 +590,10 @@ function Frame({
   const badge = empty ? "Preview" : changed ? "Not saved yet" : "";
   const [w, h] =
     draft.panel_rotation % 180 ? [draft.panel_height, draft.panel_width] : [draft.panel_width, draft.panel_height];
-  // On a phone the picture is kept to a third of the screen's height, so the settings show under it;
-  // on a wide screen it is as big as fits the height under the header.
+  // On a phone the picture is kept to a third of the screen's height, so the settings show under it.
   return (
     <figure
-      class="mx-auto grid w-full gap-2 max-md:max-w-[calc(30dvh*var(--ratio))] md:max-w-[calc((100dvh-var(--header-h,4rem)-9rem)*var(--ratio))]"
+      class="mx-auto grid w-full gap-2 max-md:max-w-[calc(30dvh*var(--ratio))]"
       style={{ "--ratio": w / h }}
       aria-busy={pic.loading}
     >
@@ -1922,7 +1924,7 @@ function Segments<T>({
       )}
       <div class="inline-flex w-fit rounded-lg bg-muted p-1">
         {options.map(([v, text]) => (
-          <label class="tap cursor-pointer rounded-md px-3 py-1.5 text-sm sm:px-4 font-medium text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring">
+          <label class="tap cursor-pointer rounded-md px-3 py-1.5 text-sm sm:px-3.5 sm:whitespace-nowrap font-medium text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring">
             <input type="radio" name={name} class="sr-only" checked={value === v} onChange={() => onChange(v)} />
             {text}
           </label>
@@ -3167,127 +3169,127 @@ function withCurrent(options: [number, string][], value: number, label: (v: numb
 function Hanging({ draft, set }: DraftProps) {
   return (
     <Card title="Panel" icon={Tablet}>
-      <details class="group">
-        <summary class="flex cursor-pointer items-center justify-between gap-3 text-muted-foreground">
-          <span>{panelSummary(draft)}</span>
-          <span class="shrink-0 text-sm font-medium text-foreground group-open:hidden">Change</span>
-        </summary>
-        <div class="grid gap-5 pt-5">
-          <Field label="Size" tip={TIPS.panel_size}>
+      <div class="grid gap-5">
+        <Field label="Size" tip={TIPS.panel_size}>
+          <select
+            class="select w-full"
+            value={draft.panel_width + "x" + draft.panel_height}
+            onChange={(e) => {
+              const [w, h] = e.currentTarget.value.split("x").map(Number);
+              set({ panel_width: w, panel_height: h });
+            }}
+          >
+            {withSize(draft).map(([v, t]) => (
+              <option value={v}>{t}</option>
+            ))}
+          </select>
+        </Field>
+        <div class="grid gap-2" role="radiogroup" aria-label="Rotation">
+          <span class="font-medium">
+            Rotation
+            <Tip tip={TIPS.panel_rotation} name="Rotation" />
+          </span>
+          <div class="flex flex-wrap gap-2">
+            {ROTATIONS.map((v) => (
+              <label class="grid w-16 cursor-pointer justify-items-center gap-1 rounded-lg border p-2 hover:bg-accent has-checked:border-primary has-checked:ring-1 has-checked:ring-primary has-focus-visible:ring-2 has-focus-visible:ring-ring">
+                <input
+                  type="radio"
+                  name="rotation"
+                  class="sr-only"
+                  checked={draft.panel_rotation === v}
+                  onChange={() => set({ panel_rotation: v })}
+                />
+                <span
+                  class="grid h-6 w-8 place-content-center rounded-sm border-2 border-foreground/70 text-xs"
+                  style={{ transform: `rotate(${v}deg)` }}
+                  aria-hidden="true"
+                >
+                  A
+                </span>
+                <small>{v}°</small>
+              </label>
+            ))}
+          </div>
+        </div>
+        {hasE6(draft) && (
+          <Field label="Refresh interval" tip={TIPS.panel_poll_minutes}>
             <select
               class="select w-full"
-              value={draft.panel_width + "x" + draft.panel_height}
-              onChange={(e) => {
-                const [w, h] = e.currentTarget.value.split("x").map(Number);
-                set({ panel_width: w, panel_height: h });
-              }}
+              value={draft.panel_poll_minutes}
+              onChange={(e) => set({ panel_poll_minutes: +e.currentTarget.value })}
             >
-              {withSize(draft).map(([v, t]) => (
+              {withCurrent(
+                POLLS.map((m): [number, string] => [m, m === 1 ? "minute" : m + " minutes"]),
+                draft.panel_poll_minutes,
+                (v) => v + " minutes",
+              ).map(([v, t]) => (
                 <option value={v}>{t}</option>
               ))}
             </select>
           </Field>
-          <div class="grid gap-2" role="radiogroup" aria-label="Rotation">
-            <span class="font-medium">
-              Rotation
-              <Tip tip={TIPS.panel_rotation} name="Rotation" />
-            </span>
-            <div class="flex flex-wrap gap-2">
-              {ROTATIONS.map((v) => (
-                <label class="grid w-16 cursor-pointer justify-items-center gap-1 rounded-lg border p-2 hover:bg-accent has-checked:border-primary has-checked:ring-1 has-checked:ring-primary has-focus-visible:ring-2 has-focus-visible:ring-ring">
-                  <input
-                    type="radio"
-                    name="rotation"
-                    class="sr-only"
-                    checked={draft.panel_rotation === v}
-                    onChange={() => set({ panel_rotation: v })}
-                  />
-                  <span
-                    class="grid h-6 w-8 place-content-center rounded-sm border-2 border-foreground/70 text-xs"
-                    style={{ transform: `rotate(${v}deg)` }}
-                    aria-hidden="true"
-                  >
-                    A
-                  </span>
-                  <small>{v}°</small>
-                </label>
-              ))}
-            </div>
-          </div>
-          {hasE6(draft) && (
-            <Field label="Refresh interval" tip={TIPS.panel_poll_minutes}>
-              <select
-                class="select w-full"
-                value={draft.panel_poll_minutes}
-                onChange={(e) => set({ panel_poll_minutes: +e.currentTarget.value })}
-              >
-                {withCurrent(
-                  POLLS.map((m): [number, string] => [m, m === 1 ? "minute" : m + " minutes"]),
-                  draft.panel_poll_minutes,
-                  (v) => v + " minutes",
-                ).map(([v, t]) => (
-                  <option value={v}>{t}</option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <div class="grid gap-3">
-            <Field
-              label="Buttons"
-              tip={TIPS.panel_buttons}
-              help={
-                <a
-                  class="underline underline-offset-4 hover:text-foreground"
-                  href="https://github.com/Strandgaard96/E-maki/blob/main/docs/hardware.md#any-device"
-                  target="_blank"
-                  rel="noopener"
+        )}
+        <div class="grid gap-3">
+          <Toggle
+            title="Frame buttons"
+            text="Works with the Inky client on a Pi"
+            tip={TIPS.panel_buttons}
+            checked={Object.keys(draft.panel_buttons || {}).length > 0}
+            onChange={(on) => set({ panel_buttons: buttons(draft.panel_buttons, on ? 4 : 0) })}
+          />
+          {Object.keys(draft.panel_buttons || {}).length > 0 && (
+            <div class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-lg bg-muted/50 p-3">
+              <ButtonsDrawing n={Object.keys(draft.panel_buttons || {}).length} />
+              <div class="grid gap-2">
+                {Object.keys(draft.panel_buttons || {})
+                  .sort()
+                  .map((b) => (
+                    <label class="flex items-center gap-2">
+                      <span class="grid size-6 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-background">
+                        {b}
+                      </span>
+                      <span class="sr-only">Button {b}</span>
+                      <select
+                        class="select w-full"
+                        value={draft.panel_buttons?.[b]}
+                        onChange={(e) => set({ panel_buttons: { ...draft.panel_buttons, [b]: e.currentTarget.value } })}
+                      >
+                        {BUTTON_ACTIONS.map(([v, t]) => (
+                          <option value={v}>{t}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                <select
+                  class="select w-full"
+                  aria-label="How many buttons"
+                  value={Object.keys(draft.panel_buttons || {}).length}
+                  onChange={(e) => set({ panel_buttons: buttons(draft.panel_buttons, +e.currentTarget.value) })}
                 >
-                  How a frame sends a press
-                </a>
-              }
-            >
-              <select
-                class="select w-full"
-                value={Object.keys(draft.panel_buttons || {}).length}
-                onChange={(e) => set({ panel_buttons: buttons(draft.panel_buttons, +e.currentTarget.value) })}
-              >
-                {["", ...BUTTON_LETTERS].map((_, n) => (
-                  <option value={n}>{n === 0 ? "None" : n}</option>
-                ))}
-              </select>
-            </Field>
-            {Object.keys(draft.panel_buttons || {})
-              .sort()
-              .map((b) => (
-                <Field label={"Button " + b} tip={TIPS.panel_button}>
-                  <select
-                    class="select w-full"
-                    value={draft.panel_buttons?.[b]}
-                    onChange={(e) => set({ panel_buttons: { ...draft.panel_buttons, [b]: e.currentTarget.value } })}
-                  >
-                    {BUTTON_ACTIONS.map(([v, t]) => (
-                      <option value={v}>{t}</option>
-                    ))}
-                  </select>
-                </Field>
-              ))}
-          </div>
+                  {BUTTON_LETTERS.map((_, i) => (
+                    <option value={i + 1}>{i === 0 ? "1 button" : i + 1 + " buttons"}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
-      </details>
+      </div>
     </Card>
   );
 }
 
-// panelSummary is the Panel card's folded line: size, rotation and buttons.
-function panelSummary(d: Settings) {
-  const size =
-    withSize(d).find(([v]) => v === d.panel_width + "x" + d.panel_height)?.[1] ??
-    `${d.panel_width} × ${d.panel_height}`;
-  const n = Object.keys(d.panel_buttons || {}).length;
+// ButtonsDrawing is a frame seen from the front with its buttons down the
+// left edge, A at the top, as on an Inky Impression.
+function ButtonsDrawing({ n }: { n: number }) {
+  const h = Math.max(48, n * 14 + 6);
   return (
-    [size, d.panel_rotation ? `turned ${d.panel_rotation}°` : "not turned", n ? `${n} buttons` : "no buttons"].join(
-      ", ",
-    ) + "."
+    <svg width="64" height={h} viewBox={`0 0 64 ${h}`} aria-hidden="true" class="text-foreground">
+      <rect x="10" y="1" width="52" height={h - 2} rx="4" fill="none" stroke="currentColor" stroke-width="2" />
+      <rect x="16" y="7" width="40" height={h - 14} rx="1" fill="currentColor" opacity="0.15" />
+      {BUTTON_LETTERS.slice(0, n).map((b, i) => (
+        <rect key={b} x="4" y={6 + i * 14} width="6" height="8" rx="1.5" fill="currentColor" />
+      ))}
+    </svg>
   );
 }
 
