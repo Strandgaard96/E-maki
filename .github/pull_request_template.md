@@ -1,4 +1,5 @@
-<!-- The title is the commit message: PRs are squashed. -->
+<!-- The title is the commit message (PRs are squashed), as a conventional
+commit: feat: ..., fix: ..., docs: ... It decides the next version. -->
 
 ## What this changes
 

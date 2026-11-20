@@ -1,0 +1,223 @@
+# Builds and publishes the E-maki image, ghcr.io/strandgaard96/emaki.
+#
+# Feature PRs don't build it (lint, go, ui and docker in ci.yml cover them),
+# unless they change a Dockerfile. The image is built where it counts:
+#   1. release-please keeps a release PR open on main (next version and
+#      CHANGELOG, from the conventional commit titles).
+#   2. That PR builds the image for amd64 and arm64 from its merge result and
+#      pushes it as :tree-<git tree hash>. The PR can't merge unless it built.
+#   3. Merging it cuts the release, and the same image is tagged :X.Y.Z, :X.Y
+#      and :latest. Nothing is built twice: the squash commit has the same
+#      tree, because main requires the PR to be up to date.
+# The whisper and sd images are built on the user's machine, not published;
+# they are only test-built here when their own files change.
+# The "build" job sums up and is the required check, so it always reports.
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  # Never cancel a run on main: it may be publishing a release.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/strandgaard96/emaki
+
+jobs:
+  release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      created: ${{ steps.rp.outputs.release_created }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      # A PR opened with the default token starts no CI, so the release PR
+      # could never pass its checks. See docs/releases.md for the token.
+      - uses: googleapis/release-please-action@v5
+        id: rp
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+  # What to build: the image on the release PR (or for a release whose image
+  # is missing), the sidecars when their files change.
+  plan:
+    needs: release
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read # is the release PR's image there?
+      pull-requests: read # paths-filter lists the PR's files
+    outputs:
+      tree: ${{ steps.tree.outputs.tree }}
+      emaki: ${{ steps.emaki.outputs.build }}
+      sidecars: ${{ github.event_name == 'workflow_dispatch' && '["whisper","sd"]' || steps.filter.outputs.changes || '[]' }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: tree
+        run: echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            emaki: [docker/emaki.Dockerfile, .github/workflows/build.yml]
+            whisper: ['docker/whisper*', .github/workflows/build.yml]
+            sd: ['docker/sd*', .github/workflows/build.yml]
+      - if: needs.release.outputs.created == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: emaki
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD: ${{ github.head_ref }}
+          CHANGED: ${{ steps.filter.outputs.emaki }}
+          CREATED: ${{ needs.release.outputs.created }}
+          TREE: ${{ steps.tree.outputs.tree }}
+        run: |
+          case "$EVENT" in
+            pull_request)
+              # push: release PR; test: a Dockerfile change, built but not pushed.
+              if [[ "$HEAD" == release-please--* ]]; then build=push
+              elif [ "$CHANGED" = true ]; then build=test
+              fi ;;
+            push)
+              if [ "$CREATED" = true ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
+                echo "::warning::No image for this tree from the release PR, building it now."
+                build=push
+              fi ;;
+            workflow_dispatch) build=push ;;
+          esac
+          echo "build=${build:-}" >> "$GITHUB_OUTPUT"
+
+  emaki:
+    needs: plan
+    if: needs.plan.outputs.emaki != ''
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    name: emaki ${{ matrix.arch }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUSH: ${{ needs.plan.outputs.emaki == 'push' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - if: env.PUSH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # Pushed by digest only; the tag job gives both architectures one tag.
+      - uses: docker/build-push-action@v7
+        id: build
+        with:
+          context: .
+          file: docker/emaki.Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+          outputs: ${{ env.PUSH == 'true' && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) || 'type=cacheonly' }}
+          cache-from: type=gha,scope=emaki-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=emaki-${{ matrix.arch }}
+      - if: env.PUSH == 'true'
+        run: mkdir digests && touch "digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+      - if: env.PUSH == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digests/*
+          retention-days: 1
+
+  # One multi-arch tag for the tree, and the version tags on a release.
+  tag:
+    needs: [release, plan, emaki]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.plan.outputs.emaki == 'push' || needs.release.outputs.created == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      packages: write
+    env:
+      TREE: ${{ needs.plan.outputs.tree }}
+      CREATED: ${{ needs.release.outputs.created }}
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - if: needs.plan.outputs.emaki == 'push'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - if: needs.plan.outputs.emaki == 'push'
+        run: docker buildx imagetools create -t "$IMAGE:tree-$TREE" $(printf "$IMAGE@sha256:%s " $(ls digests))
+      - if: env.CREATED == 'true'
+        run: |
+          docker buildx imagetools create -t "$IMAGE:$VERSION" -t "$IMAGE:${VERSION%.*}" -t "$IMAGE:latest" "$IMAGE:tree-$TREE"
+          docker buildx imagetools inspect "$IMAGE:$VERSION"
+
+  sidecars:
+    needs: plan
+    if: needs.plan.outputs.sidecars != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.plan.outputs.sidecars) }}
+        gpu: ["", vulkan]
+    name: ${{ matrix.image }} ${{ matrix.gpu || 'cpu' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/${{ matrix.image }}.Dockerfile
+          build-args: ${{ matrix.image == 'whisper' && 'WHISPER_GPU' || 'SD_GPU' }}=${{ matrix.gpu }}
+          outputs: type=cacheonly
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.gpu || 'cpu' }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.gpu || 'cpu' }}
+
+  # The required check. Passes when everything above passed or was skipped
+  # because it wasn't needed.
+  build:
+    needs: [release, plan, emaki, tag, sidecars]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: test "$FAILED" = false

@@ -25,8 +25,8 @@ RULESET_NAME="main"
 # Status checks a PR must pass before it can merge, as they are named on a PR
 # (the CI job names). Each reports on every PR: a job whose files didn't change
 # is skipped, which counts as passed. A check that never runs blocks the merge,
-# so don't add the Sidecars jobs.
-REQUIRED_CHECKS=(lint go ui docker)
+# so add only jobs that always report ("build" sums up the Build workflow).
+REQUIRED_CHECKS=(lint go ui docker build pr-title)
 
 # ---- Arguments ------------------------------------------------------------
 
@@ -162,12 +162,24 @@ fi
 
 # ---- Ruleset on the default branch ----------------------------------------
 
+# Changes reach the default branch only through a squash-merged PR that is up
+# to date with it and passed the checks, so what merges is what was tested.
 rules=$(jq -n --args '
-	[{type: "deletion"}, {type: "non_fast_forward"}] +
+	[{type: "deletion"}, {type: "non_fast_forward"}, {
+		type: "pull_request",
+		parameters: {
+			required_approving_review_count: 0,
+			dismiss_stale_reviews_on_push: false,
+			require_code_owner_review: false,
+			require_last_push_approval: false,
+			required_review_thread_resolution: false,
+			allowed_merge_methods: ["squash"]
+		}
+	}] +
 	(if $ARGS.positional == [] then [] else [{
 		type: "required_status_checks",
 		parameters: {
-			strict_required_status_checks_policy: false,
+			strict_required_status_checks_policy: true,
 			required_status_checks: [$ARGS.positional[] | {context: .}]
 		}
 	}] end)' "${REQUIRED_CHECKS[@]}")
@@ -185,13 +197,15 @@ ruleset=$(jq -n --arg name "$RULESET_NAME" --argjson rules "$rules" '{
 summary='{enforcement, include: .conditions.ref_name.include,
 	rules: [.rules[] | .type] | sort,
 	checks: [.rules[] | select(.type == "required_status_checks")
-		| .parameters.required_status_checks[].context] | sort}'
+		| .parameters.required_status_checks[].context] | sort,
+	up_to_date: [.rules[] | select(.type == "required_status_checks")
+		| .parameters.strict_required_status_checks_policy]}'
 
 ruleset_id=$(gh api "repos/$REPO/rulesets" \
 	--jq ".[] | select(.name == \"$RULESET_NAME\") | .id" | head -n1)
 
 if [[ -z "$ruleset_id" ]]; then
-	change "create ruleset \"$RULESET_NAME\": no force pushes or deletion on the default branch${REQUIRED_CHECKS[*]:+, require checks: ${REQUIRED_CHECKS[*]}}" \
+	change "create ruleset \"$RULESET_NAME\": PRs only, no force pushes or deletion on the default branch${REQUIRED_CHECKS[*]:+, require up-to-date checks: ${REQUIRED_CHECKS[*]}}" \
 		gh api -X POST "repos/$REPO/rulesets" --input - <<<"$ruleset"
 else
 	have=$(gh api "repos/$REPO/rulesets/$ruleset_id" | jq -cS "$summary")
