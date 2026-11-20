@@ -8,7 +8,8 @@
 @source "../../static/index.html";
 
 /* Graphite: neutral zinc greys with one indigo accent for choices and the
-   main action. Yellow means pinned or paused, red remove, green listening. */
+   main action. Yellow means pinned or paused, red remove, green listening.
+   Each tab has its own colour for its icons, so you can tell where you are. */
 :root {
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.21 0.006 285);
@@ -29,6 +30,10 @@
   --destructive: oklch(0.52 0.16 25);
   --ink-yellow: oklch(0.82 0.15 90);
   --ink-green: oklch(0.47 0.09 160);
+  --area-frame: oklch(0.5 0.2 262);
+  --area-pictures: oklch(0.55 0.2 0);
+  --area-listening: oklch(0.5 0.1 175);
+  --area-system: oklch(0.55 0.15 50);
 }
 
 .dark {
@@ -50,9 +55,31 @@
   --destructive: oklch(0.65 0.17 25);
   --ink-yellow: oklch(0.85 0.14 90);
   --ink-green: oklch(0.72 0.12 160);
+  --area-frame: oklch(0.72 0.14 262);
+  --area-pictures: oklch(0.74 0.15 0);
+  --area-listening: oklch(0.75 0.11 175);
+  --area-system: oklch(0.78 0.13 60);
+}
+
+/* --area is the colour of the tab a thing belongs to. */
+:root {
+  --area: var(--primary);
+}
+[data-area="frame"] {
+  --area: var(--area-frame);
+}
+[data-area="pictures"] {
+  --area: var(--area-pictures);
+}
+[data-area="listening"] {
+  --area: var(--area-listening);
+}
+[data-area="system"] {
+  --area: var(--area-system);
 }
 
 @theme inline {
+  --color-area: var(--area);
   --color-ink-yellow: var(--ink-yellow);
   --color-ink-green: var(--ink-green);
 }
