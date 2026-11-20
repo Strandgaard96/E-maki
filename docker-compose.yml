@@ -45,6 +45,8 @@ x-gpu: &gpu
 x-whisper-extra: &whisper-extra
   <<: *hardening
   extends: { file: docker/options.yml, service: "optional${WHISPER_DA_NO:+-on}" }
+  # The same image as whisper unless GPU is set, then a CPU build of its own.
+  image: emaki-whisper${GPU:+-cpu}
   build: { context: ., dockerfile: docker/whisper.Dockerfile }
 
 x-whisper-health: &whisper-health
@@ -66,6 +68,7 @@ x-sd-models: &sd-models
 services:
   whisper-model:
     <<: *hardening
+    image: emaki-whisper
     build: *whisper-build
     command: ["download"]
     environment:
@@ -78,6 +81,7 @@ services:
   whisper:
     <<: *hardening
     extends: *gpu
+    image: emaki-whisper
     build: *whisper-build
     depends_on:
       whisper-model: { condition: service_completed_successfully }
@@ -189,6 +193,7 @@ services:
   sd-model:
     <<: *hardening
     extends: { file: docker/options.yml, service: "optional${LOCAL_IMAGES:+-on}" }
+    image: emaki-sd
     build: *sd-build
     command: ["download"]
     environment: *sd-models
@@ -198,6 +203,7 @@ services:
   sd:
     <<: *hardening
     extends: { file: docker/options.yml, service: "optional-gpu${LOCAL_IMAGES:+-on}" }
+    image: emaki-sd
     build: *sd-build
     depends_on:
       sd-model: { condition: service_completed_successfully }
@@ -217,6 +223,7 @@ services:
 
   emaki:
     <<: *hardening
+    image: emaki
     build: { context: ., dockerfile: docker/emaki.Dockerfile }
     # No depends_on for the main models: the settings page is up while they
     # download, and System status shows each one as not answering until it
