@@ -9,9 +9,9 @@ Local pictures are one more container on the same machine, started by the same `
 | `emaki` | the app |
 | `whisper` | speech to text |
 | `ollama` | topics |
-| `sd` (optional) | draws the pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) |
+| `imagegen` (optional) | draws the pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) |
 
-`sd` runs on this machine next to whisper and Ollama. It is off by default because its model is a big download. Nothing has to run anywhere else.
+`imagegen` runs on this machine next to whisper and Ollama. It is off by default because its model is a big download. Nothing has to run anywhere else.
 
 ## Start it
 
