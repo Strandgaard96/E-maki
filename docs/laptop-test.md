@@ -13,9 +13,11 @@ On a headless box (no desktop session), run PipeWire or PulseAudio for the user 
 ## Run
 
 ```sh
-git clone https://github.com/Strandgaard96/E-maki && cd E-maki
-cp .env.example .env   # optional: set GEMINI_API_KEY for real images via Gemini
-docker compose up --build
+mkdir e-maki && cd e-maki
+curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.env.example
+# optional: set GEMINI_API_KEY in .env for real images via Gemini
+docker compose up
 ```
 
 `.env` is git-ignored. Without a key the tiles are coloured placeholders and only the captions show what E-maki understood. With a key, each new topic costs one Gemini image (`gemini-3.1-flash-image`, set `GEMINI_IMAGE_MODEL` to change it), capped per day on the settings page (System > Image provider). Only the English image prompt is sent to Google; audio and transcripts stay on the laptop.

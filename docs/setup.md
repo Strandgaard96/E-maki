@@ -7,12 +7,13 @@ How to get E-maki running on the brain, set it up, and show it on a frame. For w
 Needs Linux (or Windows with WSL 2) and Docker with compose v2. macOS is untested, and Docker on a Mac can't reach the mic.
 
 ```bash
-git clone https://github.com/Strandgaard96/E-maki && cd E-maki
-cp .env.example .env
-docker compose up -d --build
+mkdir e-maki && cd e-maki
+curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.env.example
+docker compose up -d
 ```
 
-The first start pulls the released E-maki image, builds whisper-server, and each container downloads its model (a few GB in all), so give it a while. Watch it with `docker compose logs -f`. The models stay in docker volumes, so later starts are quick.
+No clone needed: these two files are all it takes. The first start pulls the released E-maki image, builds whisper-server from the released source, and each container downloads its model (a few GB in all), so give it a while. Watch it with `docker compose logs -f`. The models stay in docker volumes, so later starts are quick.
 
 Then open <http://localhost:8090/>, or `http://<your-brain>:8090/` from a phone or laptop on your network. That is the settings page. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
 
@@ -46,7 +47,7 @@ GPU=vulkan       # Linux
 GPU=vulkan-wsl   # Windows (WSL)
 ```
 
-Then `docker compose up -d --build` again: `GPU` decides whether `whisper` and `imagegen` are compiled for the CPU or for Vulkan, and hands them the GPU device. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
+Then `docker compose up -d --build` again: `GPU` decides whether `whisper` and `imagegen` are compiled for the CPU or for Vulkan, and hands them the GPU device. What the host needs is at the end of [docker-compose.yml](../docker-compose.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
 
 ## 2. Settings in `.env`
 
@@ -162,11 +163,11 @@ The E-maki log has one line per audio segment (level, language, word count, neve
 ## Updating
 
 ```bash
-git pull
+curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
 docker compose up -d --build
 ```
 
-`git pull` moves `docker-compose.yml` to the newest released E-maki image (`ghcr.io/strandgaard96/emaki`), which compose then pulls. Settings, pictures and models are kept in Docker volumes, so they survive an update. To run your own changes, set `EMAKI_BUILD=1` in `.env` and E-maki is built from the checkout instead. Set `LLM_MODEL_UPDATE=1` for one start to fetch a newer upload of the same topic model.
+The new `docker-compose.yml` names the newest released E-maki image (`ghcr.io/strandgaard96/emaki`), which compose then pulls. In a clone, `git pull` does the same. Settings, pictures and models are kept in Docker volumes, so they survive an update. To run your own changes, clone the repo and set `EMAKI_BUILD=1` in `.env`, and E-maki is built from the checkout instead. Set `LLM_MODEL_UPDATE=1` for one start to fetch a newer upload of the same topic model.
 
 ## Troubleshooting
 
