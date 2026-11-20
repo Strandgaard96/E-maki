@@ -90,7 +90,7 @@ The same frame as Fugleramme's "frame only" build: a Pi drives the panel and fet
 | Power | The official supply for the board |
 | Frame | IKEA RÖDALM 21x30 (A4) for the 13.3", 13x18 for the 7.3" |
 
-Software is Fugleramme's Inky client, one command on the Pi: see [Setup](setup.md#5-put-it-on-a-frame). Turn on Frame buttons under Frame > Panel and the Inky's four buttons pause listening, remove or pin the last picture, and put the next one up.
+Software is Fugleramme's Inky client, one command on the Pi: see [Setup](setup.md#5-put-it-on-a-frame). Turn on Board buttons under Frame > Panel and the Inky's four buttons pause listening, remove or pin the last picture, and put the next one up.
 
 Fugleramme's [hardware guide](https://github.com/arnegiacomo/fugleramme/blob/main/docs/hardware.md) has more on the Pi and the panel, and its [mounting guide](https://github.com/arnegiacomo/fugleramme/blob/main/docs/mounting.md) covers fitting the panel in the frame, the passepartout, airflow and stand feet. It all applies here unchanged. The Pi only fetches a picture every few minutes, so it stays cool.
 
@@ -113,7 +113,7 @@ Seeed also sells the board and panel as a [kit](https://www.seeedstudio.com/XIAO
 
 To change the settings later, hold KEY2 for 5 seconds. Holding KEY1 for 10 seconds wipes them.
 
-The three buttons send A (KEY3), B (KEY2) and C (KEY1). Any press wakes the board from sleep, and it fetches and redraws the picture 5 seconds later. Turn on Frame buttons under Frame > Panel: it finds the XIAO on its next check and offers three buttons, with A set to just wake the frame. The letter lights up there when a press arrives, so you can see each button get through.
+The three buttons send A (KEY3), B (KEY2) and C (KEY1). Any press wakes the board from sleep, and it fetches and redraws the picture 5 seconds later. Turn on Board buttons under Frame > Panel: it finds the XIAO on its next check and offers three buttons, with A set to just wake the frame. The letter lights up there when a press arrives, so you can see each button get through.
 
 Fugleramme's MicroPython programs for the EE02 and EE04 don't send presses.
 
@@ -138,7 +138,7 @@ Buttons are optional. A device with buttons sends one request per press, with a 
 curl -X POST -d button=A http://<your-brain>:8090/press
 ```
 
-Then turn on Frame buttons under Frame > Panel, set how many it has, and pick what each letter does. A letter that isn't set does nothing. The page shows the last press as it arrives.
+Then turn on Board buttons under Frame > Panel, set how many it has, and pick what each letter does. A letter that isn't set does nothing. The page shows the last press as it arrives.
 
 Which clients send presses today:
 

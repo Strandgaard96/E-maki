@@ -3235,7 +3235,7 @@ function Hanging({ draft, set }: DraftProps) {
         )}
         <div class="grid gap-3">
           <Toggle
-            title="Frame buttons"
+            title="Board buttons"
             text={frame?.text ?? "Works with the Inky on a Pi and the XIAO EE02"}
             tip={TIPS.panel_buttons}
             checked={count > 0}
@@ -3295,25 +3295,33 @@ function Hanging({ draft, set }: DraftProps) {
   );
 }
 
-// ButtonsDrawing is a frame seen from the front with its buttons down the
-// left edge, A at the top, as on an Inky Impression. The lit one was just pressed.
+// ButtonsDrawing is the display's driver board with its buttons down one
+// side, A at the top. The lit one was just pressed.
 function ButtonsDrawing({ n, lit }: { n: number; lit?: string }) {
   const h = Math.max(48, n * 14 + 6);
+  const c = h / 2;
   return (
     <svg width="64" height={h} viewBox={`0 0 64 ${h}`} aria-hidden="true" class="text-foreground">
-      <rect x="10" y="1" width="52" height={h - 2} rx="4" fill="none" stroke="currentColor" stroke-width="2" />
-      <rect x="16" y="7" width="40" height={h - 14} rx="1" fill="currentColor" opacity="0.15" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height={h - 2}
+        rx="4"
+        fill="currentColor"
+        fill-opacity="0.08"
+        stroke="currentColor"
+        stroke-width="2"
+      />
+      <rect x="32" y={c - 9} width="18" height="18" rx="2" fill="currentColor" opacity="0.6" />
+      {[0, 1, 2].map((i) => (
+        <g key={i} stroke="currentColor" stroke-width="1.5" opacity="0.6">
+          <line x1="29" y1={c - 5 + i * 5} x2="32" y2={c - 5 + i * 5} />
+          <line x1="50" y1={c - 5 + i * 5} x2="53" y2={c - 5 + i * 5} />
+        </g>
+      ))}
       {BUTTON_LETTERS.slice(0, n).map((b, i) => (
-        <rect
-          key={b}
-          x="4"
-          y={6 + i * 14}
-          width="6"
-          height="8"
-          rx="1.5"
-          fill="currentColor"
-          class={b === lit ? "text-primary" : ""}
-        />
+        <circle key={b} cx="13" cy={10 + i * 14} r="4.5" fill="currentColor" class={b === lit ? "text-primary" : ""} />
       ))}
     </svg>
   );
