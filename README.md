@@ -90,12 +90,7 @@ The prebuilt E-maki image comes from ghcr.io. Speech-to-text is compiled on your
 | `ollama` | Unless `TOPIC_MODEL=external` |
 | `imagegen` | Only with `LOCAL_IMAGES=1` |
 
-To show it on a Raspberry Pi with an Inky Impression, install Fugleramme's Inky client on the Pi:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/examples/inky/install.sh \
-  | FRAME_URL=http://<your-brain>:8090 bash
-```
+E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so Fugleramme's frame clients (a Pi with an Inky Impression, or an ESP32 board) show it unchanged. See [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
 
 ## Configure
 
