@@ -1,24 +1,22 @@
 # Releases
 
-E-maki is published as one image, `ghcr.io/strandgaard96/emaki`, for amd64 and arm64. `docker-compose.yml` names the released version, so a fresh copy of it and `docker compose up -d --build` update it. The whisper and imagegen images are still built on your machine, from the same release on GitHub, because they are compiled for its CPU or GPU.
+One image is published: `ghcr.io/strandgaard96/emaki`, for amd64 and arm64. `docker-compose.yml` pins its version. whisper and imagegen are built on your machine from the same release tag.
 
 ## How a release happens
 
-1. Every PR into `main` is squash-merged, and its title is a [conventional commit](https://www.conventionalcommits.org/): `fix:` makes the next patch version, `feat:` the next minor one, `feat!:` (a breaking change) the next major one. Other types (`docs:`, `chore:`, `ci:` ...) don't change the version. The PR title check enforces this.
-2. After each merge, [release-please](https://github.com/googleapis/release-please) updates one open release PR, "chore(main): release X.Y.Z". It holds the next version, the CHANGELOG and the image tag in `docker-compose.yml`.
-3. When you want to release, add the **build** label to the release PR. It builds the E-maki image for both architectures and takes the label off again. Until an image of the PR's current content exists, its `build` check fails, so it can't merge unbuilt. If a new commit lands on it, add the label again.
-4. Merging it tags `vX.Y.Z`, writes the GitHub release, and tags the image it already built as `X.Y.Z`, `X.Y` and `latest`. Nothing is built twice.
+1. PRs into `main` are squash-merged. The title is a [conventional commit](https://www.conventionalcommits.org/): `fix:` bumps the patch, `feat:` the minor, `feat!:` the major. `docs:`, `chore:` and `ci:` don't bump.
+2. [release-please](https://github.com/googleapis/release-please) keeps one release PR open with the next version, the CHANGELOG and the image tag.
+3. Add the `build` label to the release PR to build the image. Its `build` check fails until the image exists. Add the label again after a new commit.
+4. Merging tags `vX.Y.Z`, writes the GitHub release and tags the image `X.Y.Z`, `X.Y` and `latest`. Nothing is rebuilt.
 
-No other PR builds an image (`go test` already compiles the code). To test-build the whisper and imagegen images, run the Build workflow by hand from the Actions tab.
+Other PRs don't build images. To test-build whisper and imagegen, run the Build workflow by hand.
 
 ## One-time setup
 
-These need the repo owner.
+- `RELEASE_PLEASE_TOKEN`: a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repo with Contents and Pull requests read and write. Without it the release PR runs no CI.
+- Make the `emaki` package public after the first release.
+- Run `scripts/github-settings.sh` ([GitHub settings](github-settings.md)).
 
-- **Release token.** A PR opened with the workflow's own token starts no CI, so the release PR would never pass its checks. Make a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repository only, with **Contents: read and write** and **Pull requests: read and write**, and save it as the Actions secret `RELEASE_PLEASE_TOKEN` (Settings > Secrets and variables > Actions).
-- **Public image.** After the first release, open the `emaki` package under your profile's Packages, then Package settings > Change visibility > Public, so people can pull it without signing in.
-- **Branch rules.** Run `scripts/github-settings.sh` (see [GitHub settings](github-settings.md)).
+## Build it yourself
 
-## Building it yourself
-
-Set `EMAKI_BUILD=1` in `.env` and run `docker compose up -d --build`: E-maki is built from your checkout under the same image name. When you turn it off again, run `docker compose pull emaki` to go back to the released image.
+Set `EMAKI_BUILD=1` and run `docker compose up -d --build`. To go back, unset it and run `docker compose pull emaki`.
