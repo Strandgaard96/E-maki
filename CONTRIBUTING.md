@@ -56,8 +56,8 @@ limit on new files. `git push` also runs `go test`. The `tsc` hook needs
 
 CI runs the same hooks in its `lint` job, then only what the change touches:
 `go` (tests, with `-race` and `govulncheck` on main), `ui` (typecheck and
-build) and `docker` (compose files). The E-maki image is only built when a PR
-gets the `build` label. How releases work:
+build) and `docker` (compose files). Images are only built on the release PR,
+when it gets the `build` label. How releases work:
 [Releases](docs/releases.md).
 
 The settings page lives in `internal/web/ui` (Preact in TypeScript, Tailwind and Basecoat).

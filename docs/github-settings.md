@@ -12,7 +12,7 @@ It reads the current settings first and only changes what differs, so running it
 - the topics (and the homepage, if `HOMEPAGE` is set). It never changes the About description.
 - Discussions on
 - squash merging only, auto-merge allowed, branches deleted after merge
-- the `build` label, which builds the E-maki image on a PR ([Releases](releases.md))
+- the `build` label, which builds the E-maki image on the release PR ([Releases](releases.md))
 - Dependabot alerts and security updates, private vulnerability reporting, secret scanning and push protection
 - two rulesets on the default branch. `main` blocks force pushes and deletion for everyone. `main-prs` lets changes in only through a squash-merged PR that is up to date with the branch and passes the checks in `REQUIRED_CHECKS`; repo admins (you) can still push directly
 
