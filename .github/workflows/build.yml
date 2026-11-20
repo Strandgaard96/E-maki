@@ -108,7 +108,7 @@ jobs:
 
   emaki:
     needs: plan
-    if: needs.plan.outputs.emaki != ''
+    if: ${{ !cancelled() && needs.plan.outputs.emaki != '' }}
     strategy:
       matrix:
         include:
@@ -189,7 +189,7 @@ jobs:
 
   sidecars:
     needs: plan
-    if: needs.plan.outputs.sidecars != '[]'
+    if: ${{ !cancelled() && needs.plan.outputs.sidecars != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
