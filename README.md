@@ -66,11 +66,15 @@ Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists
 | **Driver** | A Linux computer that runs Docker: a laptop, a mini PC, a homelab server.| An integrated GPU makes speech-to-text about 7x faster |
 | **Mic** | Hardware microphone |  |
 | **AI image provider** | Your own Gemini, OpenAI or OpenRouter key, or a local model | Optional: without one you get coloured placeholder tiles |
-| **Screen** | Any browser to start with | For the real thing, a 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or a battery-powered ESP32 board, in an IKEA RÖDALM frame |
+| **Screen** | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board, in an IKEA RÖDALM frame | No panel yet? The settings page shows the same picture in your browser |
 
-Parts, wiring and flashing in **[Hardware](docs/hardware.md)**. Installing, `.env`, the settings page, the frame and logs in **[Setup](docs/setup.md)**.
+Parts, wiring and flashing in **[Hardware](docs/hardware.md)**.
 
-To try it, download two files and start it. No clone needed:
+E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so the programs in [fugleramme/clients](https://github.com/fugleramme/clients) show it on an e-ink board, such as the [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino) for the 13.3" panel. For a Pi with an Inky Impression, see [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
+
+## Install
+
+Needs Linux (or Windows with WSL 2) and Docker with compose v2. Download two files and start it. No clone needed:
 
 ```bash
 mkdir e-maki && cd e-maki
@@ -90,12 +94,7 @@ The prebuilt E-maki image comes from ghcr.io. Speech-to-text is compiled on your
 | `ollama` | Unless `TOPIC_MODEL=external` |
 | `imagegen` | Only with `LOCAL_IMAGES=1` |
 
-To show it on a Raspberry Pi with an Inky Impression, install Fugleramme's Inky client on the Pi:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/examples/inky/install.sh \
-  | FRAME_URL=http://<your-brain>:8090 bash
-```
+More on `.env`, the GPU, the mic and updating in **[Setup](docs/setup.md)**.
 
 ## Configure
 
@@ -144,9 +143,6 @@ Read the privacy rules in **[Contributing](CONTRIBUTING.md)** first.
 
 - [Fugleramme](https://github.com/arnegiacomo/fugleramme) by Arne Giacomo Munthe-Kaas: the bird frame E-maki grew out of. Its Spectra 6 dithering, `.e6` format and panel protocol are ported to Go in `internal/panel`.
 - [BirdNET-Go](https://github.com/tphakala/birdnet-go) by tphakala: the always-on local listener that classifies what it hears, and the idea of running on whatever hardware you have, integrated GPUs included.
-- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and [Ollama](https://github.com/ollama/ollama), which do the speech and language work, and [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) for local pictures.
-
-E-maki is not affiliated with any of them.
 
 ## License
 
