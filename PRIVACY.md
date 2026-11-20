@@ -16,9 +16,8 @@ which you have to switch on yourself (see below).
 2. A segment quieter than the speech threshold on the settings page is dropped
    without being transcribed.
 3. The rest is sent to your speech-to-text sidecar (whisper-server) and then
-   dropped. In docker the sidecars sit on a network with no route to the
-   internet, and E-maki warns at start if a sidecar address does not look
-   local.
+   dropped. The sidecars run on this machine, and E-maki warns at start if a
+   sidecar address does not look local.
 4. The text goes into a rolling window in RAM (`window_segments` long, a few
    minutes). Older text falls out of it and is gone.
 5. Every few segments the window is sent to your local topic model (Ollama or

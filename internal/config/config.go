@@ -262,7 +262,7 @@ func Load(path string) (Config, error) {
 
 // Env applies what .env sets, from environ ("KEY=value" pairs): LLM_MODEL,
 // LLM_REASONING (set but empty sends no reasoning_effort), NET_MIC_LISTEN
-// and a speech server per language, WHISPER_URL_DA=http://whisper-da:8081.
+// and a speech server per language, WHISPER_URL_DA=http://whisper:8082.
 func (c *Config) Env(environ []string) {
 	for _, kv := range environ {
 		k, v, _ := strings.Cut(kv, "=")

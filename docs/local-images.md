@@ -11,7 +11,7 @@ Local pictures are one more container on the same machine, started by the same `
 | `ollama` | topics |
 | `sd` (optional) | draws the pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) |
 
-`sd` sits on the same network as whisper and Ollama, with no route to the internet. It is off by default because its model is a big download. Nothing has to run anywhere else.
+`sd` runs on this machine next to whisper and Ollama. It is off by default because its model is a big download. Nothing has to run anywhere else.
 
 ## Start it
 
