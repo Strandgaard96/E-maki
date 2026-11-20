@@ -24,25 +24,23 @@ A picture frame that listens to the room and paints what you talk about. Speech-
 > [!WARNING]
 > The project is vibe-coded and should be treated as such.
 
-Claude Code wrote most of the code. I steered the design, tested it on my own laptop and decided what to keep. The guidelines it works under are in [CLAUDE.md](./CLAUDE.md), including the privacy rules every change has to follow.
+Claude Code wrote most of the code. I steered the design and make architecture and tool decisions. The guidelines it works under are in [CLAUDE.md](./CLAUDE.md), including the privacy rules every change has to follow.
 
 ## Inspiration
 
-I'm a hobbyist, and I fell for [Fugleramme](https://github.com/arnegiacomo/fugleramme): an e-ink frame that shows a collage of the birds [BirdNET-Go](https://github.com/tphakala/birdnet-go) hears in the garden. I wanted the same idea for the people in the room, a frame that slowly fills with what we have been talking about. The topics a small local model picks out of a dinner conversation are often funny, and that is half the point.
+I was heavily inspired by the amazing [Fugleramme](https://github.com/arnegiacomo/fugleramme) project: an e-ink frame that shows a collage of the birds [BirdNET-Go](https://github.com/tphakala/birdnet-go) hears in the garden. I wanted the same idor conversation topics, a dynamic frame that slowly updates with generated images of conversation topics.
 
-## The name
+### The name
 
-An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pictures as you unroll it, which is roughly what the frame does with a conversation. The *e* (絵) means picture, and it also stands for e-ink.
+An emaki (絵巻) is a Japanese illustrated handscroll that tells a story in pictures as you unroll it, and *e* (絵) in japanese can also mean picture. Thus, E-maki.
 
 ## How it works
 
-1. **Listen.** A mic records the room in 15-30 second segments. Audio stays in memory and is never saved.
-2. **Transcribe.** [whisper.cpp](https://github.com/ggml-org/whisper.cpp) turns each segment into text on your own machine. It can send Danish and Norwegian to fine-tuned models that you point it at ([Languages](docs/setup.md#languages)).
-3. **Spot the topic.** About once a minute a local LLM in [Ollama](https://github.com/ollama/ollama) reads the last few minutes and names the topic in English, as specifically as it can ("Is a hot dog a sandwich?", not "food").
-4. **Paint it.** A new topic becomes a short image prompt, which is sent to an image API with your own key. This prompt is the only thing about your conversations that leaves your network. Or draw the pictures locally with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp), and nothing leaves at all.
-5. **Show it.** The picture joins the collage. Topics that keep coming up grow, one-offs fade. The page is dithered for a Spectra 6 e-ink panel and served over HTTP.
-
-Two modes: **Continuous** paints a topic as soon as it comes up, for when guests are over. **Diary** buys no pictures during the day. It collects the topics that came up at least twice, and once a day (`diary_at`, 07:00 by default) paints the top few, so you wake up to yesterday on the wall and the frame refreshes once a day. Diary is meant for a frame on the wall. A new install starts in Continuous mode so you see results on the first run. Switch under Frame > Timing on the settings page.
+1. **Listen.** A mic records the room in segments. Audio stays in memory and is never saved.
+2. **Transcribe.** [whisper.cpp](https://github.com/ggml-org/whisper.cpp) transcribes each segment into text.
+3. **Spot the topic.** About once a minute a local LLM in [Ollama](https://github.com/ollama/ollama) reads the last few minutes and infers the topic.
+4. **Paint it.** A new topic becomes a short image prompt, which is sent to an image API. This could be a local image provider with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp), or a remote AI image provider.
+5. **Display.** The image is fetched by the E-ink driver and displayed. How images are displayed is customized in the E-maki webserver.
 
 > [!TIP]
 > E-maki is a single Go binary. Speech-to-text and the LLM run as separate containers it talks to over HTTP, and how it reaches them lives in a small [config profile](configs/). It runs on a laptop today, with integrated GPU support through Vulkan. The page is a plain PNG, so any browser can show it.
@@ -54,8 +52,8 @@ E-maki is an always-on microphone, so:
 - Audio lives only in RAM and is never written to disk.
 - Transcripts live only in an in-memory rolling window. They are never written to disk or logged, and they stay on your network unless you switch on an external topic model (below). Logs show sound levels, languages and word counts, not words.
 - Speech-to-text and the topic LLM run on your own machine. Their containers download their models on the first start, and send nothing about what they hear.
-- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own key. Without a key nothing does. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Switch on **Spoken names** under Listening > Privacy to also refuse prompts that repeat a name it heard.
-- Optional, off by default: an external topic model (OpenAI, Gemini, OpenRouter, Groq or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under Listening > Topics, which shows a warning while it is on.
+- With the local topic model, the only thing about your conversations that leaves the house is the short English image prompt, sent with your own API key. (The first start downloads the models, but sends nothing about you.) A small local LLM writes the prompt, and code checks it before it goes out (no numbers, no quotes from the transcript, a length limit). It can still slip in a first name or a place now and then. Switch on **Spoken names** under Listening > Privacy to also refuse prompts that repeat a name it heard.
+- Optional, off by default: an external topic model (OpenAI, Gemini, or any OpenAI-compatible chat API) instead of the local one, for when your machine is too slow for a local LLM. This sends the transcript window, what was said in the last few minutes, to that service. Set `TOPIC_API_KEY` and `TOPIC_API_MODEL` in `.env` and pick it on the settings page under Listening > Topics, which shows a warning while it is on.
 - Sensitive topics (health, money, relationships, confidential work) are blocked before any image request, under Listening > Privacy. A blocked topic gets no image and no tile, and its label is not logged. All four are blocked by default. The local LLM makes the call, so it will sometimes get it wrong.
 - The page itself shows what was talked about, and any device on your local network can open it. Set a password under System > Security; see [Lock it down](docs/setup.md#lock-it-down).
 
@@ -64,12 +62,11 @@ Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists
 ## Build one
 
 > [!NOTE]
-> Only the laptop setup has been run so far. The frame parts below are the ones Fugleramme uses, but no E-maki frame has been built yet, and the dithering and `.e6` output are only checked against Fugleramme's in tests. If you try it, please share how it went in [Discussions](https://github.com/Strandgaard96/E-maki/discussions).
 
 | Part | What works | Notes |
 | --- | --- | --- |
-| **Brain** | A Linux computer that runs Docker: a laptop, a mini PC, a homelab box. Windows works through WSL | An integrated GPU makes speech-to-text about 7x faster. A Jetson Orin Nano Super is the plan for a small build, untested |
-| **Mic** | The brain's own mic or a USB mic | Or a Pi or an ESP32 that streams over Wi-Fi |
+| **Driver** | A Linux computer that runs Docker: a laptop, a mini PC, a homelab server.| An integrated GPU makes speech-to-text about 7x faster |
+| **Mic** | Hardware microphone |  |
 | **AI image provider** | Your own Gemini, OpenAI or OpenRouter key, or a local model | Optional: without one you get coloured placeholder tiles |
 | **Screen** | Any browser to start with | For the real thing, a 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or a battery-powered ESP32 board, in an IKEA RÖDALM frame |
 
