@@ -34,8 +34,8 @@ import {
 } from "lucide-preact";
 import PhotoSwipe from "photoswipe";
 import type { ComponentChildren, JSX, RefObject, TargetedEvent } from "preact";
-import { render } from "preact";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { createContext, render } from "preact";
+import { useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { TIPS, type TipText } from "./tips";
 import type {
   Service as Health,
@@ -297,33 +297,7 @@ function App() {
         </div>
       )}
       {tab === "frame" ? (
-        <main
-          id="panel-frame"
-          // @ts-expect-error: ARIA in HTML allows <main> no role but "main"; kept as it was.
-          role="tabpanel"
-          aria-labelledby="tab-frame"
-          data-area="frame"
-          class="mx-auto grid max-w-6xl gap-6 px-4 pb-6 md:grid-cols-2 md:items-start md:pt-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
-        >
-          <section
-            aria-label="The frame"
-            class="sticky top-(--header-h,4rem) z-[5] -mx-4 border-b bg-background px-4 py-3 md:top-[calc(var(--header-h,4rem)+1.5rem)] md:mx-0 md:border-0 md:p-0"
-          >
-            <Frame
-              page={state.page}
-              wall={state.wall}
-              draft={pending}
-              summary={summary(state, pending)}
-              changed={PICTURE_KEYS.some((k) => !same(pending[k], state.settings[k]))}
-            />
-          </section>
-          <div class="grid gap-6">
-            <Layout draft={draft} set={set} />
-            <Look draft={draft} set={set} styles={state.styles} />
-            <Timing state={state} draft={draft} set={set} />
-            <Hanging draft={draft} set={set} />
-          </div>
-        </main>
+        <FrameTab state={state} draft={draft} pending={pending} set={set} />
       ) : tab === "pictures" ? (
         view === "history" ? (
           <>
@@ -431,8 +405,12 @@ const PICTURE_KEYS: (keyof Settings)[] = [
 ];
 // Settings edited on the Listening and System tabs; the rest are on Frame.
 const SYSTEM_KEYS: (keyof Settings)[] = ["image_provider", "daily_image_cap", "keep_pictures"];
-// The settings each section of Listening and System holds, for its unsaved dot.
+// The settings each section holds, for its unsaved dot.
 const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
+  layout: ["layout", "tiles", "arrange", "spacing", "shape", "background", "hide_captions"],
+  style: ["image_style"],
+  timing: ["mode", "new_every_minutes", "rotate_minutes", "quiet_from", "quiet_to", "half_life_hours", "diary_at"],
+  panel: ["panel_width", "panel_height", "panel_rotation", "panel_buttons", "panel_poll_minutes"],
   listening: ["mic_device", "min_speech_dbfs", "languages"],
   topics: ["topic_provider", "min_confidence", "window_segments", "extract_every", "topic_prompt", "llm_temperature"],
   privacy: ["block_sensitive", "block_names", "never_paint"],
@@ -453,6 +431,84 @@ const EMAKI_KEYS: (keyof Settings)[] = [
   "block_names",
   "never_paint",
 ];
+
+const FRAME_SECTIONS: [string, string, LucideIcon][] = [
+  ["layout", "Layout", LayoutGrid],
+  ["style", "Style", Palette],
+  ["timing", "Timing", Clock],
+  ["panel", "Panel", Tablet],
+];
+
+// FrameTab is the frame as large as fits, with its settings in a side panel
+// of tabs beside it. The page itself does not scroll on a wide screen; only
+// the panel does. On a phone the frame sticks on top and the panel follows.
+function FrameTab({ state, draft, pending, set }: StateProps & { pending: Settings }) {
+  const initial = FRAME_SECTIONS.find(([k]) => location.hash === "#frame/" + k)?.[0] ?? "layout";
+  const [section, setSection] = useState(initial);
+  const go = (k: string) => {
+    setSection(k);
+    history.replaceState(null, "", "#frame/" + k);
+  };
+  const unsaved = (k: string) => SECTION_KEYS[k].some((key) => !same(draft[key], state.settings[key]));
+  return (
+    <main
+      id="panel-frame"
+      // @ts-expect-error: ARIA in HTML allows <main> no role but "main"; kept as it was.
+      role="tabpanel"
+      aria-labelledby="tab-frame"
+      data-area="frame"
+      class="grid pb-24 md:h-[calc(100dvh-var(--header-h,4rem))] md:grid-cols-[minmax(0,1fr)_24rem] md:grid-rows-[minmax(0,1fr)] md:pb-0 lg:grid-cols-[minmax(0,1fr)_28rem]"
+    >
+      <section
+        aria-label="The frame"
+        class="sticky top-(--header-h,4rem) z-[5] border-b bg-background px-4 py-3 md:static md:grid md:place-items-center md:border-0 md:bg-muted/40 md:p-8"
+      >
+        <Frame
+          page={state.page}
+          wall={state.wall}
+          draft={pending}
+          summary={summary(state, pending)}
+          changed={PICTURE_KEYS.some((k) => !same(pending[k], state.settings[k]))}
+        />
+      </section>
+      <aside aria-label="Frame settings" class="flex min-h-0 flex-col bg-background md:border-l">
+        <nav aria-label="Frame sections" class="flex border-b px-2">
+          {FRAME_SECTIONS.map(([k, name, Icon]) => (
+            <button
+              type="button"
+              aria-current={section === k ? "page" : undefined}
+              onClick={() => go(k)}
+              class={
+                "-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-3 text-sm font-medium transition-colors " +
+                (section === k
+                  ? "border-area text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground")
+              }
+            >
+              <Icon class="size-4 shrink-0 text-area" aria-hidden="true" />
+              {name}
+              {unsaved(k) && (
+                <span
+                  class="size-1.5 shrink-0 rounded-full bg-ink-yellow"
+                  role="img"
+                  aria-label="has unsaved changes"
+                />
+              )}
+            </button>
+          ))}
+        </nav>
+        <div class="relative min-h-0 flex-1 overflow-y-auto p-4 md:p-5 md:pb-24">
+          <Bare.Provider value={true}>
+            {section === "layout" && <Layout draft={draft} set={set} />}
+            {section === "style" && <Look draft={draft} set={set} styles={state.styles} />}
+            {section === "timing" && <Timing state={state} draft={draft} set={set} />}
+            {section === "panel" && <Hanging draft={draft} set={set} />}
+          </Bare.Provider>
+        </div>
+      </aside>
+    </main>
+  );
+}
 
 function summary(s: State, d: Settings) {
   const layout = (
@@ -531,10 +587,11 @@ function Frame({
   const badge = empty ? "Preview" : changed ? "Not saved yet" : "";
   const [w, h] =
     draft.panel_rotation % 180 ? [draft.panel_height, draft.panel_width] : [draft.panel_width, draft.panel_height];
-  // On a phone the picture is kept to a third of the screen's height, so the settings show under it.
+  // On a phone the picture is kept to a third of the screen's height, so the settings show under it;
+  // on a wide screen it is as big as fits the height under the header.
   return (
     <figure
-      class="mx-auto grid w-full gap-2 max-md:max-w-[calc(30dvh*var(--ratio))]"
+      class="mx-auto grid w-full gap-2 max-md:max-w-[calc(30dvh*var(--ratio))] md:max-w-[calc((100dvh-var(--header-h,4rem)-9rem)*var(--ratio))]"
       style={{ "--ratio": w / h }}
       aria-busy={pic.loading}
     >
@@ -1675,6 +1732,10 @@ function Tip({ tip, name }: { tip: TipText; name: string }) {
 
 // Card is a group of settings under a title with an icon in its tab's
 // colour. The intro line is for what is true right now; help goes in tip.
+// Inside the Frame tab's side panel the tab already names the card, so the
+// card drops its frame and title and keeps only its help.
+const Bare = createContext(false);
+
 function Card({
   title,
   icon: Icon,
@@ -1688,6 +1749,19 @@ function Card({
   tip?: TipText;
   children: ComponentChildren;
 }) {
+  if (useContext(Bare))
+    return (
+      <section class="grid gap-5" aria-label={title}>
+        {tip && (
+          <span class="-mb-3 font-medium">
+            {title}
+            <Tip tip={tip} name={title} />
+          </span>
+        )}
+        {intro && <p class="text-sm text-muted-foreground">{intro}</p>}
+        {children}
+      </section>
+    );
   return (
     <section class="card">
       <header>
