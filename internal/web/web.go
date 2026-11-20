@@ -49,7 +49,7 @@ type Status struct {
 	Topics        string            `json:"topics"`          // the topic LLM
 	LLMURL        string            `json:"llm_url"`         // where it runs
 	TopicAPI      string            `json:"topic_api"`       // the external topic model, "" when not set up
-	NoLocalTopics bool              `json:"no_local_topics"` // NO_LOCAL_TOPICS: Ollama is left out
+	NoLocalTopics bool              `json:"no_local_topics"` // TOPIC_MODEL=external: Ollama is left out
 	Speech        string            `json:"speech"`          // the speech-to-text server
 	ByLang        map[string]string `json:"by_lang"`         // per-language speech servers
 	Segment       int               `json:"segment"`         // seconds of audio per transcription

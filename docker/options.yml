@@ -34,24 +34,16 @@ services:
       LD_LIBRARY_PATH: /usr/lib/wsl/lib
       VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
 
-# On or off for the optional services (LOCAL_IMAGES=1, WHISPER_DA_NO=1).
-# "Off" puts a service in a profile nothing turns on, so compose neither
-# builds nor starts it.
-  optional:
-    profiles: [off]
-  optional-on: {}
-  # The same for sd, which also takes the GPU.
+# sd is off unless LOCAL_IMAGES=1. "Off" puts a service in a profile
+# nothing turns on, so compose neither builds nor starts it.
   optional-gpu:
     profiles: [off]
   optional-gpu-on:
     extends: ${GPU:-cpu}
 
-# The local topic model (ollama, ollama-pull) is on unless NO_LOCAL_TOPICS=1,
-# for setups that only use an external topic model.
-  local-topics: {}
-  local-topics-off:
-    profiles: [off]
-  local-topics-gpu:
+# TOPIC_MODEL: local (the default) runs ollama, external leaves it out for
+# setups that only use an external topic model.
+  topics-local:
     extends: ${GPU:-cpu}
-  local-topics-gpu-off:
+  topics-external:
     profiles: [off]

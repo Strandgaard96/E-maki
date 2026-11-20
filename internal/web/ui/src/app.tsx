@@ -3357,7 +3357,7 @@ function System({ state }: { state: State }) {
               state.settings.topic_provider === "external" && st.topic_api
                 ? `${st.topic_api} (external)`
                 : st.no_local_topics
-                  ? "None (NO_LOCAL_TOPICS in .env)"
+                  ? "None (TOPIC_MODEL=external in .env)"
                   : `${st.topics} at ${st.llm_url}`
             }
           />

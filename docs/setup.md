@@ -50,7 +50,7 @@ Then `docker compose up -d --build` again. What the host needs is in [docker/opt
 | `WHISPER_DA_NO`, `WHISPER_DA_MODEL_URL` | Edda for Danish and NB-Whisper for Norwegian. See [Languages](#languages) |
 | `LLM_MODEL` | The local topic model, `qwen3.5:4b` by default |
 | `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` | An external topic model. See [External topic model](#external-topic-model) |
-| `NO_LOCAL_TOPICS` | `1` leaves out Ollama, when you only use the external topic model |
+| `TOPIC_MODEL` | `local` (default) or `external`, which leaves out Ollama |
 | `PANEL_TOKEN` | Puts the page behind a secret address. See [Lock it down](#lock-it-down) |
 | `EMAKI_HOSTS` | Extra names the page answers to, for a reverse proxy or a VPN name. See [Lock it down](#lock-it-down) |
 | `PULSE_SOCKET`, `EMAKI_UID`, `EMAKI_GID` | Where the mic is |
@@ -68,7 +68,7 @@ Stock Whisper is fine for English and weak at Danish and Norwegian. First tick t
 
 If the brain is too slow for a local topic model, E-maki can use an OpenAI-compatible chat API instead (OpenAI, Gemini, OpenRouter, Groq and others). This sends what was said in the last few minutes to that service. Setting `TOPIC_API_URL`, `TOPIC_API_KEY` and `TOPIC_API_MODEL` only makes it available; pick it under **Listening > Topics**, which shows a warning while it is on. See [PRIVACY.md](../PRIVACY.md).
 
-If you never use the local model, set `NO_LOCAL_TOPICS=1` too: Ollama and its model download (about 3.4 GB) are then left out, and the page no longer offers the local model.
+If you never use the local model, set `TOPIC_MODEL=external` too: Ollama and its model download (about 3.4 GB) are then left out, and the page no longer offers the local model.
 
 ## 3. Pictures
 

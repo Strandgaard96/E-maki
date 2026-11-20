@@ -1,7 +1,6 @@
 #!/bin/sh
-# Two jobs, like whisper, so the server that draws needs no internet:
-#   /entrypoint.sh download   fetch the model files into /models, then exit
-#   /entrypoint.sh            serve them on port 1234
+# Downloads the model files into /models on the first start, then serves
+# them on port 1234.
 # The default is FLUX.2 klein 4B (Apache 2.0) in 4-bit, with its Qwen3 4B
 # text encoder and VAE: about 5.3 GB on disk. SD_MODEL_URL,
 # SD_TEXT_ENCODER_URL and SD_VAE_URL point at other files. Set those two to
@@ -19,28 +18,18 @@ MODEL="$(file "$MODEL_URL")"
 TEXT="$(file "$TEXT_URL")"
 VAE="$(file "$VAE_URL")"
 
-if [ "$1" = download ]; then
-  for url in "$MODEL_URL" "$TEXT_URL" "$VAE_URL"; do
-    [ -z "$url" ] && continue
-    f="$(file "$url")"
-    [ -s "$f" ] && continue
-    echo "downloading $url"
-    curl -fL --retry 3 -o "$f.part" "$url"
-    # A real model file is tens of MB or more; anything tiny is an error page.
-    if [ "$(wc -c < "$f.part")" -lt 10000000 ]; then
-      echo "download of $url is too small to be a model" >&2
-      rm -f "$f.part"; exit 1
-    fi
-    mv "$f.part" "$f"
-  done
-  exit 0
-fi
-
-for f in "$MODEL" "$TEXT" "$VAE"; do
-  if [ -n "$f" ] && [ ! -s "$f" ]; then
-    echo "no model at $f: run the sd-model service first (docker compose up does)" >&2
-    exit 1
+for url in "$MODEL_URL" "$TEXT_URL" "$VAE_URL"; do
+  [ -z "$url" ] && continue
+  f="$(file "$url")"
+  [ -s "$f" ] && continue
+  echo "downloading $url"
+  curl -fL --retry 3 -o "$f.part" "$url"
+  # A real model file is tens of MB or more; anything tiny is an error page.
+  if [ "$(wc -c < "$f.part")" -lt 10000000 ]; then
+    echo "download of $url is too small to be a model" >&2
+    rm -f "$f.part"; exit 1
   fi
+  mv "$f.part" "$f"
 done
 if [ -n "$TEXT" ]; then
   set -- --diffusion-model "$MODEL" --llm "$TEXT"
