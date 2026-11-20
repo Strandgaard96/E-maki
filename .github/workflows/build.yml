@@ -98,7 +98,7 @@ jobs:
             pull_request)
               # push: the release PR; test: any other PR, built but not pushed.
               release=; [[ "$HEAD" == release-please--* ]] && release=1
-              if [ "$LABEL" = true ]; then build=${release:+push}; build=${build:-test}
+              if [ "$LABEL" = true ]; then build="${release:+push}"; build="${build:-test}"
               elif [ -n "$release" ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
                 echo "::error::The release image isn't built for this commit yet. Add the build label to this PR to build it."
                 exit 1
@@ -106,9 +106,9 @@ jobs:
             push)
               if [ "$CREATED" = true ] && ! docker buildx imagetools inspect "$IMAGE:tree-$TREE" >/dev/null 2>&1; then
                 echo "::warning::No image for this tree from the release PR, building it now."
-                build=push
+                build="push"
               fi ;;
-            workflow_dispatch) build=push ;;
+            workflow_dispatch) build="push" ;;
           esac
           echo "build=${build:-}" >> "$GITHUB_OUTPUT"
 
@@ -187,7 +187,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - if: needs.plan.outputs.emaki == 'push'
-        run: docker buildx imagetools create -t "$IMAGE:tree-$TREE" $(printf "$IMAGE@sha256:%s " $(ls digests))
+        run: |
+          refs=()
+          for d in digests/*; do refs+=("$IMAGE@sha256:${d#digests/}"); done
+          docker buildx imagetools create -t "$IMAGE:tree-$TREE" "${refs[@]}"
       - if: env.CREATED == 'true'
         run: |
           docker buildx imagetools create -t "$IMAGE:$VERSION" -t "$IMAGE:${VERSION%.*}" -t "$IMAGE:latest" "$IMAGE:tree-$TREE"
