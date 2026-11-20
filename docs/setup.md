@@ -12,11 +12,24 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-The first start builds whisper-server and downloads the speech and language models (a few GB), so give it a while. Watch it with `docker compose logs -f`.
+The first start builds whisper-server, and each container downloads its model (a few GB in all), so give it a while. Watch it with `docker compose logs -f`. The models stay in docker volumes, so later starts are quick.
 
 Then open <http://localhost:8090/>, or `http://<your-brain>:8090/` from a phone or laptop on your network. That is the settings page. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
 
 Plain `docker compose up` runs everything on the CPU, uses the brain's own mic and makes placeholder pictures. The steps below change that.
+
+### What runs
+
+One compose file, at most four containers. Switches in `.env` pick which ones run:
+
+| Container | What it does | Runs |
+| --- | --- | --- |
+| `emaki` | The app: the mic, the settings page and the frame, on port 8090 | Always |
+| `whisper` | Speech to text | Always |
+| `ollama` | Topics | Unless `TOPIC_MODEL=external` |
+| `sd` | Pictures made on the brain | Only with `LOCAL_IMAGES=1` |
+
+With an external topic model and a picture service such as Gemini, only `emaki` and `whisper` run. Speech to text always stays on the brain.
 
 ### The mic
 
@@ -33,7 +46,7 @@ GPU=vulkan       # Linux
 GPU=vulkan-wsl   # Windows (WSL)
 ```
 
-Then `docker compose up -d --build` again. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
+Then `docker compose up -d --build` again: `GPU` decides whether `whisper` and `sd` are compiled for the CPU or for Vulkan, and hands them the GPU device. What the host needs is in [docker/options.yml](../docker/options.yml). `docker compose config | grep WHISPER_GPU` should show `vulkan`, and the whisper log names a `Vulkan0` device. Local pictures use the GPU too.
 
 ## 2. Settings in `.env`
 
@@ -50,7 +63,7 @@ Then `docker compose up -d --build` again. What the host needs is in [docker/opt
 | `WHISPER_DA_NO`, `WHISPER_DA_MODEL_URL` | Edda for Danish and NB-Whisper for Norwegian. See [Languages](#languages) |
 | `LLM_MODEL` | The local topic model, `qwen3.5:4b` by default |
 | `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` | An external topic model. See [External topic model](#external-topic-model) |
-| `NO_LOCAL_TOPICS` | `1` leaves out Ollama, when you only use the external topic model |
+| `TOPIC_MODEL` | `local` (default) or `external`, which leaves out Ollama |
 | `PANEL_TOKEN` | Puts the page behind a secret address. See [Lock it down](#lock-it-down) |
 | `EMAKI_HOSTS` | Extra names the page answers to, for a reverse proxy or a VPN name. See [Lock it down](#lock-it-down) |
 | `PULSE_SOCKET`, `EMAKI_UID`, `EMAKI_GID` | Where the mic is |
@@ -62,13 +75,13 @@ After editing `.env`, run `docker compose up -d` again. Containers whose setting
 Stock Whisper is fine for English and weak at Danish and Norwegian. First tick the languages spoken in your home under **Listening > Microphone** on the settings page: with one, Whisper skips guessing, and with several, a wrong guess (Danish heard as Swedish) is redone in the first one.
 
 - **One language, Danish or Norwegian:** set `WHISPER_MODEL_URL` to a ggml build of a fine-tune (Edda for Danish, NB-Whisper for Norwegian). That model then handles everything.
-- **A mix of Danish, Norwegian and English:** set `WHISPER_DA_NO=1`. It runs Edda and NB-Whisper next to stock Whisper and sends each segment to the model for its language. Set `WHISPER_DA_MODEL_URL` to an Edda ggml file you trust, and pin it with `WHISPER_DA_MODEL_SHA256`; Edda's makers publish no ggml file. NB-Whisper has a default. It costs about 1.6 GB more RAM.
+- **A mix of Danish, Norwegian and English:** set `WHISPER_DA_NO=1`. It runs Edda and NB-Whisper next to stock Whisper, inside the `whisper` container, and sends each segment to the model for its language. Set `WHISPER_DA_MODEL_URL` to an Edda ggml file you trust, and pin it with `WHISPER_DA_MODEL_SHA256`; Edda's makers publish no ggml file. NB-Whisper has a default. It costs about 1.6 GB more RAM.
 
 ### External topic model
 
 If the brain is too slow for a local topic model, E-maki can use an OpenAI-compatible chat API instead (OpenAI, Gemini, OpenRouter, Groq and others). This sends what was said in the last few minutes to that service. Setting `TOPIC_API_URL`, `TOPIC_API_KEY` and `TOPIC_API_MODEL` only makes it available; pick it under **Listening > Topics**, which shows a warning while it is on. See [PRIVACY.md](../PRIVACY.md).
 
-If you never use the local model, set `NO_LOCAL_TOPICS=1` too: Ollama and its model download (about 3.4 GB) are then left out, and the page no longer offers the local model.
+If you never use the local model, set `TOPIC_MODEL=external` too: Ollama and its model download (about 3.4 GB) are then left out, and the page no longer offers the local model.
 
 ## 3. Pictures
 

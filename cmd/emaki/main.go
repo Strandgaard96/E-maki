@@ -66,8 +66,8 @@ func main() {
 	// The external topic model, if set up in .env. Only topic_provider
 	// "external" uses it.
 	ext := topic.ExternalFromEnv(os.Getenv)
-	// NO_LOCAL_TOPICS=1 leaves Ollama out of the compose setup.
-	local := strings.TrimSpace(os.Getenv("NO_LOCAL_TOPICS")) == ""
+	// TOPIC_MODEL=external leaves Ollama out of the compose setup.
+	local := strings.TrimSpace(os.Getenv("TOPIC_MODEL")) != "external"
 	if cfg.TopicProvider == "external" && !ext.Ready() {
 		log.Printf("topics: the external topic model is not set up: %s. Using the local one until then", topic.ExternalSetup)
 	}
@@ -384,7 +384,7 @@ func extractor(c config.Config, ext topic.External, local bool, t *health.Tracke
 // errNoLocalTopics is why no topics are found when the local topic model is
 // off and the external one is not picked. The external one is never picked
 // for the user.
-var errNoLocalTopics = errors.New("the local topic model is off (NO_LOCAL_TOPICS in .env); pick the external one on the settings page")
+var errNoLocalTopics = errors.New("the local topic model is off (TOPIC_MODEL=external in .env); pick the external one on the settings page")
 
 type noTopics struct{}
 
@@ -432,7 +432,7 @@ func envRows(c config.Config, ext topic.External) []web.EnvRow {
 		row("Danish and Norwegian models", "WHISPER_DA_NO", on("WHISPER_DA_NO")),
 		row("Local topic model", "LLM_MODEL", c.LLMModel),
 		row("Reasoning effort", "LLM_REASONING", cmp.Or(c.LLMReasoning, "Not sent")),
-		row("Ollama left out", "NO_LOCAL_TOPICS", on("NO_LOCAL_TOPICS")),
+		row("Topic model", "TOPIC_MODEL", get("TOPIC_MODEL", "local")),
 		row("External topic model", "TOPIC_API_MODEL", cmp.Or(externalName(ext), "Not set up")),
 		row("Gemini key", "GEMINI_API_KEY", set("GEMINI_API_KEY")),
 		row("OpenAI key", "OPENAI_API_KEY", set("OPENAI_API_KEY")),
