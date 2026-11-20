@@ -68,9 +68,13 @@ Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists
 | **AI image provider** | Your own Gemini, OpenAI or OpenRouter key, or a local model | Optional: without one you get coloured placeholder tiles |
 | **Screen** | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board, in an IKEA RÖDALM frame | No panel yet? The settings page shows the same picture in your browser |
 
-Parts, wiring and flashing in **[Hardware](docs/hardware.md)**. Installing, `.env`, the settings page, the frame and logs in **[Setup](docs/setup.md)**.
+Parts, wiring and flashing in **[Hardware](docs/hardware.md)**.
 
-To try it, download two files and start it. No clone needed:
+E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so the programs in [fugleramme/clients](https://github.com/fugleramme/clients) show it on an e-ink board, such as the [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino) for the 13.3" panel. For a Pi with an Inky Impression, see [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
+
+## Install
+
+Needs Linux (or Windows with WSL 2) and Docker with compose v2. Download two files and start it. No clone needed:
 
 ```bash
 mkdir e-maki && cd e-maki
@@ -90,7 +94,7 @@ The prebuilt E-maki image comes from ghcr.io. Speech-to-text is compiled on your
 | `ollama` | Unless `TOPIC_MODEL=external` |
 | `imagegen` | Only with `LOCAL_IMAGES=1` |
 
-E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so the programs in [fugleramme/clients](https://github.com/fugleramme/clients) show it on an e-ink board, such as the [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino) for the 13.3" panel. For a Pi with an Inky Impression, see [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
+More on `.env`, the GPU, the mic and updating in **[Setup](docs/setup.md)**.
 
 ## Configure
 
