@@ -96,7 +96,7 @@ curl -fsSL https://raw.githubusercontent.com/arnegiacomo/fugleramme/main/example
 
 Every setting lives in one place, so the two never disagree:
 
-- **The settings page** (`http://<your-brain>:8090/`): everything about what the frame shows, listening, topics, privacy and which image provider draws. Hover the (i) next to a setting to see what it does.
+- **The settings page** (`http://<your-brain>:8090/`): everything about what the frame shows, listening, topics, privacy and which image provider draws. Hover the ? next to a setting to see what it does.
 - **`.env`** (copy from [.env.example](.env.example)): API keys, the Whisper and topic models, the GPU and other extras, the mic socket. Change it, then run `docker compose up -d`. System > Services shows what it is set to. See [Setup](docs/setup.md#2-settings-in-env).
 
 How E-maki reaches its servers lives in a small profile in [configs/](configs/README.md). With docker you don't need to touch it.
