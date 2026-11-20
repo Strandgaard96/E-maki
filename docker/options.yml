@@ -1,14 +1,14 @@
 # Pieces that docker-compose.yml pulls in with extends, picked by the
 # options in .env. This file runs nothing on its own.
 #
-# What the GPU-using services (whisper, ollama, sd) add for each GPU= value.
+# What the GPU-using services (whisper, ollama, imagegen) add for each GPU= value.
 
 services:
   # GPU empty: everything on the CPU.
   cpu: {}
 
   # Integrated graphics (AMD Radeon / Intel) through Vulkan, on Linux. The
-  # whisper and sd images bring their own Mesa drivers and only need the
+  # whisper and imagegen images bring their own Mesa drivers and only need the
   # GPU device from the host: ls /dev/dri/renderD*
   # Ollama stays on the CPU here. Not yet tested on a Linux machine.
   vulkan:
@@ -34,7 +34,7 @@ services:
       LD_LIBRARY_PATH: /usr/lib/wsl/lib
       VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
 
-# sd is off unless LOCAL_IMAGES=1. "Off" puts a service in a profile
+# imagegen is off unless LOCAL_IMAGES=1. "Off" puts a service in a profile
 # nothing turns on, so compose neither builds nor starts it.
   optional-gpu:
     profiles: [off]

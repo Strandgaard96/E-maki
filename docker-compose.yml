@@ -3,7 +3,7 @@
 #   emaki     the app and its page
 #   whisper   speech to text
 #   ollama    topics (left out with TOPIC_MODEL=external)
-#   sd        pictures made on this machine (only with LOCAL_IMAGES=1)
+#   imagegen  pictures made on this machine (only with LOCAL_IMAGES=1)
 #   cp .env.example .env && docker compose up -d --build
 # then open http://localhost:8090/frame.png (reload to see new topics).
 # Written for Linux. On Windows (WSL) set PULSE_SOCKET in .env, see
@@ -13,7 +13,7 @@
 #
 # Everything else is switched on in .env, not with extra compose files:
 #   GPU=vulkan or vulkan-wsl      integrated graphics
-#   LOCAL_IMAGES=1                pictures made on this machine (sd)
+#   LOCAL_IMAGES=1                pictures made on this machine (imagegen)
 #   WHISPER_DA_NO=1               Danish and Norwegian models, inside whisper
 #   TOPIC_MODEL=external          no Ollama, for an external topic model only
 #   NET_MIC_BIND=0.0.0.0          a microphone elsewhere on the network
@@ -105,10 +105,10 @@ services:
   # klein 4B (about 5.3 GB). It wants about 8 GB of free RAM on top of
   # whisper and Ollama, and a CPU takes minutes per picture. See
   # docs/local-images.md.
-  sd:
+  imagegen:
     <<: *hardening
     extends: { file: docker/options.yml, service: "optional-gpu${LOCAL_IMAGES:+-on}" }
-    image: emaki-sd
+    image: emaki-imagegen
     build:
       context: .
       dockerfile: docker/sd.Dockerfile
@@ -120,6 +120,7 @@ services:
       SD_STEPS: ${SD_STEPS:-}
       SD_THREADS: ${SD_THREADS:-}
       SD_ARGS: ${SD_ARGS:-}
+    # The volume keeps its old name, so a model already downloaded is kept.
     volumes: [sd-models:/models]
     restart: unless-stopped
     healthcheck:
@@ -169,7 +170,7 @@ services:
       TOPIC_MODEL: ${TOPIC_MODEL:-local}
       WHISPER_URL_DA: ${WHISPER_DA_NO:+http://whisper:8082}
       WHISPER_URL_NO: ${WHISPER_DA_NO:+http://whisper:8083}
-      LOCAL_IMAGE_URL: ${LOCAL_IMAGES:+http://sd:1234}
+      LOCAL_IMAGE_URL: ${LOCAL_IMAGES:+http://imagegen:1234}
       LOCAL_IMAGE_MODEL: ${LOCAL_IMAGE_MODEL:-FLUX.2 klein 4B}
       LOCAL_IMAGE_SIZE: ${LOCAL_IMAGE_SIZE:-}
     # configs/docker.json holds how these containers are wired; you don't
