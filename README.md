@@ -66,7 +66,7 @@ Tell the people in the room that it is listening. [PRIVACY.md](PRIVACY.md) lists
 | **Driver** | A Linux computer that runs Docker: a laptop, a mini PC, a homelab server.| An integrated GPU makes speech-to-text about 7x faster |
 | **Mic** | Hardware microphone |  |
 | **AI image provider** | Your own Gemini, OpenAI or OpenRouter key, or a local model | Optional: without one you get coloured placeholder tiles |
-| **Screen** | Any browser to start with | For the real thing, a 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or a battery-powered ESP32 board, in an IKEA RÖDALM frame |
+| **Screen** | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board, in an IKEA RÖDALM frame | No panel yet? The settings page shows the same picture in your browser |
 
 Parts, wiring and flashing in **[Hardware](docs/hardware.md)**. Installing, `.env`, the settings page, the frame and logs in **[Setup](docs/setup.md)**.
 
