@@ -12,7 +12,7 @@
 #      and :latest. Nothing is built twice: the squash commit has the same
 #      tree, because main requires the PR to be up to date.
 # On any other PR the label test-builds the image without pushing it.
-# The whisper and sd images are built on the user's machine, not published;
+# The whisper and imagegen (sd.Dockerfile) images are built on the user's machine, not published;
 # they are only test-built here when their own files change.
 # The "build" job sums up and is the required check, so it always reports.
 name: Build

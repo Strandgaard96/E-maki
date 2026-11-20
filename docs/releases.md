@@ -1,6 +1,6 @@
 # Releases
 
-E-maki is published as one image, `ghcr.io/strandgaard96/emaki`, for amd64 and arm64. `docker-compose.yml` names the released version, so `git pull` and `docker compose up -d` update it. The whisper and sd images are still built on your machine, because they are compiled for its CPU or GPU.
+E-maki is published as one image, `ghcr.io/strandgaard96/emaki`, for amd64 and arm64. `docker-compose.yml` names the released version, so `git pull` and `docker compose up -d` update it. The whisper and imagegen images are still built on your machine, because they are compiled for its CPU or GPU.
 
 ## How a release happens
 

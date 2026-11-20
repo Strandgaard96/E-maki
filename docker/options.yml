@@ -49,7 +49,7 @@ services:
     profiles: [off]
 
 # E-maki itself: the released image, or built from this checkout
-# (EMAKI_BUILD=1). The whisper and sd images are always built here.
+# (EMAKI_BUILD=1). The whisper and imagegen images are always built here.
   emaki: {}
   emaki-source:
     build: { context: .., dockerfile: docker/emaki.Dockerfile }
