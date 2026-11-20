@@ -4,7 +4,9 @@
 #   whisper   speech to text
 #   ollama    topics (left out with TOPIC_MODEL=external)
 #   imagegen  pictures made on this machine (only with LOCAL_IMAGES=1)
-#   cp .env.example .env && docker compose up -d --build
+#   curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
+#   curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.env.example
+#   docker compose up -d
 # then open http://localhost:8090/frame.png (reload to see new topics).
 # Written for Linux. On Windows (WSL) set PULSE_SOCKET in .env, see
 # docs/wsl.md.
@@ -18,7 +20,7 @@
 #   TOPIC_MODEL=external          no Ollama, for an external topic model only
 #   NET_MIC_BIND=0.0.0.0          a microphone elsewhere on the network
 #   EMAKI_BUILD=1                 build E-maki from source, not the released image
-# The services pull in what each option adds from docker/options.yml.
+# What each option adds is in the hidden services at the end of this file.
 
 # Fixed project name, so volumes are emaki_* whatever the folder is called.
 name: emaki
@@ -30,18 +32,22 @@ x-hardening: &hardening
     driver: json-file
     options: { max-size: "10m", max-file: "3" }
 
-# The GPU device and drivers for GPU=..., see docker/options.yml.
+# The GPU device and drivers for GPU=..., see the options at the end.
 x-gpu: &gpu
-  file: docker/options.yml
   service: ${GPU:-cpu}
+
+# whisper and imagegen are compiled on this machine, for its CPU or GPU, from
+# the released source on GitHub, so no checkout is needed.
+x-source: &source https://github.com/Strandgaard96/E-maki.git#v0.1.0 # x-release-please-version
 
 services:
   whisper:
     <<: *hardening
     extends: *gpu
+    profiles: !reset []
     image: emaki-whisper
     build:
-      context: .
+      context: *source
       dockerfile: docker/whisper.Dockerfile
       args: { WHISPER_GPU: "${GPU:+vulkan}" }
     environment:
@@ -76,7 +82,9 @@ services:
   # upload anyway.
   ollama:
     <<: *hardening
-    extends: { file: docker/options.yml, service: "topics-${TOPIC_MODEL:-local}" }
+    extends: *gpu
+    # Runs with TOPIC_MODEL=local, through COMPOSE_PROFILES in .env.
+    profiles: !override [topics-local]
     image: ollama/ollama:0.40.15
     # Turn off Ollama's cloud models. Keep the LLM loaded; otherwise it
     # unloads after 5 idle minutes and every topic call waits ~10 s to load
@@ -107,10 +115,12 @@ services:
   # docs/local-images.md.
   imagegen:
     <<: *hardening
-    extends: { file: docker/options.yml, service: "optional-gpu${LOCAL_IMAGES:+-on}" }
+    extends: *gpu
+    # Runs with LOCAL_IMAGES=1, through COMPOSE_PROFILES in .env.
+    profiles: !override [local-images]
     image: emaki-imagegen
     build:
-      context: .
+      context: *source
       dockerfile: docker/sd.Dockerfile
       args: { SD_GPU: "${GPU:+vulkan}" }
     environment:
@@ -133,7 +143,8 @@ services:
   # EMAKI_BUILD=1 in .env builds it from this checkout instead.
   emaki:
     <<: *hardening
-    extends: { file: docker/options.yml, service: "emaki${EMAKI_BUILD:+-source}" }
+    extends: { service: "image${EMAKI_BUILD:+-source}" }
+    profiles: !reset []
     image: ghcr.io/strandgaard96/emaki:0.1.0 # x-release-please-version
     # No depends_on: the settings page is up while the models download, and
     # System status shows each one as not answering until it does.
@@ -173,12 +184,11 @@ services:
       LOCAL_IMAGE_URL: ${LOCAL_IMAGES:+http://imagegen:1234}
       LOCAL_IMAGE_MODEL: ${LOCAL_IMAGE_MODEL:-FLUX.2 klein 4B}
       LOCAL_IMAGE_SIZE: ${LOCAL_IMAGE_SIZE:-}
-    # configs/docker.json holds how these containers are wired; you don't
-    # need to touch it. /data keeps what the settings page changes (no
+    # /configs/docker.json, inside the image, holds how these containers are
+    # wired; you don't need to touch it. /data keeps what the settings page changes (no
     # topics, no transcripts).
     command: ["-config", "/configs/docker.json", "-settings", "/data/settings.json", "-mic"]
     volumes:
-      - ./configs:/configs:ro
       - emaki-data:/data
       # The microphone: only the PulseAudio/PipeWire socket, nothing else
       # from the desktop session. If the audio server restarts, restart
@@ -188,6 +198,51 @@ services:
         target: /pulse/native
         bind: { create_host_path: false }
     restart: unless-stopped
+
+  # --- Options -------------------------------------------------------------
+  # What the options in .env add to the services above. These pieces run
+  # nothing on their own: the "never" profile is never switched on.
+
+  # GPU empty: everything on the CPU.
+  cpu:
+    profiles: [never]
+
+  # Integrated graphics (AMD Radeon / Intel) through Vulkan, on Linux. The
+  # whisper and imagegen images bring their own Mesa drivers and only need the
+  # GPU device from the host: ls /dev/dri/renderD*
+  # Ollama stays on the CPU here. Not yet tested on a Linux machine.
+  vulkan:
+    profiles: [never]
+    devices: ["/dev/dri"]
+
+  # The same on Windows (WSL). WSL exposes the GPU as /dev/dxg plus the
+  # D3D12 libraries in /usr/lib/wsl, and Mesa's "dozen" (dzn) driver turns
+  # that into Vulkan. Debian's Mesa has no dzn, so it is borrowed from WSL:
+  #   ls /usr/share/vulkan/icd.d/dzn_icd.json /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so
+  # must exist (install mesa-vulkan-drivers in WSL if not). Ollama uses its
+  # Vulkan backend on the same driver; it skips integrated GPUs unless
+  # OLLAMA_IGPU_ENABLE is set.
+  vulkan-wsl:
+    profiles: [never]
+    devices: ["/dev/dxg"]
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - /usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:/usr/lib/x86_64-linux-gnu/libvulkan_dzn.so:ro
+      - /usr/share/vulkan/icd.d/dzn_icd.json:/usr/share/vulkan/icd.d/dzn_icd.json:ro
+      - /usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:/usr/lib/x86_64-linux-gnu/libdisplay-info.so.1:ro
+    environment:
+      OLLAMA_VULKAN: "1"
+      OLLAMA_IGPU_ENABLE: "1"
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/dzn_icd.json
+
+  # E-maki itself: the released image, or built from this checkout
+  # (EMAKI_BUILD=1). whisper and imagegen are always built from the release.
+  image:
+    profiles: [never]
+  image-source:
+    profiles: [never]
+    build: { context: ., dockerfile: docker/emaki.Dockerfile }
 
 volumes:
   whisper-models:

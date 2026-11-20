@@ -122,6 +122,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+      # COMPOSE_PROFILES in .env.example picks ollama and imagegen.
+      - run: cp .env.example .env
       - run: docker compose config --quiet
       - run: GPU=vulkan docker compose config --quiet
       - run: GPU=vulkan-wsl docker compose config --quiet

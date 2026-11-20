@@ -20,7 +20,7 @@ Only that socket is mounted into the container, not the rest of `/mnt/wslg`. Aft
 
 ## Integrated GPU
 
-Set this in `.env`, then `docker compose up -d --build`. What WSL needs is listed in [docker/options.yml](../docker/options.yml).
+Set this in `.env`, then `docker compose up -d --build`. What WSL needs is listed at the end of [docker-compose.yml](../docker-compose.yml).
 
 ```sh
 GPU=vulkan-wsl
