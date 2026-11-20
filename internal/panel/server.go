@@ -23,7 +23,7 @@ import (
 //	                 Fugleramme's XIAO Arduino firmware: A to C)
 //
 // With a Token the three paths live under /<token>/, so a frame is set up
-// with FRAME_URL=http://brain:8090/<token> and nothing else on the network
+// with FRAME_URL=http://server:8090/<token> and nothing else on the network
 // can read the page or press its buttons.
 type Server struct {
 	Token    string

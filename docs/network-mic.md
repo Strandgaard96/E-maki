@@ -17,13 +17,13 @@ One sender at a time. A new connection replaces the old one.
 Linux box with a mic:
 
 ```bash
-arecord -q -f S16_LE -r 16000 -c 1 -t raw | nc <your-brain> 10700
+arecord -q -f S16_LE -r 16000 -c 1 -t raw | nc <your-server> 10700
 ```
 
 With `PANEL_TOKEN`, send it first:
 
 ```bash
-(echo "$PANEL_TOKEN"; arecord -q -f S16_LE -r 16000 -c 1 -t raw) | nc <your-brain> 10700
+(echo "$PANEL_TOKEN"; arecord -q -f S16_LE -r 16000 -c 1 -t raw) | nc <your-server> 10700
 ```
 
 Run it as a systemd service with `Restart=always`.

@@ -279,7 +279,7 @@ func main() {
 	srv.Register(mux)
 	page.Register(mux)
 	// Timeouts, so a client that stalls cannot hold connections open.
-	// EMAKI_HOSTS=frame.example.com,brain.tailnet.ts.net lets the page answer
+	// EMAKI_HOSTS=frame.example.com,server.tailnet.ts.net lets the page answer
 	// to names that are not plainly local (see web.Protect).
 	var hosts []string
 	for _, h := range strings.Split(os.Getenv("EMAKI_HOSTS"), ",") {

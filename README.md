@@ -68,23 +68,32 @@ The frame runs [Fugleramme's clients](https://github.com/fugleramme/clients), fo
 
 ## Install
 
+Download the compose file and the settings:
+
 ```bash
 mkdir e-maki && cd e-maki
 curl -fsSLO https://raw.githubusercontent.com/Strandgaard96/E-maki/main/docker-compose.yml
 curl -fsSL -o .env https://raw.githubusercontent.com/Strandgaard96/E-maki/main/.env.example
+```
+
+Pick where topics and pictures come from in `.env`:
+
+| | Option | Set in `.env` |
+| --- | --- | --- |
+| Topics | Local (default) | Nothing |
+| | External API | `TOPIC_MODEL=external`, `TOPIC_API_URL`, `TOPIC_API_KEY`, `TOPIC_API_MODEL` |
+| Pictures | Gemini | `GEMINI_API_KEY` |
+| | OpenAI | `OPENAI_API_KEY` |
+| | OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_IMAGE_MODEL` |
+| | Local | `LOCAL_IMAGES=1` |
+
+Start it:
+
+```bash
 docker compose up -d
 ```
 
-Open <http://localhost:8090/> and talk for a minute. The first start downloads the models and takes a while.
-
-For real pictures, add `GEMINI_API_KEY` to `.env`.
-
-| Container | Runs |
-| --- | --- |
-| `emaki` | Always |
-| `whisper` | Always |
-| `ollama` | Unless `TOPIC_MODEL=external` |
-| `imagegen` | With `LOCAL_IMAGES=1` |
+Open <http://localhost:8090/>. The first start downloads the models and takes a while. An external topic model also has to be picked under Listening > Topics.
 
 ## Configure
 

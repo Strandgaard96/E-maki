@@ -2,11 +2,11 @@
 
 An E-maki setup has three parts:
 
-- The brain: a Linux computer with Docker. It listens, transcribes, picks topics and makes the picture.
-- A mic, on the brain or on the network.
-- An e-ink frame that fetches the picture from the brain.
+- The server: a Linux computer with Docker. It listens, transcribes, picks topics and makes the picture.
+- A mic, on the server or on the network.
+- An e-ink frame that fetches the picture from the server.
 
-## The brain
+## The server
 
 Any x86-64 Linux machine that runs Docker: a laptop, a mini PC or a homelab server.
 
@@ -18,7 +18,7 @@ Any x86-64 Linux machine that runs Docker: a laptop, a mini PC or a homelab serv
 
 | Mic | Notes |
 | --- | --- |
-| USB or built-in mic on the brain | Through PulseAudio or PipeWire |
+| USB or built-in mic on the server | Through PulseAudio or PipeWire |
 | Raspberry Pi or other Linux box with a USB mic | Streams with `arecord` and `nc`. See [Network microphone](network-mic.md) |
 | ESP32 with an INMP441 | Wi-Fi mic. Sketch in [examples/esp32-mic](../examples/esp32-mic/esp32-mic.ino) |
 
@@ -72,7 +72,7 @@ Seeed sells board and panel as a [kit](https://www.seeedstudio.com/XIAO-ePaper-D
 
 1. Connect the board over USB-C. Hold boot, press reset, release boot.
 2. Open the [web flasher](https://fugleramme.github.io/clients/) in Chrome or Edge, pick EE02 and connect.
-3. Join the board's Wi-Fi from the QR code. Set your Wi-Fi, the brain's address as host and `8090` as port. Leave the password empty.
+3. Join the board's Wi-Fi from the QR code. Set your Wi-Fi, the server's address as host and `8090` as port. Leave the password empty.
 
 Hold KEY2 for 5 seconds to change the settings, KEY1 for 10 seconds to wipe them.
 
@@ -92,7 +92,7 @@ Both send an `ETag` and answer `304` until the picture changes. With `PANEL_TOKE
 Buttons send a letter from `A` to `H`:
 
 ```bash
-curl -X POST -d button=A http://<your-brain>:8090/press
+curl -X POST -d button=A http://<your-server>:8090/press
 ```
 
 | Client | Buttons |
