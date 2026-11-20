@@ -90,7 +90,7 @@ The prebuilt E-maki image comes from ghcr.io. Speech-to-text is compiled on your
 | `ollama` | Unless `TOPIC_MODEL=external` |
 | `imagegen` | Only with `LOCAL_IMAGES=1` |
 
-E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so Fugleramme's frame clients (a Pi with an Inky Impression, or an ESP32 board) show it unchanged. See [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
+E-maki has no frame software of its own. It serves the picture the same way [Fugleramme](https://github.com/arnegiacomo/fugleramme) does, so the programs in [fugleramme/clients](https://github.com/fugleramme/clients) show it on an e-ink board. For a Pi with an Inky Impression, see [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
 
 ## Configure
 
