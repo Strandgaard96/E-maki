@@ -135,7 +135,7 @@ export const TIPS = {
     text: "How long a battery frame (like the EE02) sleeps between checks for a new picture. Longer saves battery. Frames on mains power check on their own.",
   },
   panel_buttons: {
-    text: "What the buttons on your frame do. Works with Fugleramme's Inky client on a Pi (A to D from the top) and its Arduino firmware for the XIAO EE02 (KEY3 is A, KEY2 is B, KEY1 is C). Any press wakes a XIAO and redraws it. The letter lights up here when a press arrives.",
+    text: "What the buttons on your display's driver board do. Works with an Inky on a Pi (A to D from the top) and a XIAO EE02 on its Arduino firmware (KEY3 is A, KEY2 is B, KEY1 is C). Any press wakes a XIAO and redraws it. The letter lights up here when a press arrives.",
   },
   panel_button: { text: "What this button does when pressed." },
 } satisfies Record<string, TipText>;
