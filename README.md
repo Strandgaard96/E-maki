@@ -62,9 +62,9 @@ Tell people in the room that it listens. Details in [PRIVACY.md](PRIVACY.md).
 | Computer | Linux with Docker. An integrated GPU makes speech-to-text faster |
 | Mic | Any USB or built-in mic |
 | Pictures | A Gemini, OpenAI or OpenRouter key, or a local model. Without one you get placeholder tiles |
-| Screen | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board. Or just a browser |
+| Screen | A 13.3" Spectra 6 e-ink panel ([Inky Impression](https://shop.pimoroni.com/products/inky-impression)) on a Raspberry Pi, or an ESP32 board |
 
-The frame runs [Fugleramme's clients](https://github.com/fugleramme/clients), for example [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino). Parts and wiring: [Hardware](docs/hardware.md). Pi setup: [Put it on a frame](docs/setup.md#5-put-it-on-a-frame).
+The frame runs [Fugleramme's clients](https://github.com/fugleramme/clients), for example [XIAO EE02](https://github.com/fugleramme/clients/tree/main/xiao-arduino). Parts and wiring: [Hardware](docs/hardware.md). Pi setup: [Put it on a frame](docs/setup.md#4-put-it-on-a-frame).
 
 ## Install
 

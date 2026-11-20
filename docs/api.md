@@ -1,25 +1,23 @@
 # HTTP API
 
-The settings page talks to E-maki over a small JSON API. Other tools on your network can use it too, for example Home Assistant to pause listening when you leave home.
-
-All paths are under `http://<your-brain>:8090/`. With `PANEL_TOKEN` set, they are under `/<your-token>/` instead.
+The JSON API behind the settings page. Paths are under `http://<your-brain>:8090/`, or `/<token>/` with `PANEL_TOKEN` set.
 
 ## Rules
 
-- Requests that change something are `POST` (or `PUT`) with `Content-Type: application/json`. Anything else is refused, and so are requests that a browser marks as coming from another site.
-- With a password set on the settings page, every `api/` call needs the session cookie that `POST api/login` sets. Without a password, no sign-in is needed.
-- Every change answers with the same JSON as `GET api/state`.
+- Changes are `POST` or `PUT` with `Content-Type: application/json`. Cross-site requests are refused.
+- With a password set, `api/` calls need the cookie from `POST api/login`.
+- Every change returns the same JSON as `GET api/state`.
 
 ## Frame
 
-These are Fugleramme's panel protocol and need no password.
+No password needed.
 
 | Call | What it does |
 | --- | --- |
 | `GET frame.png` | The page as a 6-colour PNG. Send `If-None-Match` with the last `ETag` to get `304` when nothing changed |
 | `GET frame.e6` | The same page packed for the panel |
-| `POST press` | A frame button, as a form field: `button=A` to `H`. It does what `panel_buttons` sets for that letter, and nothing for a button the frame doesn't have |
-| `GET preview.png` | The page for a browser, also without a password |
+| `POST press` | A button press, form field `button=A` to `H` |
+| `GET preview.png` | The page as shown on the settings page |
 
 ## Settings page
 
@@ -42,7 +40,7 @@ These are Fugleramme's panel protocol and need no password.
 
 ## Home Assistant
 
-A pause switch, with no password set on the settings page. In `configuration.yaml`:
+Pause and resume, without a password set. In `configuration.yaml`:
 
 ```yaml
 rest_command:
@@ -58,4 +56,4 @@ rest_command:
     payload: '{"paused": false}'
 ```
 
-Call `rest_command.emaki_pause` from an automation, for example when everyone has left. Put `PANEL_TOKEN` in the URL if you set one.
+Add `PANEL_TOKEN` to the URL if you use one.

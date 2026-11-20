@@ -1,39 +1,35 @@
 # Network microphone
 
-E-maki can listen to a microphone in another room, or on a small board next to the frame, instead of one plugged into the brain. The sender streams raw audio over TCP: 16 kHz, mono, 16-bit little-endian PCM. That is the plain output of `arecord`, so most senders need no code at all.
-
-It is off until you set it up, and it is hardware-dependent: please report how it goes.
+A mic in another room streams raw audio to E-maki over TCP: 16 kHz, mono, 16-bit little-endian PCM, the plain output of `arecord`.
 
 ## Turn it on
-
-With docker compose, set this in `.env` and run `docker compose up -d`:
 
 ```bash
 NET_MIC_BIND=0.0.0.0
 ```
 
-`NET_MIC_PORT` changes the port (10700). Without docker, set `NET_MIC_LISTEN` (for example `:10700`). Then open the settings page, go to Listening > Microphone and pick **Network microphone**. The level meter moves once a sender is connected.
+Run `docker compose up -d` and pick Network microphone under Listening > Microphone. `NET_MIC_PORT` changes the port (10700). Without Docker, set `NET_MIC_LISTEN=:10700`.
 
-One sender at a time. A new connection replaces the old one, so a sender that restarts is heard again at once.
+One sender at a time. A new connection replaces the old one.
 
 ## Senders
 
-**A Raspberry Pi (or any Linux box) with a USB or HAT microphone:**
+Linux box with a mic:
 
 ```bash
 arecord -q -f S16_LE -r 16000 -c 1 -t raw | nc <your-brain> 10700
 ```
 
-With a `PANEL_TOKEN`, send it first on its own line:
+With `PANEL_TOKEN`, send it first:
 
 ```bash
 (echo "$PANEL_TOKEN"; arecord -q -f S16_LE -r 16000 -c 1 -t raw) | nc <your-brain> 10700
 ```
 
-Wrap it in a systemd service with `Restart=always` to keep it running.
+Run it as a systemd service with `Restart=always`.
 
-**An ESP32 with an I2S microphone (INMP441):** [examples/esp32-mic](../examples/esp32-mic/esp32-mic.ino) is an Arduino sketch. Fill in Wi-Fi, E-maki's address and the token, and flash it. Not yet tested on hardware.
+ESP32 with an INMP441: see [Hardware](hardware.md#esp32-mic).
 
 ## Privacy
 
-Audio crosses your local network unencrypted. E-maki still keeps it in memory only and never writes it to disk. Set `PANEL_TOKEN` so only senders that know it are heard, keep `NET_MIC_BIND` to your local network, and never forward the port to the internet.
+Audio crosses your network unencrypted. Set `PANEL_TOKEN`, keep `NET_MIC_BIND` on your local network, and don't forward the port.
