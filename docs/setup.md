@@ -12,7 +12,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-The first start builds whisper-server, and each container downloads its model (a few GB in all), so give it a while. Watch it with `docker compose logs -f`. The models stay in docker volumes, so later starts are quick.
+The first start pulls the released E-maki image, builds whisper-server, and each container downloads its model (a few GB in all), so give it a while. Watch it with `docker compose logs -f`. The models stay in docker volumes, so later starts are quick.
 
 Then open <http://localhost:8090/>, or `http://<your-brain>:8090/` from a phone or laptop on your network. That is the settings page. It shows what the frame shows and updates as you talk. In Continuous mode the first topic shows up after about a minute of talk.
 
@@ -166,7 +166,7 @@ git pull
 docker compose up -d --build
 ```
 
-Settings, pictures and models are kept in Docker volumes, so they survive an update. Set `LLM_MODEL_UPDATE=1` for one start to fetch a newer upload of the same topic model.
+`git pull` moves `docker-compose.yml` to the newest released E-maki image (`ghcr.io/strandgaard96/emaki`), which compose then pulls. Settings, pictures and models are kept in Docker volumes, so they survive an update. To run your own changes, set `EMAKI_BUILD=1` in `.env` and E-maki is built from the checkout instead. Set `LLM_MODEL_UPDATE=1` for one start to fetch a newer upload of the same topic model.
 
 ## Troubleshooting
 

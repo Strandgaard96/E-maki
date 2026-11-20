@@ -15,18 +15,19 @@ set -euo pipefail
 
 REPO="${REPO:-Strandgaard96/E-maki}"
 
-DESCRIPTION="A picture frame that listens to the room and paints what you talk about, on a colour e-ink panel. Speech-to-text and topic spotting run locally."
+# The About description is set by hand on GitHub; this script never changes it.
 # Empty leaves the homepage as it is.
 HOMEPAGE=""
 TOPICS=(e-ink spectra6 picture-frame speech-to-text whisper ollama llm
 	image-generation collage self-hosted privacy golang)
 
 RULESET_NAME="main"
+PR_RULESET_NAME="main-prs"
 # Status checks a PR must pass before it can merge, as they are named on a PR
 # (the CI job names). Each reports on every PR: a job whose files didn't change
 # is skipped, which counts as passed. A check that never runs blocks the merge,
-# so don't add the Sidecars jobs.
-REQUIRED_CHECKS=(lint go ui docker)
+# so add only jobs that always report ("build" sums up the Build workflow).
+REQUIRED_CHECKS=(lint go ui docker build pr-title)
 
 # ---- Arguments ------------------------------------------------------------
 
@@ -86,15 +87,13 @@ else
 fi
 echo
 
-# ---- About, features and merge options ------------------------------------
+# ---- Features and merge options ------------------------------------------
 
 repo_json=$(gh api "repos/$REPO")
 
 want=$(jq -n \
-	--arg description "$DESCRIPTION" \
 	--arg homepage "$HOMEPAGE" \
 	'{
-		description: $description,
 		has_discussions: true,
 		allow_squash_merge: true,
 		allow_merge_commit: false,
@@ -108,11 +107,11 @@ diff_json=$(jq -n --argjson want "$want" --argjson have "$repo_json" \
 	'$want | with_entries(select(.value != $have[.key]))')
 
 if [[ "$diff_json" == "{}" ]]; then
-	ok "about, discussions and merge options"
+	ok "discussions and merge options"
 else
 	jq -r --argjson have "$repo_json" \
 		'to_entries[] | "  \(.key): \($have[.key] | tojson) -> \(.value | tojson)"' <<<"$diff_json"
-	change "set about, discussions and merge options" \
+	change "set discussions and merge options" \
 		gh api -X PATCH "repos/$REPO" --input - <<<"$diff_json"
 fi
 
@@ -160,51 +159,86 @@ else
 			"secret_scanning_push_protection": {"status": "enabled"}}}'
 fi
 
-# ---- Ruleset on the default branch ----------------------------------------
+# ---- Labels ---------------------------------------------------------------
 
-rules=$(jq -n --args '
-	[{type: "deletion"}, {type: "non_fast_forward"}] +
-	(if $ARGS.positional == [] then [] else [{
-		type: "required_status_checks",
-		parameters: {
-			strict_required_status_checks_policy: false,
-			required_status_checks: [$ARGS.positional[] | {context: .}]
-		}
-	}] end)' "${REQUIRED_CHECKS[@]}")
+# "build" on a PR builds the E-maki image (docs/releases.md).
+if gh api "repos/$REPO/labels/build" --silent 2>/dev/null; then
+	ok "label \"build\""
+else
+	change "create label \"build\"" gh api -X POST "repos/$REPO/labels" \
+		-f name=build -f color=1d76db -f description="Build the E-maki image"
+fi
 
-ruleset=$(jq -n --arg name "$RULESET_NAME" --argjson rules "$rules" '{
-	name: $name,
-	target: "branch",
-	enforcement: "active",
-	bypass_actors: [],
-	conditions: {ref_name: {include: ["~DEFAULT_BRANCH"], exclude: []}},
-	rules: $rules
-}')
+# ---- Rulesets on the default branch ---------------------------------------
 
 # A short form of a ruleset, to compare the one we want with the one we have.
 summary='{enforcement, include: .conditions.ref_name.include,
+	bypass: [.bypass_actors[] | .actor_type] | sort,
 	rules: [.rules[] | .type] | sort,
 	checks: [.rules[] | select(.type == "required_status_checks")
-		| .parameters.required_status_checks[].context] | sort}'
+		| .parameters.required_status_checks[].context] | sort,
+	up_to_date: [.rules[] | select(.type == "required_status_checks")
+		| .parameters.strict_required_status_checks_policy]}'
 
-ruleset_id=$(gh api "repos/$REPO/rulesets" \
-	--jq ".[] | select(.name == \"$RULESET_NAME\") | .id" | head -n1)
-
-if [[ -z "$ruleset_id" ]]; then
-	change "create ruleset \"$RULESET_NAME\": no force pushes or deletion on the default branch${REQUIRED_CHECKS[*]:+, require checks: ${REQUIRED_CHECKS[*]}}" \
-		gh api -X POST "repos/$REPO/rulesets" --input - <<<"$ruleset"
-else
-	have=$(gh api "repos/$REPO/rulesets/$ruleset_id" | jq -cS "$summary")
+# apply_ruleset NAME WHAT RULES BYPASS: create or update a ruleset on the
+# default branch.
+apply_ruleset() {
+	local name="$1" what="$2" rules="$3" bypass="$4" ruleset id have want
+	ruleset=$(jq -n --arg name "$name" --argjson rules "$rules" --argjson bypass "$bypass" '{
+		name: $name,
+		target: "branch",
+		enforcement: "active",
+		bypass_actors: $bypass,
+		conditions: {ref_name: {include: ["~DEFAULT_BRANCH"], exclude: []}},
+		rules: $rules
+	}')
+	id=$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name == \"$name\") | .id" | head -n1)
+	if [[ -z "$id" ]]; then
+		change "create ruleset \"$name\": $what" \
+			gh api -X POST "repos/$REPO/rulesets" --input - <<<"$ruleset"
+		return
+	fi
+	have=$(gh api "repos/$REPO/rulesets/$id" | jq -cS "$summary")
 	want=$(jq -cS "$summary" <<<"$ruleset")
 	if [[ "$have" == "$want" ]]; then
-		ok "ruleset \"$RULESET_NAME\""
+		ok "ruleset \"$name\""
 	else
 		echo "  ruleset: $have"
 		echo "        -> $want"
-		change "update ruleset \"$RULESET_NAME\"" \
-			gh api -X PUT "repos/$REPO/rulesets/$ruleset_id" --input - <<<"$ruleset"
+		change "update ruleset \"$name\": $what" \
+			gh api -X PUT "repos/$REPO/rulesets/$id" --input - <<<"$ruleset"
 	fi
-fi
+}
+
+# No force pushes or deletion, for everyone.
+apply_ruleset "$RULESET_NAME" "no force pushes or deletion" \
+	'[{"type": "deletion"}, {"type": "non_fast_forward"}]' '[]'
+
+# Changes arrive only through a squash-merged PR that is up to date with the
+# branch and passed the checks, so what merges is what was tested. Repo
+# admins (the owner) may still push directly, for emergencies.
+pr_rules=$(jq -n --args '
+	[{
+		type: "pull_request",
+		parameters: {
+			required_approving_review_count: 0,
+			dismiss_stale_reviews_on_push: false,
+			require_code_owner_review: false,
+			require_last_push_approval: false,
+			required_review_thread_resolution: false,
+			allowed_merge_methods: ["squash"]
+		}
+	}] +
+	(if $ARGS.positional == [] then [] else [{
+		type: "required_status_checks",
+		parameters: {
+			strict_required_status_checks_policy: true,
+			required_status_checks: [$ARGS.positional[] | {context: .}]
+		}
+	}] end)' "${REQUIRED_CHECKS[@]}")
+apply_ruleset "$PR_RULESET_NAME" \
+	"PRs only${REQUIRED_CHECKS[*]:+, up to date and passing ${REQUIRED_CHECKS[*]}}; admins may push" \
+	"$pr_rules" '[{"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"}]'
 
 # ---- Stale Dependabot PRs -------------------------------------------------
 

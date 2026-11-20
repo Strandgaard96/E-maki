@@ -56,9 +56,9 @@ limit on new files. `git push` also runs `go test`. The `tsc` hook needs
 
 CI runs the same hooks in its `lint` job, then only what the change touches:
 `go` (tests, with `-race` and `govulncheck` on main), `ui` (typecheck and
-build) and `docker` (compose files and the E-maki image). The whisper and sd
-images take long to compile, so they only build when their own Dockerfile or
-entrypoint changes.
+build) and `docker` (compose files). The E-maki image is only built when a PR
+gets the `build` label. How releases work:
+[Releases](docs/releases.md).
 
 The settings page lives in `internal/web/ui` (Preact in TypeScript, Tailwind and Basecoat).
 The built files in `internal/web/static` are committed, so `go build` needs no
@@ -89,7 +89,9 @@ CI checks that the committed files match the source.
 
 Write the code yourself or with an LLM, as long as you understand it and can
 explain it. PRs are squashed, so the PR
-title is the commit message.
+title is the commit message. It must be a
+[conventional commit](https://www.conventionalcommits.org/) (`feat: ...`,
+`fix(ui): ...`, `docs: ...`), because it decides the next version.
 
 ## Secrets
 

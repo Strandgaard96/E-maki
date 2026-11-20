@@ -31,7 +31,7 @@ jobs:
           filters: |
             go: ['**/*.go', go.mod, go.sum, 'internal/**', 'testdata/**', 'configs/**', .github/workflows/ci.yml]
             ui: ['internal/web/ui/**', 'internal/web/static/**', .github/workflows/ci.yml]
-            docker: ['docker/**', docker-compose.yml, .env.example, go.mod, 'configs/**', .github/workflows/ci.yml]
+            docker: ['docker/**', docker-compose.yml, .env.example, .github/workflows/ci.yml]
 
   # Everything in .pre-commit-config.yaml (formatters, linters, secret scan of
   # the files), plus a gitleaks scan of the full history.
@@ -119,7 +119,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.docker == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - run: docker compose config --quiet
@@ -127,4 +127,4 @@ jobs:
       - run: GPU=vulkan-wsl docker compose config --quiet
       - run: LOCAL_IMAGES=1 WHISPER_DA_NO=1 WHISPER_DA_MODEL_URL=https://example.invalid/edda.bin docker compose config --quiet
       - run: GPU=vulkan-wsl LOCAL_IMAGES=1 docker compose config --quiet
-      - run: docker build -f docker/emaki.Dockerfile .
+      - run: EMAKI_BUILD=1 docker compose config --quiet

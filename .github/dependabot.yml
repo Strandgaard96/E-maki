@@ -1,9 +1,11 @@
 version: 2
+# Conventional commit titles, which the PR title check and release-please want.
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    commit-message: { prefix: "build(deps)" }
     groups:
       go:
         patterns: ["*"]
@@ -12,6 +14,7 @@ updates:
     directory: /internal/web/ui
     schedule:
       interval: weekly
+    commit-message: { prefix: "build(deps)" }
     groups:
       ui:
         patterns: ["*"]
@@ -20,6 +23,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message: { prefix: "build(deps)" }
     groups:
       actions:
         patterns: ["*"]
@@ -28,8 +32,10 @@ updates:
     directories: ["/docker"]
     schedule:
       interval: weekly
+    commit-message: { prefix: "build(deps)" }
 
   - package-ecosystem: docker-compose
     directory: /
     schedule:
       interval: weekly
+    commit-message: { prefix: "build(deps)" }

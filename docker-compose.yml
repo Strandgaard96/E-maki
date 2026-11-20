@@ -17,6 +17,7 @@
 #   WHISPER_DA_NO=1               Danish and Norwegian models, inside whisper
 #   TOPIC_MODEL=external          no Ollama, for an external topic model only
 #   NET_MIC_BIND=0.0.0.0          a microphone elsewhere on the network
+#   EMAKI_BUILD=1                 build E-maki from source, not the released image
 # The services pull in what each option adds from docker/options.yml.
 
 # Fixed project name, so volumes are emaki_* whatever the folder is called.
@@ -128,10 +129,12 @@ services:
       retries: 60
       start_period: 60s
 
+  # The released image, kept in step with the version by release-please.
+  # EMAKI_BUILD=1 in .env builds it from this checkout instead.
   emaki:
     <<: *hardening
-    image: emaki
-    build: { context: ., dockerfile: docker/emaki.Dockerfile }
+    extends: { file: docker/options.yml, service: "emaki${EMAKI_BUILD:+-source}" }
+    image: ghcr.io/strandgaard96/emaki:0.1.0 # x-release-please-version
     # No depends_on: the settings page is up while the models download, and
     # System status shows each one as not answering until it does.
     # Runs as your own user, so PulseAudio/PipeWire accepts it. Set

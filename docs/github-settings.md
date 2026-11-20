@@ -9,14 +9,17 @@ scripts/github-settings.sh             # apply it
 
 It reads the current settings first and only changes what differs, so running it again is safe. It sets:
 
-- the About description and topics (and the homepage, if `HOMEPAGE` is set)
+- the topics (and the homepage, if `HOMEPAGE` is set). It never changes the About description.
 - Discussions on
 - squash merging only, auto-merge allowed, branches deleted after merge
+- the `build` label, which builds the E-maki image on a PR ([Releases](releases.md))
 - Dependabot alerts and security updates, private vulnerability reporting, secret scanning and push protection
-- a ruleset named `main` on the default branch that blocks force pushes and deletion, and requires the checks in `REQUIRED_CHECKS`
+- two rulesets on the default branch. `main` blocks force pushes and deletion for everyone. `main-prs` lets changes in only through a squash-merged PR that is up to date with the branch and passes the checks in `REQUIRED_CHECKS`; repo admins (you) can still push directly
 
 `--close-stale-dependabot` also closes open Dependabot PRs whose base commit is no longer on the default branch. Dependabot opens a new PR if the update is still needed.
 
-The values live at the top of the script. `REQUIRED_CHECKS` lists the CI jobs. Each one reports on every PR: a job whose files didn't change is skipped, and GitHub counts that as passed. Don't add the Sidecars jobs, which only run when the sidecar images change.
+The values live at the top of the script. `REQUIRED_CHECKS` lists the CI jobs. Each one reports on every PR: a job whose files didn't change is skipped, and GitHub counts that as passed. Add only jobs that always report: `build` sums up the Build workflow, so don't add its image jobs.
+
+Releases need a token and a one-time package setting that the script can't set, see [Releases](releases.md).
 
 GitHub's API can't change your account's email privacy, so the script only reminds you: turn on "Keep my email addresses private" at <https://github.com/settings/emails>.
