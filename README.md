@@ -3,10 +3,10 @@
 A picture frame that listens to the room and paints what you talk about, as a collage on a colour e-ink panel.
 
 <p align="center">
-  <img src="docs/collage-example.png" width="640"
-       alt="The settings page preview of an E-maki page, in its dark frame, dithered to six e-ink colours, drawn as black ink with red accents: a big picture of red fishing cabins under steep mountains, captioned 'Cabin trip to Lofoten', surrounded by eight smaller drawings for topics like an escaped cat, a sourdough starter, a heat pump, a hot dog, a robot vacuum and a ferry">
+  <img src="docs/settings-page.png" width="800"
+       alt="The E-maki settings page on the Frame tab: a preview of the frame with nine ink drawings in black and red, captioned with topics like 'Ferry to Oslo', 'Cycling to work' and 'Cabin trip to Lofoten', next to layout settings">
   <br>
-  <em>An example page, laid out and dithered by E-maki for a 13.3" Spectra 6 panel. The topics are made up.</em>
+  <em>The settings page. The topics are made up.</em>
 </p>
 
 <p align="center">
