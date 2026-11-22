@@ -6,7 +6,7 @@ A picture frame that listens to the room and paints what you talk about, as a co
   <img src="docs/settings-page.png" width="800"
        alt="The E-maki settings page on the Frame tab: a preview of the frame with nine ink drawings in black and red, captioned with topics like 'Ferry to Oslo', 'Cycling to work' and 'Cabin trip to Lofoten', next to layout settings">
   <br>
-  <em>The settings page. The topics are made up.</em>
+  <em>The settings page.</em>
 </p>
 
 <p align="center">
