@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"image"
+	"image/color"
 	"image/png"
 	"io"
 	"net/http"
@@ -29,6 +30,7 @@ type Server struct {
 	Token    string
 	Rotation int
 	Poll     int                 // minutes the EE02 client sleeps between fetches
+	Inks     color.Palette       // the panel's inks; nil is Palette
 	OnPress  func(button string) // may be nil
 
 	mu   sync.RWMutex
@@ -94,18 +96,21 @@ func (s *Server) saw(r *http.Request, button string) {
 
 // SetPage dithers a full-colour page and makes it the current frame.
 func (s *Server) SetPage(page image.Image) error {
-	p := Dither(page)
+	s.mu.RLock()
+	inks := s.Inks
+	s.mu.RUnlock()
+	p := Dither(page, inks)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.encode(p)
 }
 
-// SetFrame changes the rotation and poll interval, and re-encodes the
-// current page for them.
-func (s *Server) SetFrame(rotation, poll int) error {
+// SetFrame changes the rotation, poll interval and inks, and re-encodes the
+// current page for them. New inks apply from the next SetPage.
+func (s *Server) SetFrame(rotation, poll int, inks color.Palette) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.Rotation, s.Poll = rotation, poll
+	s.Rotation, s.Poll, s.Inks = rotation, poll, inks
 	if s.page == nil {
 		return nil
 	}
@@ -187,7 +192,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, ctype string, e6 
 	}
 	s.mu.RUnlock()
 	if body == nil && drawn {
-		http.Error(w, `/frame.e6 is only for the 7.3" and 13.3" panels`, http.StatusNotFound)
+		http.Error(w, `/frame.e6 is only for the 7.3" and 13.3" Spectra 6 panels`, http.StatusNotFound)
 		return
 	}
 	if body == nil {

@@ -31,9 +31,12 @@ var (
 )
 
 // EncodeE6 packs a dithered page (as the viewer sees it) for the glass, or
-// returns nil for a glass without an .e6 layout.
+// returns nil for a glass without an .e6 layout or a page not in 6 inks.
 // rotation is the frame's rotation in degrees counter-clockwise (0, 90, 180, 270).
 func EncodeE6(page *image.Paletted, rotation, poll int) []byte {
+	if len(page.Palette) != len(native) {
+		return nil
+	}
 	glass := rotateCCW(page, rotation)
 	halves := []int{0}
 	switch glass.Bounds().Size() {

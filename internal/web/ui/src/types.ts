@@ -41,6 +41,7 @@ export interface Settings {
   panel_height: number;
   panel_rotation: number;
   panel_poll_minutes: number;
+  panel_inks: string[] | null;
 }
 
 export interface Tile {

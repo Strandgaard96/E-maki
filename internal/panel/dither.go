@@ -1,13 +1,14 @@
 // Package panel prepares frames for a Spectra 6 e-ink panel and serves them
 // using Fugleramme's panel protocol.
 //
-// The dithering and .e6 packing are ported from Fugleramme
+// The palette, tone mapping (pop) and .e6 packing are ported from Fugleramme
 // (https://github.com/arnegiacomo/fugleramme, src/fugleramme/render/dither.py
 // and src/fugleramme/e6.py), Copyright (c) 2026 Arne Giacomo Munthe-Kaas,
 // MIT License. See third_party/fugleramme/LICENSE.
 package panel
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -23,7 +24,7 @@ var (
 // saturation blends the measured panel colours with the driver's pure ones.
 const saturation = 0.5
 
-// Palette is the 6-colour panel palette in driver index order.
+// Palette is the Spectra 6 palette in driver index order, the default inks.
 var Palette = func() color.Palette {
 	p := make(color.Palette, 6)
 	for i := range p {
@@ -108,41 +109,54 @@ func reach(w, h int, dist []float64) []bool {
 	return grown
 }
 
-// Dither reduces an image to the 6-colour panel palette with Floyd-Steinberg
-// error diffusion, using the same integer arithmetic as Pillow's
-// quantize(dither=FLOYDSTEINBERG) that Fugleramme relies on. The result is
-// meant to go to the panel as is; its driver must not dither it again.
-func Dither(src image.Image) *image.Paletted {
+// Dither reduces an image to the panel's inks with Atkinson error
+// diffusion: each pixel takes the nearest ink and passes 1/8 of its error to
+// six neighbours, so 1/4 is dropped. That keeps flat areas clean and contrast
+// high. Follows charnley/eink-art-gallery's atkinson_dither_rgb. The result
+// is meant to go to the panel as is; its driver must not dither it again.
+// Any palette works: nil is Palette, and a black-and-white or 4-grey panel
+// passes its own (see Inks).
+func Dither(src image.Image, inks color.Palette) *image.Paletted {
+	if len(inks) == 0 {
+		inks = Palette
+	}
 	w, h, px := pop(src)
-	out := image.NewPaletted(image.Rect(0, 0, w, h), Palette)
-	// errs holds the next row's accumulated error (x16), one slot per column
-	// plus one, laid out as in Pillow's Convert.c.
-	errs := make([][3]int, w+1)
+	out := image.NewPaletted(image.Rect(0, 0, w, h), inks)
+	buf := make([][3]int, w*h)
+	for i, c := range px {
+		buf[i] = [3]int{int(c[0]), int(c[1]), int(c[2])}
+	}
 	for y := 0; y < h; y++ {
-		var cur, e0, e1 [3]int // error carried right (x16), and the two pending slots
 		for x := 0; x < w; x++ {
-			var c [3]int
-			for k := 0; k < 3; k++ {
-				c[k] = clip8(int(px[y*w+x][k]) + truncDiv16(cur[k]+errs[x+1][k]))
-			}
-			idx := nearest(c)
+			c := buf[y*w+x]
+			idx := nearest(inks, c)
 			out.Pix[y*out.Stride+x] = uint8(idx)
-			p := Palette[idx].(color.RGBA)
+			p := inks[idx].(color.RGBA)
 			pc := [3]int{int(p.R), int(p.G), int(p.B)}
-			for k := 0; k < 3; k++ {
-				err := c[k] - pc[k]
-				errs[x][k] = 3*err + e0[k]
-				e0[k] = 5*err + e1[k]
-				e1[k] = err
-				cur[k] = 7 * err
+			var e [3]int
+			for k := range e {
+				e[k] = floorDiv8(c[k] - pc[k])
+			}
+			for _, d := range atkinson {
+				nx, ny := x+d[0], y+d[1]
+				if nx < 0 || nx >= w || ny >= h {
+					continue
+				}
+				n := &buf[ny*w+nx]
+				for k := range e {
+					n[k] = clip8(n[k] + e[k])
+				}
 			}
 		}
-		errs[w] = e0
 	}
 	return out
 }
 
-func truncDiv16(v int) int { return v / 16 } // Go, like C, truncates toward zero
+// atkinson lists the neighbours (dx, dy) that each get 1/8 of the error.
+var atkinson = [6][2]int{{1, 0}, {2, 0}, {-1, 1}, {0, 1}, {1, 1}, {0, 2}}
+
+// floorDiv8 rounds toward minus infinity, like Python's // in the reference.
+func floorDiv8(v int) int { return v >> 3 }
 
 func clip8(v int) int {
 	if v < 0 {
@@ -154,12 +168,10 @@ func clip8(v int) int {
 	return v
 }
 
-// nearest finds the closest palette entry. Like Pillow's palette cache, it
-// measures from the corner of the 4x4x4 cache cell the colour falls in.
-func nearest(c [3]int) int {
-	c = [3]int{c[0] &^ 3, c[1] &^ 3, c[2] &^ 3}
+// nearest finds the ink closest in RGB.
+func nearest(inks color.Palette, c [3]int) int {
 	best, bestD := 0, math.MaxInt
-	for i, pc := range Palette {
+	for i, pc := range inks {
 		p := pc.(color.RGBA)
 		dr, dg, db := c[0]-int(p.R), c[1]-int(p.G), c[2]-int(p.B)
 		d := dr*dr + dg*dg + db*db
@@ -168,6 +180,26 @@ func nearest(c [3]int) int {
 		}
 	}
 	return best
+}
+
+// Inks parses a panel's inks, given as "#rrggbb" in its driver's index
+// order. None is Palette.
+func Inks(hex []string) (color.Palette, error) {
+	if len(hex) == 0 {
+		return Palette, nil
+	}
+	if len(hex) < 2 || len(hex) > 16 {
+		return nil, fmt.Errorf("a panel has 2 to 16 inks, not %d", len(hex))
+	}
+	p := make(color.Palette, len(hex))
+	for i, h := range hex {
+		var r, g, b uint8
+		if n, err := fmt.Sscanf(h, "#%02x%02x%02x", &r, &g, &b); n != 3 || err != nil || len(h) != 7 {
+			return nil, fmt.Errorf("ink %q is not #rrggbb", h)
+		}
+		p[i] = color.RGBA{r, g, b, 255}
+	}
+	return p, nil
 }
 
 func sq(v float64) float64 { return v * v }

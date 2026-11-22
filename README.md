@@ -124,7 +124,8 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Credits
 
-- [Fugleramme](https://github.com/arnegiacomo/fugleramme) by Arne Giacomo Munthe-Kaas. Its dithering, `.e6` format and panel protocol are ported to Go.
+- [Fugleramme](https://github.com/arnegiacomo/fugleramme) by Arne Giacomo Munthe-Kaas. Its palette, tone mapping, `.e6` format and panel protocol are ported to Go.
+- [eink-art-gallery](https://github.com/charnley/eink-art-gallery) by charnley. Its Atkinson dithering is the reference for ours.
 - [BirdNET-Go](https://github.com/tphakala/birdnet-go) by tphakala.
 
 ## License

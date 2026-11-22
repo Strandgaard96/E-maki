@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"io/fs"
 	"log"
@@ -131,6 +132,13 @@ func (s *Server) SetSettings(c config.Settings) {
 	s.mu.Lock()
 	s.settings = c
 	s.mu.Unlock()
+}
+
+// inks are the panel's inks in the settings in force.
+func (s *Server) inks() color.Palette {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.settings.Inks()
 }
 
 func (s *Server) Register(mux *http.ServeMux) {
@@ -388,7 +396,7 @@ func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
 // draft answers with the frame's picture as unsaved layout settings would
 // make it: the settings in force with the query's layout, tiles,
 // hide_captions, arrange, spacing, background, shape, rotate_minutes and
-// half_life_hours over them. It changes nothing.
+// half_life_hours (and panel_inks, comma separated) over them. It changes nothing.
 func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
 	if s.Draft == nil {
 		http.Error(w, "no preview of unsaved settings", http.StatusNotImplemented)
@@ -421,6 +429,9 @@ func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
 			*dst, err = strconv.Atoi(v)
 		}
 	}
+	if q.Has("panel_inks") {
+		set.PanelInks = strings.FieldsFunc(q.Get("panel_inks"), func(r rune) bool { return r == ',' })
+	}
 	var page image.Image
 	if err == nil {
 		page, err = s.Draft(set)
@@ -431,7 +442,7 @@ func (s *Server) draft(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
-	if err := png.Encode(w, panel.Dither(page)); err != nil {
+	if err := png.Encode(w, panel.Dither(page, set.Inks())); err != nil {
 		log.Printf("preview: %v", err)
 	}
 }
@@ -671,7 +682,7 @@ func (s *Server) picture(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=3600")
-	png.Encode(w, panel.Dither(small(img, 320)))
+	png.Encode(w, panel.Dither(small(img, 320), s.inks()))
 }
 
 // slow lets a handler that waits for the image provider answer later than
@@ -764,7 +775,7 @@ func (s *Server) testPicture(w http.ResponseWriter, r *http.Request) {
 	took := time.Since(start).Seconds()
 	log.Printf("test picture: done in %.1fs", took)
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, panel.Dither(small(img, 480))); err != nil {
+	if err := png.Encode(&buf, panel.Dither(small(img, 480), s.inks())); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

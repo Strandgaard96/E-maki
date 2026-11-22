@@ -239,3 +239,22 @@ func TestKeepPicturesDefaultOn(t *testing.T) {
 		t.Error("keep_pictures false should be off")
 	}
 }
+
+func TestPanelInks(t *testing.T) {
+	c, err := Load("../../configs/docker.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(c.Inks()); n != 6 {
+		t.Fatalf("default has %d inks, want Spectra 6", n)
+	}
+	s := c.Settings
+	s.PanelInks = []string{"#000000", "#ffffff"}
+	if c2, err := c.With(s); err != nil || len(c2.Inks()) != 2 {
+		t.Fatalf("black and white: %v", err)
+	}
+	s.PanelInks = []string{"#000000"}
+	if _, err := c.With(s); err == nil {
+		t.Error("one ink: no error")
+	}
+}
