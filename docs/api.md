@@ -14,8 +14,8 @@ No password needed.
 
 | Call | What it does |
 | --- | --- |
-| `GET frame.png` | The page as a 6-colour PNG. Send `If-None-Match` with the last `ETag` to get `304` when nothing changed |
-| `GET frame.e6` | The same page packed for the panel |
+| `GET frame.png` | The page as a PNG in the panel's colours. Send `If-None-Match` with the last `ETag` to get `304` when nothing changed |
+| `GET frame.e6` | The same page packed for a Spectra 6 panel |
 | `POST press` | A button press, form field `button=A` to `H` |
 | `GET preview.png` | The page as shown on the settings page |
 

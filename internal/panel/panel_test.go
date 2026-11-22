@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"image"
+	"image/color"
 	"image/png"
 	"os"
 	"testing"
@@ -34,22 +35,48 @@ func TestPaletteMatchesFugleramme(t *testing.T) {
 	}
 }
 
-// The port reproduces Pillow's integer Floyd-Steinberg and palette cache, so
-// it must match Fugleramme's output pixel for pixel.
-func TestDitherMatchesFugleramme(t *testing.T) {
-	got := Dither(load(t, "testdata/dither_input.png"))
-	want := load(t, "testdata/dither_expected.png").(*image.Paletted)
-	if got.Bounds() != want.Bounds() {
-		t.Fatalf("bounds %v, want %v", got.Bounds(), want.Bounds())
+// Dither must match charnley/eink-art-gallery's atkinson_dither_rgb run on
+// Fugleramme's tone-mapped page (pop_expected.png), pixel for pixel, for
+// Spectra 6 and for black and white.
+func TestDitherMatchesReference(t *testing.T) {
+	bw, err := Inks([]string{"#000000", "#d0d1d2"})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !bytes.Equal(got.Pix, want.Pix) {
-		var off int
-		for i := range got.Pix {
-			if got.Pix[i] != want.Pix[i] {
-				off++
-			}
+	for name, inks := range map[string]color.Palette{"dither_expected.png": nil, "dither_expected_bw.png": bw} {
+		got := Dither(load(t, "testdata/dither_input.png"), inks)
+		want := load(t, "testdata/"+name).(*image.Paletted)
+		if got.Bounds() != want.Bounds() {
+			t.Fatalf("%s: bounds %v, want %v", name, got.Bounds(), want.Bounds())
 		}
-		t.Errorf("%d of %d pixels differ from Fugleramme", off, len(got.Pix))
+		if !bytes.Equal(got.Pix, want.Pix) {
+			var off int
+			for i := range got.Pix {
+				if got.Pix[i] != want.Pix[i] {
+					off++
+				}
+			}
+			t.Errorf("%s: %d of %d pixels differ", name, off, len(got.Pix))
+		}
+	}
+}
+
+func TestInks(t *testing.T) {
+	for _, bad := range [][]string{{"#000000"}, {"#000000", "white"}, {"#000000", "#fff"}, {"#000000", "#gg0000"}} {
+		if _, err := Inks(bad); err == nil {
+			t.Errorf("Inks(%q) took it", bad)
+		}
+	}
+	if p, _ := Inks(nil); len(p) != 6 {
+		t.Errorf("Inks(nil) has %d inks, want Spectra 6", len(p))
+	}
+}
+
+func TestNoE6WithoutSixInks(t *testing.T) {
+	bw, _ := Inks([]string{"#000000", "#ffffff"})
+	page := image.NewPaletted(image.Rect(0, 0, 800, 480), bw)
+	if EncodeE6(page, 0, 5) != nil {
+		t.Error("black and white page packed as .e6")
 	}
 }
 

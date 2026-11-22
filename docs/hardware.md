@@ -46,7 +46,7 @@ Then turn on the network mic: see [Network microphone](network-mic.md). If speec
 
 ## The frame
 
-The picture is 1600x1200 for a 13.3" Spectra 6 panel. Other sizes and portrait are set under Frame > Panel.
+The picture is 1600x1200 for a 13.3" Spectra 6 panel. Other sizes, portrait and fewer colours (4 colours, 4 greys, black and white) are set under Frame > Panel. Pictures are dithered with Atkinson dithering.
 
 ### Raspberry Pi
 
@@ -84,7 +84,7 @@ More boards are in [fugleramme/clients](https://github.com/fugleramme/clients). 
 
 | Fetch | Format |
 | --- | --- |
-| `GET /frame.png` | 6-colour PNG at the panel size |
+| `GET /frame.png` | PNG at the panel size, in its colours |
 | `GET /frame.e6` | Packed for a 13.3" or 7.3" Spectra 6 panel. The header holds the sleep time |
 
 Both send an `ETag` and answer `304` until the picture changes. With `PANEL_TOKEN` set, prefix the path with `/<token>`.

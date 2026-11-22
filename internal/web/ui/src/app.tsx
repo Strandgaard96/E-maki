@@ -403,6 +403,7 @@ const PICTURE_KEYS: (keyof Settings)[] = [
   "panel_width",
   "panel_height",
   "panel_rotation",
+  "panel_inks",
 ];
 // Settings edited on the Listening and System tabs; the rest are on Frame.
 const SYSTEM_KEYS: (keyof Settings)[] = ["image_provider", "daily_image_cap", "keep_pictures"];
@@ -411,7 +412,7 @@ const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   layout: ["layout", "tiles", "arrange", "spacing", "shape", "background", "hide_captions"],
   style: ["image_style"],
   timing: ["mode", "new_every_minutes", "rotate_minutes", "quiet_from", "quiet_to", "half_life_hours", "diary_at"],
-  panel: ["panel_width", "panel_height", "panel_rotation", "panel_buttons", "panel_poll_minutes"],
+  panel: ["panel_width", "panel_height", "panel_inks", "panel_rotation", "panel_buttons", "panel_poll_minutes"],
   listening: ["mic_device", "min_speech_dbfs", "languages"],
   topics: ["topic_provider", "min_confidence", "window_segments", "extract_every", "topic_prompt", "llm_temperature"],
   privacy: ["block_sensitive", "block_names", "never_paint"],
@@ -581,7 +582,7 @@ function Frame({
   const empty = wall.length === 0;
   const mark = changed || empty;
   const src =
-    "api/preview.png?" + new URLSearchParams([...PICTURE_KEYS.map((k) => [k, String(draft[k])]), ["v", page]]);
+    "api/preview.png?" + new URLSearchParams([...PICTURE_KEYS.map((k) => [k, String(draft[k] ?? "")]), ["v", page]]);
   const pic = usePicture(src);
   const alt = empty
     ? "Preview pictures in the chosen layout"
@@ -3154,6 +3155,21 @@ const PANELS: [string, string][] = [
   ["640x400", '4" (640 × 400)'],
 ];
 
+// The inks of common e-ink panels, in their drivers' order; "" is Spectra 6.
+const PANEL_INKS: [string, string][] = [
+  ["", "6 colours (Spectra 6)"],
+  ["#000000,#d0d1d2,#e7de23,#cd2425", "4 colours"],
+  ["#000000,#d0d1d2,#cd2425", "Black, white and red"],
+  ["#000000,#454646,#8b8b8c,#d0d1d2", "4 greys"],
+  ["#000000,#d0d1d2", "Black and white"],
+];
+
+// withInks keeps inks set in the settings file selectable.
+function withInks(d: Settings): [string, string][] {
+  const v = (d.panel_inks ?? []).join(",");
+  return PANEL_INKS.some(([p]) => p === v) ? PANEL_INKS : [...PANEL_INKS, [v, `${d.panel_inks?.length} inks`]];
+}
+
 // withSize keeps a panel size set in the profile selectable.
 function withSize(d: Settings): [string, string][] {
   const v = d.panel_width + "x" + d.panel_height;
@@ -3185,6 +3201,20 @@ function Hanging({ draft, set }: DraftProps) {
             }}
           >
             {withSize(draft).map(([v, t]) => (
+              <option value={v}>{t}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Colours" tip={TIPS.panel_inks}>
+          <select
+            class="select w-full"
+            value={(draft.panel_inks ?? []).join(",")}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              set({ panel_inks: v ? v.split(",") : null });
+            }}
+          >
+            {withInks(draft).map(([v, t]) => (
               <option value={v}>{t}</option>
             ))}
           </select>
@@ -3328,7 +3358,8 @@ function ButtonsDrawing({ n, lit }: { n: number; lit?: string }) {
 }
 
 // hasE6 is whether the panel gets /frame.e6, the only place the refresh interval goes.
-const hasE6 = (d: Settings) => ["800x480", "1600x1200"].includes(d.panel_width + "x" + d.panel_height);
+const hasE6 = (d: Settings) =>
+  !d.panel_inks?.length && ["800x480", "1600x1200"].includes(d.panel_width + "x" + d.panel_height);
 
 // The letters a frame's buttons can send (config.Buttons), and the first n of
 // them with the actions they had, new ones as on an Inky.

@@ -89,7 +89,7 @@ func main() {
 	if !regexp.MustCompile(`^[A-Za-z0-9_-]*$`).MatchString(token) {
 		log.Fatal("PANEL_TOKEN may only hold letters, digits, - and _")
 	}
-	srv := &panel.Server{Token: token, Rotation: cfg.PanelRotation, Poll: cfg.PanelPoll}
+	srv := &panel.Server{Token: token, Rotation: cfg.PanelRotation, Poll: cfg.PanelPoll, Inks: cfg.Inks()}
 	// The image providers set up in .env (keys and addresses come from the
 	// environment, never a file in the repo). The profile or the settings
 	// page picks one with image_provider.
@@ -215,7 +215,7 @@ func main() {
 			if newTopics && c.TopicProvider != "external" && !local {
 				return s, errNoLocalTopics
 			}
-			if err := srv.SetFrame(c.PanelRotation, c.PanelPoll); err != nil {
+			if err := srv.SetFrame(c.PanelRotation, c.PanelPoll, c.Inks()); err != nil {
 				return s, err
 			}
 			reopen := c.MicDevice != live.Load().MicDevice || c.Paused != live.Load().Paused

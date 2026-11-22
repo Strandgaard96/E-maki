@@ -130,6 +130,7 @@ export const TIPS = {
 
   // Frame > Panel
   panel_size: { text: "Your e-ink screen's resolution. The picture is drawn at this size." },
+  panel_inks: { text: "The colours your screen can show. Pictures are dithered to just these." },
   panel_rotation: { text: "Turns the picture for a frame that hangs sideways or upside down." },
   panel_poll_minutes: {
     text: "How long a battery frame (like the EE02) sleeps between checks for a new picture. Longer saves battery. Frames on mains power check on their own.",

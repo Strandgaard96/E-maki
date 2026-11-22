@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"log"
 	"net"
 	"net/url"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/Strandgaard96/e-maki/internal/collage"
 	"github.com/Strandgaard96/e-maki/internal/imagegen"
+	"github.com/Strandgaard96/e-maki/internal/panel"
 	"github.com/Strandgaard96/e-maki/internal/stt"
 )
 
@@ -177,6 +179,10 @@ type Settings struct {
 
 	PanelRotation int `json:"panel_rotation"`
 	PanelPoll     int `json:"panel_poll_minutes"`
+
+	// The panel's inks as "#rrggbb", in its driver's index order: 2 for
+	// black and white, 4 greys, 6 for Spectra 6. Unset (null) is Spectra 6.
+	PanelInks []string `json:"panel_inks"`
 }
 
 // Buttons are the letters a frame's buttons can send, and ButtonActions what
@@ -190,6 +196,12 @@ var (
 // frame doesn't have.
 func (s Settings) Button(b string) string {
 	return s.PanelButtons[b]
+}
+
+// Inks is the panel's palette.
+func (s Settings) Inks() color.Palette {
+	p, _ := panel.Inks(s.PanelInks) // checked by Validate
+	return p
 }
 
 // Categories are the sensitive categories block_sensitive can name.
@@ -339,6 +351,9 @@ func (c Config) validate() error {
 		if strings.TrimSpace(st.Name) == "" || strings.TrimSpace(st.Prompt) == "" {
 			return fmt.Errorf("image_styles: each style needs a name and a prompt")
 		}
+	}
+	if _, err := panel.Inks(c.PanelInks); err != nil {
+		return fmt.Errorf("panel_inks: %w", err)
 	}
 	for b, a := range c.PanelButtons {
 		if !slices.Contains(Buttons, b) || !slices.Contains(ButtonActions, a) {
