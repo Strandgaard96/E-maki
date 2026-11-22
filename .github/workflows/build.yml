@@ -4,13 +4,14 @@
 # "build" label on it. The label comes off again once it has built.
 #   1. release-please keeps a release PR open on main (next version and
 #      CHANGELOG, from the conventional commit titles).
-#   2. Labelled "build", that PR builds the image for amd64 and arm64 from its
-#      merge result and pushes it as :tree-<git tree hash>. Its "build" check
-#      fails until an image of its current content exists, so it can't merge
-#      unbuilt; a new commit on it needs the label again.
+#   2. The "build" label is the switch, off by default. Labelled, that PR
+#      builds the image for amd64 and arm64 from its merge result and pushes
+#      it as :tree-<git tree hash>; a new commit on it needs the label again.
+#      Unlabelled, its checks pass without building.
 #   3. Merging it cuts the release, and the same image is tagged :X.Y.Z, :X.Y
 #      and :latest. Nothing is built twice: the squash commit has the same
-#      tree, because main requires the PR to be up to date.
+#      tree, because main requires the PR to be up to date. If the PR merged
+#      unbuilt, main builds the image then.
 # The whisper and imagegen (sd.Dockerfile) images are built on the user's
 # machine, not published; run this workflow by hand to test-build them.
 # The "build" job sums up and is the required check, so it always reports.
@@ -106,8 +107,7 @@ jobs:
               if [[ "$HEAD" != release-please--* ]]; then :
               elif [ "$LABEL" = true ]; then build="push"
               elif ! has_image; then
-                echo "::error::The release image isn't built for this commit yet. Add the build label to this PR to build it."
-                exit 1
+                echo "::notice::Not built yet. Add the build label to build it now, or merge and main builds it."
               fi ;;
             push) [ "$CREATED" = true ] && version="$RELEASED" ;;
             workflow_dispatch)
