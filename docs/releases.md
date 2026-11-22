@@ -6,6 +6,7 @@ One image is published: `ghcr.io/strandgaard96/emaki`, for amd64 and arm64. `doc
 
 1. PRs into `main` are squash-merged. The title is a [conventional commit](https://www.conventionalcommits.org/): `fix:` bumps the patch, `feat:` the minor, `feat!:` the major. `docs:`, `chore:` and `ci:` don't bump.
 2. [release-please](https://github.com/googleapis/release-please) keeps one release PR open with the next version, the CHANGELOG and the image tag.
+   To pick another version, merge a PR whose squash commit ends with `Release-As: X.Y.Z`.
 3. Add the `build` label to the release PR to build the image. Its `build` check fails until the image exists. Add the label again after a new commit.
 4. Merging tags `vX.Y.Z`, writes the GitHub release and tags the image `X.Y.Z`, `X.Y` and `latest`. Nothing is rebuilt.
 
