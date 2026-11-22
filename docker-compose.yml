@@ -37,7 +37,7 @@ x-gpu: &gpu
 
 # whisper and imagegen are compiled on this machine, for its CPU or GPU, from
 # the released source on GitHub, so no checkout is needed.
-x-source: &source https://github.com/Strandgaard96/E-maki.git#v0.1.0 # x-release-please-version
+x-source: &source https://github.com/Strandgaard96/E-maki.git#v0.1.1 # x-release-please-version
 
 services:
   whisper:
@@ -144,7 +144,7 @@ services:
     <<: *hardening
     extends: { service: "image${EMAKI_BUILD:+-source}" }
     profiles: !reset []
-    image: ghcr.io/strandgaard96/emaki:0.1.0 # x-release-please-version
+    image: ghcr.io/strandgaard96/emaki:0.1.1 # x-release-please-version
     # No depends_on: the settings page is up while the models download, and
     # System status shows each one as not answering until it does.
     # Runs as your own user, so PulseAudio/PipeWire accepts it. Set
